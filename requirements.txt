@@ -6,3 +6,5 @@ python-multipart
 rapidfuzz
 pandas
 openpyxl
+psycopg[binary]
+
