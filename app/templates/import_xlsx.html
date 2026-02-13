@@ -1,0 +1,22 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>Импорт XLSX → нормализация → БД</h1>
+<form method="post" enctype="multipart/form-data">
+    <div class="field">
+        <label>Город</label>
+        <input type="text" name="city" required placeholder="Иркутск">
+    </div>
+    <div class="field">
+        <label>Файл XLSX</label>
+        <input type="file" name="file" accept=".xlsx" required>
+    </div>
+    <button type="submit">Импортировать</button>
+</form>
+{% if error %}
+    <div class="message error">{{ error }}</div>
+{% endif %}
+{% if message %}
+    <div class="message ok">{{ message }}</div>
+{% endif %}
+{% endblock %}

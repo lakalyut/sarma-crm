@@ -1,0 +1,24 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>Импорт списка продуктов</h1>
+<form method="post">
+    <div class="field">
+        <label>Категория</label>
+        <input type="text" name="category" value="Табак для кальяна">
+    </div>
+    <div class="field">
+        <label>Вес по умолчанию, г</label>
+        <input type="number" name="default_weight_g" value="120">
+    </div>
+    <div class="field">
+        <label>Список (по одному продукту на строку)</label>
+        <textarea name="lines" rows="10" placeholder='"Сарма" Банановое суфле
+"САРМА 360" Легкая Азиатская Дыня'></textarea>
+    </div>
+    <button type="submit">Импортировать</button>
+</form>
+{% if message %}
+    <div class="message ok">{{ message }}</div>
+{% endif %}
+{% endblock %}

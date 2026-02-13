@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Детализация по клиенту</h1>
+
+<p>
+    <strong>Город:</strong> {{ city }}<br>
+    <strong>Тип точки:</strong> {{ sale_type }}<br>
+    <strong>Клиент:</strong> {{ client }}<br>
+    <strong>Месяцы:</strong>
+{% if months %}
+    {% for m in months %}
+        {{ m|format_month }}{% if not loop.last %}, {% endif %}
+    {% endfor %}
+{% else %}
+    все
+{% endif %}
+
+</p>
+
+<a href="javascript:history.back()" class="btn-secondary">
+    ← Назад к списку клиентов
+</a>
+
+{% if summary %}
+    <div class="summary-cards" style="margin-top: 10px;">
+        <div class="summary-card">
+            <div class="summary-card-title">Номенклатур, шт</div>
+            <div class="summary-card-value">{{ summary.nomenclatures }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-title">Уникальных SKU, шт</div>
+            <div class="summary-card-value">{{ summary.unique_sku }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-title">Суммарное количество, шт</div>
+            <div class="summary-card-value">{{ "%.2f"|format(summary.total_qty) }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-title">Суммарный вес, кг</div>
+            <div class="summary-card-value">{{ "%.2f"|format(summary.total_weight) }}</div>
+        </div>
+    </div>
+{% endif %}
+
+
+
+{% if not rows %}
+    <div class="message">Нет данных по этому клиенту под выбранные фильтры.</div>
+{% else %}
+    <div class="sheet-wrapper" style="margin-top:12px;">
+        <div class="sheet-scroller">
+            <table class="sheet-table">
+                <thead>
+                <tr>
+                    <th>Номенклатура</th>
+                    <th>SKU</th>
+                    <th>Кол-во</th>
+                    <th>Вес</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in rows %}
+                    <tr>
+                        <td>{{ r.name }}</td>
+                        <td>{{ r.sku }}</td>
+                        <td>{{ "%.2f"|format(r.qty) }}</td>
+                        <td>{{ "%.2f"|format(r.weight) }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>Новый продукт</h1>
+<form method="post">
+    <div class="field">
+        <label>Категория</label>
+        <input type="text" name="category" value="Табак для кальяна">
+    </div>
+    <div class="field">
+        <label>Бренд</label>
+        <input type="text" name="brand" required placeholder='Сарма'>
+    </div>
+    <div class="field">
+        <label>Линейка (опционально)</label>
+        <input type="text" name="line" placeholder='Легкая / Крепкая'>
+    </div>
+    <div class="field">
+        <label>Аромат</label>
+        <input type="text" name="flavor" required placeholder='Банановое суфле'>
+    </div>
+    <div class="field">
+        <label>Вес по умолчанию, г</label>
+        <input type="number" name="default_weight_g" value="120">
+    </div>
+    <button type="submit">Сохранить</button>
+</form>
+{% endblock %}

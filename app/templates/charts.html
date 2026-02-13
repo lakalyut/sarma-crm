@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Графики</h1>
+
+{% if cities %}
+  <div class="city-tabs">
+    {% for c in cities %}
+      <a class="city-tab {% if c == selected_city %}active{% endif %}"
+         href="/analytics/charts?city={{ c|urlencode }}"
+         data-city="{{ c }}">
+        {{ c }}
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<form method="get" id="charts-filters-form" style="margin-bottom: 6px;">
+  <input type="hidden" name="city" value="{{ selected_city or '' }}">
+  <div class="flex-row filters-row">
+
+    <div class="field" style="min-width: 260px;">
+      <label>Месяцы</label>
+      <div class="multiselect" id="months-multiselect">
+        <div class="multiselect-display">
+          <span class="multiselect-text">
+            {% if selected_months %}
+              {% for m in selected_months %}
+                {{ m|format_month }}{% if not loop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              Все месяцы
+            {% endif %}
+          </span>
+          <span class="multiselect-arrow">▾</span>
+        </div>
+        <div class="multiselect-dropdown">
+          <div class="month-checkboxes">
+            {% for m in all_months %}
+              <label class="month-checkbox">
+                <input type="checkbox" name="months" value="{{ m }}" {% if m in selected_months %}checked{% endif %}>
+                <span>{{ m|format_month }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field" style="min-width: 220px;">
+      <label>Тип точки</label>
+      <div class="multiselect" id="types-multiselect">
+        <div class="multiselect-display">
+          <span class="multiselect-text">
+            {% if selected_types %}
+              {{ selected_types|join(', ') }}
+            {% else %}
+              Все типы
+            {% endif %}
+          </span>
+          <span class="multiselect-arrow">▾</span>
+        </div>
+        <div class="multiselect-dropdown">
+          <div class="month-checkboxes">
+            {% for t in all_types %}
+              <label class="month-checkbox">
+                <input type="checkbox" name="sale_types" value="{{ t }}" {% if t in selected_types %}checked{% endif %}>
+                <span>{{ t }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field" style="min-width: 320px;">
+      <label>Клиент (опционально)</label>
+      <input type="text"
+             name="client"
+             list="clients-list"
+             value="{{ selected_client }}"
+             placeholder="Начни вводить название клиента...">
+      <datalist id="clients-list">
+        {% for cl in all_clients %}
+          <option value="{{ cl }}"></option>
+        {% endfor %}
+      </datalist>
+    </div>
+
+    <div class="field" style="min-width: 220px;">
+      <label>Группировка</label>
+      <select name="group">
+        <option value="total" {% if group == "total" %}selected{% endif %}>Итого</option>
+        <option value="type" {% if group == "type" %}selected{% endif %}>По типам</option>
+      </select>
+    </div>
+
+    <div class="field" style="min-width: 150px;">
+      <label>Только сопоставленные</label>
+      <select name="matched">
+        <option value="" {% if matched is none %}selected{% endif %}>Все</option>
+        <option value="1" {% if matched is sameas true %}selected{% endif %}>Да</option>
+        <option value="0" {% if matched is sameas false %}selected{% endif %}>Нет</option>
+      </select>
+    </div>
+
+    <div class="field" style="align-self:flex-end;">
+      <button type="submit">Показать</button>
+    </div>
+  </div>
+</form>
+
+<p class="filter-summary">
+  Город: <strong>{{ selected_city or 'Все' }}</strong>
+  • Период:
+  {% if selected_months %}
+    {% for m in selected_months %}{{ m|format_month }}{% if not loop.last %}, {% endif %}{% endfor %}
+  {% else %}
+    все месяцы
+  {% endif %}
+</p>
+
+<div class="summary-panel" style="margin-top: 10px;">
+  <div class="summary-panel-header">
+    <span class="summary-panel-title">Динамика</span>
+  </div>
+
+  <div class="summary-panel-body">
+
+    <!-- ✅ ЧЕКБОКСЫ С КЛАССОМ metric-checkbox -->
+    <div class="flex-row" style="gap:14px; margin: 6px 0 12px;">
+      <label><input type="checkbox" class="metric-checkbox" value="qty" checked> Количество</label>
+      <label><input type="checkbox" class="metric-checkbox" value="weight" checked> Вес</label>
+      <label><input type="checkbox" class="metric-checkbox" value="unique_clients"> Клиенты</label>
+      <label><input type="checkbox" class="metric-checkbox" value="unique_sku"> SKU</label>
+    </div>
+
+    <div class="sheet-wrapper" style="margin-top:0;">
+      <div style="padding:12px;">
+        <canvas id="metricsChart" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+(function() {
+  // ----- multiselect helpers -----
+  function initMultiSelect(id, emptyText) {
+    const ms = document.getElementById(id);
+    if (!ms) return;
+    const display = ms.querySelector(".multiselect-display");
+    const textSpan = ms.querySelector(".multiselect-text");
+    const dropdown = ms.querySelector(".multiselect-dropdown");
+
+    function updateText() {
+      const checked = dropdown.querySelectorAll('label.month-checkbox input:checked + span');
+      const names = Array.from(checked).map(el => el.textContent.trim());
+      if (names.length === 0) textSpan.textContent = emptyText;
+      else if (names.length <= 2) textSpan.textContent = names.join(", ");
+      else textSpan.textContent = names.slice(0,2).join(", ") + " +" + (names.length - 2);
+    }
+
+    display.addEventListener("click", function(e) {
+      e.preventDefault();
+      ms.classList.toggle("open");
+    });
+
+    dropdown.addEventListener("change", function(e) {
+      if (e.target.matches('input[type="checkbox"]')) updateText();
+    });
+
+    document.addEventListener("click", function(e) {
+      if (!ms.contains(e.target)) ms.classList.remove("open");
+    });
+
+    updateText();
+  }
+
+  initMultiSelect("months-multiselect", "Все месяцы");
+  initMultiSelect("types-multiselect", "Все типы");
+
+  // ----- chart -----
+  const canvas = document.getElementById("metricsChart");
+  if (!canvas) return;
+
+  let chart = null;
+  let selectedMetrics = ["qty", "weight"]; // по умолчанию
+
+  function buildApiUrl() {
+    const url = new URL(window.location.origin + "/api/charts/metrics");
+    const params = new URLSearchParams(window.location.search);
+
+    for (const [k, v] of params.entries()) url.searchParams.append(k, v);
+
+    if (!url.searchParams.get("city")) {
+      const hiddenCity = document.querySelector('input[name="city"]');
+      if (hiddenCity && hiddenCity.value) url.searchParams.set("city", hiddenCity.value);
+    }
+
+    return url.toString();
+  }
+
+  async function loadData() {
+    const apiUrl = buildApiUrl();
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error("API error");
+    return await res.json();
+  }
+
+  function render(data) {
+    const labels = data.labels || [];
+    const series = (data.series || []);
+    if (!series.length) return;
+
+    // Сейчас рисуем первую серию (обычно "Итого").
+    const s = series[0];
+
+    const metricMap = {
+      qty: { label: "Количество", data: s.qty || [], axis: "y" },
+      weight: { label: "Вес", data: s.weight || [], axis: "y" },
+      unique_clients: { label: "Клиенты", data: s.unique_clients || [], axis: "y1" },
+      unique_sku: { label: "SKU", data: s.unique_sku || [], axis: "y1" }
+    };
+
+    const datasets = selectedMetrics.map(metric => ({
+      label: metricMap[metric].label,
+      data: metricMap[metric].data,
+      yAxisID: metricMap[metric].axis,
+      tension: 0.25,
+      fill: false
+    }));
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(canvas, {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { position: "top" } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            position: "left",
+            title: { display: true, text: "Количество / Вес" }
+          },
+          y1: {
+            beginAtZero: true,
+            position: "right",
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: "Клиенты / SKU" }
+          }
+        }
+      }
+    });
+  }
+
+  async function refresh() {
+    try {
+      const data = await loadData();
+      render(data);
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
+  // ✅ обработчики чекбоксов внутри IIFE, чтобы видеть refresh/selectedMetrics
+  document.querySelectorAll('.metric-checkbox').forEach(cb => {
+    cb.addEventListener("change", () => {
+      selectedMetrics = Array.from(
+        document.querySelectorAll('.metric-checkbox:checked')
+      ).map(el => el.value);
+
+      if (selectedMetrics.length === 0) {
+        selectedMetrics = ["qty"];
+        const fallback = document.querySelector('.metric-checkbox[value="qty"]');
+        if (fallback) fallback.checked = true;
+      }
+
+      refresh();
+    });
+  });
+
+  refresh();
+
+  // ----- сохраняем фильтры по городу -----
+  const form = document.getElementById("charts-filters-form");
+  const cityInput = form ? form.querySelector('input[name="city"]') : null;
+  const currentCity = cityInput ? cityInput.value : "";
+  if (form && currentCity) {
+    const storageKey = "charts_filters_" + currentCity;
+    form.addEventListener("submit", function() {
+      const months = Array.from(form.querySelectorAll('input[name="months"]:checked')).map(i => i.value);
+      const types = Array.from(form.querySelectorAll('input[name="sale_types"]:checked')).map(i => i.value);
+      const matched = (form.querySelector('select[name="matched"]') || {}).value || "";
+      const group = (form.querySelector('select[name="group"]') || {}).value || "total";
+      const client = (form.querySelector('input[name="client"]') || {}).value || "";
+      localStorage.setItem(storageKey, JSON.stringify({ months, types, matched, group, client }));
+    });
+  }
+
+  // ----- переключение городов с восстановлением фильтров -----
+  document.querySelectorAll(".city-tab").forEach(tab => {
+    tab.addEventListener("click", function(e) {
+      e.preventDefault();
+      const targetCity = tab.getAttribute("data-city");
+      if (!targetCity) return (window.location.href = tab.getAttribute("href"));
+
+      const storageKey = "charts_filters_" + targetCity;
+      let saved = null;
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) saved = JSON.parse(raw);
+      } catch {}
+
+      const url = new URL(window.location.origin + "/analytics/charts");
+      url.searchParams.set("city", targetCity);
+
+      if (saved) {
+        (saved.months || []).forEach(m => url.searchParams.append("months", m));
+        (saved.types || []).forEach(t => url.searchParams.append("sale_types", t));
+        if (saved.matched !== undefined && saved.matched !== null && saved.matched !== "") url.searchParams.set("matched", saved.matched);
+        if (saved.group) url.searchParams.set("group", saved.group);
+        if (saved.client) url.searchParams.set("client", saved.client);
+      }
+
+      window.location.href = url.toString();
+    });
+  });
+
+})();
+</script>
+{% endblock %}

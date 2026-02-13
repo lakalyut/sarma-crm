@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title or "Product Normalizer" }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Comfortaa -->
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* базовая пастельная тема */
+            --bg-page: #f5f7fb;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+
+            --primary: #3478ff;
+            --primary-hover: #255de0;
+
+            /* пастельные цвета */
+            --pastel-blue:   #e8f3ff; /* клиенты */
+            --pastel-cyan:   #e6fcff; /* количество */
+            --pastel-yellow: #fff7c7; /* вес */
+            --pastel-red:    #ffe5eb; /* уникальные SKU */
+            --pastel-purple: #f2e9ff; /* sku total/avg/типовые карточки */
+            --pastel-green:  #e8ffe8;
+
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.06);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg-page);
+            color: var(--text-main);
+            font-family: 'Comfortaa', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 14px;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* ==== TOPBAR ==== */
+        .topbar {
+            min-height: 56px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+        }
+
+        .topbar-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-right: 32px;
+            white-space: nowrap;
+        }
+
+        .topbar-nav {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .topbar-nav a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            transition: 0.15s;
+        }
+
+        .topbar-nav a:hover {
+            background: #eef2ff;
+        }
+
+        .topbar-nav a.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+        }
+
+        /* ==== LAYOUT ==== */
+        .app-shell {
+            padding: 16px 24px 32px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            padding: 18px 20px 20px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 16px;
+        }
+
+        /* ==== FORM FIELDS ==== */
+        form .field { margin-bottom: 10px; }
+
+        label {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 7px 10px;
+            font-size: 13px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            outline: none;
+            background: #ffffff;
+            font-family: inherit;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(52, 120, 255, 0.16);
+        }
+
+        /* ==== BUTTONS ==== */
+        button,
+        a.btn {
+            border: none;
+            border-radius: 999px;
+            background: var(--primary);
+            color: #fff;
+            padding: 8px 18px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+            transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+        }
+
+        button:hover,
+        a.btn:hover {
+            background: var(--primary-hover);
+            text-decoration: none;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+        }
+
+        button:active,
+        a.btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-secondary,
+        a.btn-secondary {
+            background: #e5e7eb;
+            color: var(--text-main);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover,
+        a.btn-secondary:hover {
+            background: #d4d4d8;
+        }
+
+        /* ==== FILTERS ROW ==== */
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filters-row {
+            align-items: flex-end;
+        }
+
+        /* ==== MULTISELECT ==== */
+        .multiselect {
+            position: relative;
+            min-width: 220px;
+        }
+
+        .multiselect-display {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            padding: 7px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            min-height: 34px;
+        }
+
+        .multiselect-text {
+            font-size: 13px;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .multiselect-arrow {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        .multiselect-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: var(--shadow-soft);
+            padding: 6px 8px;
+            max-height: 260px;
+            overflow: auto;
+            min-width: 100%;
+            z-index: 100;
+            display: none;
+        }
+
+        .multiselect.open .multiselect-dropdown {
+            display: block;
+        }
+
+        .month-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .month-checkbox {
+            font-size: 12px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+        }
+
+        .month-checkbox:hover {
+            background: #f1f5f9;
+            border-color: var(--border);
+        }
+
+        .month-checkbox input {
+            margin: 0;
+            accent-color: var(--primary);
+        }
+
+        /* ==== FILTER SUMMARY ==== */
+        .filter-summary {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ==== SUMMARY PANEL & CARDS ==== */
+        .summary-panel {
+            margin-top: 8px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            padding: 8px 12px 10px;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+        }
+
+        .summary-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .summary-panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .summary-toggle {
+            border: none;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            background: #e5edff;
+            color: #1d4ed8;
+            box-shadow: none;
+        }
+
+        .summary-toggle:hover {
+            background: #dbeafe;
+        }
+
+        /* ✅ сворачиваем ТОЛЬКО сводку (не трогаем таблицу!) */
+        .summary-panel-body.summary-collapsed {
+            display: none;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+
+        .summary-card {
+            min-height: 96px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            box-shadow: var(--shadow-soft);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+
+        /* ✅ семантические цвета (используй классы в шаблоне) */
+        .summary-card.clients    { background: var(--pastel-blue); }
+        .summary-card.qty        { background: var(--pastel-cyan); }
+        .summary-card.weight     { background: var(--pastel-yellow); }
+        .summary-card.sku        { background: var(--pastel-red); }
+        .summary-card.sku-total  { background: var(--pastel-purple); }
+        .summary-card.sku-avg    { background: #efe7ff; }
+        .summary-card.type       { background: #ece9ff; }
+
+        .summary-card-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .summary-card-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* ==== CITY TABS ==== */
+        .city-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .city-tab {
+            padding: 5px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--text-main);
+            background: #fff;
+            transition: 0.15s;
+        }
+
+        .city-tab:hover {
+            background: #eef2ff;
+        }
+
+        .city-tab.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+        }
+
+        /* ==== TABLE / SHEET ==== */
+        .sheet-wrapper {
+            margin-top: 12px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            background: #fff;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .sheet-scroller {
+            max-height: 70vh;
+            overflow: auto;
+        }
+
+        table.sheet-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            font-size: 12px;
+        }
+
+        table.sheet-table th,
+        table.sheet-table td {
+            border-bottom: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            padding: 6px 8px;
+            background: #fff;
+            vertical-align: top;
+        }
+
+        table.sheet-table th:first-child,
+        table.sheet-table td:first-child {
+            border-left: 1px solid var(--border);
+        }
+
+        table.sheet-table th {
+            background: var(--pastel-blue);
+            font-weight: 500;
+            color: var(--text-muted);
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        table.sheet-table tbody tr:nth-child(even) td {
+            background: #fafbff;
+        }
+
+        table.sheet-table tbody tr:hover td {
+            background: #eef2ff;
+        }
+
+        /* ==== MESSAGES ==== */
+        .message {
+            margin-top: 12px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+
+        .message.ok {
+            border: 1px solid #81c995;
+            background: #e6f4ea;
+        }
+
+        .message.error {
+            border: 1px solid #f97373;
+            background: #fee2e2;
+        }
+
+        /* ==== RESPONSIVE ==== */
+        @media (max-width: 768px) {
+            .app-shell { padding: 12px; }
+            .topbar { padding: 0 12px; flex-direction: column; align-items: flex-start; gap: 6px; }
+            .topbar-title { margin-right: 0; }
+            table.sheet-table th,
+            table.sheet-table td { font-size: 11px; }
+        }
+
+        @media (max-width: 1200px) {
+            .summary-cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .summary-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 520px) {
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <div class="topbar-title">Сарма База Данных Клиентов</div>
+    <div class="topbar-nav">
+        <a href="/admin/products"
+           class="{% if request.url.path.startswith('/admin/products') %}active{% endif %}">
+            Номенклатуры
+        </a>
+        <a href="/import-xlsx"
+           class="{% if request.url.path.startswith('/import-xlsx') %}active{% endif %}">
+            Импорт XLSX
+        </a>
+        <a href="/analytics/clients"
+           class="{% if request.url.path.startswith('/analytics/clients') %}active{% endif %}">
+            Клиенты
+        </a>
+        <a href="/analytics/charts"
+           class="{% if request.url.path.startswith('/analytics/charts') %}active{% endif %}">
+            Графики
+        </a>
+        <a href="/admin/unmatched"
+           class="{% if request.url.path.startswith('/admin/unmatched') %}active{% endif %}">
+            Несопоставленные
+        </a>
+    </div>
+</div>
+
+<div class="app-shell">
+    <div class="card">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+</body>
+</html>

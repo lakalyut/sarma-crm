@@ -1,0 +1,406 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Аналитика по клиентам</h1>
+
+{# ==== Табы по городам ==== #}
+{% if cities %}
+    <div class="city-tabs">
+        {% for c in cities %}
+            <a class="city-tab {% if c == selected_city %}active{% endif %}"
+               href="/analytics/clients?city={{ c|urlencode }}"
+               data-city="{{ c }}">
+                {{ c }}
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}
+
+{# ==== Форма фильтров ==== #}
+<form method="get" style="margin-bottom: 6px;" id="clients-filters-form">
+    <input type="hidden" name="city" value="{{ selected_city or '' }}">
+    <div class="flex-row filters-row">
+
+        {# Месяцы: мультиселект с чекбоксами #}
+        <div class="field" style="min-width: 260px;">
+            <label>Месяцы</label>
+            <div class="multiselect" id="months-multiselect">
+                <div class="multiselect-display">
+                    <span class="multiselect-text">
+                        {% if selected_months %}
+                            {% for m in selected_months %}
+                                {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Все месяцы
+                        {% endif %}
+                    </span>
+                    <span class="multiselect-arrow">▾</span>
+                </div>
+                <div class="multiselect-dropdown">
+                    <div class="month-checkboxes">
+                        {% for m in all_months %}
+                            <label class="month-checkbox">
+                                <input type="checkbox"
+                                       name="months"
+                                       value="{{ m }}"
+                                       {% if m in selected_months %}checked{% endif %}>
+                                <span>{{ m|format_month }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Тип точки: мультиселект с чекбоксами #}
+        <div class="field" style="min-width: 220px;">
+            <label>Тип точки</label>
+            <div class="multiselect" id="types-multiselect">
+                <div class="multiselect-display">
+                    <span class="multiselect-text">
+                        {% if selected_types %}
+                            {{ selected_types|join(', ') }}
+                        {% else %}
+                            Все типы
+                        {% endif %}
+                    </span>
+                    <span class="multiselect-arrow">▾</span>
+                </div>
+                <div class="multiselect-dropdown">
+                    <div class="month-checkboxes">
+                        {% for t in all_types %}
+                            <label class="month-checkbox">
+                                <input type="checkbox"
+                                       name="sale_types"
+                                       value="{{ t }}"
+                                       {% if t in selected_types %}checked{% endif %}>
+                                <span>{{ t }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Фильтр по сопоставленным #}
+        <div class="field" style="min-width: 150px;">
+            <label>Только сопоставленные</label>
+            <select name="matched">
+                <option value="" {% if matched is none %}selected{% endif %}>Все</option>
+                <option value="1" {% if matched is sameas true %}selected{% endif %}>Да</option>
+                <option value="0" {% if matched is sameas false %}selected{% endif %}>Нет</option>
+            </select>
+        </div>
+
+        <div class="field" style="align-self:flex-end;">
+            <button type="submit">Показать</button>
+        </div>
+    </div>
+</form>
+
+{# ==== Выбранные фильтры текстом ==== #}
+{% if selected_city or selected_months or selected_types %}
+    <p class="filter-summary">
+        Город: <strong>{{ selected_city or 'Все' }}</strong>
+        • Период:
+        {% if selected_months %}
+            {% for m in selected_months %}
+                {{ m|format_month }}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+        {% else %}
+            все месяцы
+        {% endif %}
+        • Типы:
+        {% if selected_types %}
+            {{ selected_types|join(', ') }}
+        {% else %}
+            все
+        {% endif %}
+    </p>
+{% endif %}
+
+{# ==== Сводка + таблица (общий блок, который будем сворачивать) ==== #}
+<div id="analytics-body">
+
+    {# ==== Верхний срез ==== #}
+{% if summary %}
+    <div class="summary-panel">
+        <div class="summary-panel-header">
+            <span class="summary-panel-title">Сводка по выборке</span>
+            <button type="button" class="summary-toggle">
+                Свернуть
+            </button>
+        </div>
+
+        <div class="summary-panel-body" id="summary-panel-body">
+            <div class="summary-cards">
+                <div class="summary-card clients">
+                    <div class="summary-card-title">Уникальных клиентов, шт</div>
+                    <div class="summary-card-value">{{ summary.unique_clients }}</div>
+                </div>
+
+                <div class="summary-card qty">
+                    <div class="summary-card-title">Суммарное количество, шт</div>
+                    <div class="summary-card-value">{{ "%.2f"|format(summary.total_qty) }}</div>
+                </div>
+
+                <div class="summary-card weight">
+                    <div class="summary-card-title">Суммарный вес, кг</div>
+                    <div class="summary-card-value">{{ "%.2f"|format(summary.total_weight) }}</div>
+                </div>
+
+                <div class="summary-card sku">
+                    <div class="summary-card-title">Уникальных SKU, шт</div>
+                    <div class="summary-card-value">{{ summary.unique_sku }}</div>
+                </div>
+
+                <div class="summary-card sku-total">
+                    <div class="summary-card-title">Всего SKU, шт</div>
+                    <div class="summary-card-value">{{ summary.total_sku }}</div>
+                </div>
+
+                <div class="summary-card sku-avg">
+                    <div class="summary-card-title">SKU на клиента</div>
+                    <div class="summary-card-value">{{ "%.2f"|format(summary.sku_per_client) }}</div>
+                </div>
+
+                {% if type_cards %}
+                    {% for t in type_cards %}
+                        <div class="summary-card type">
+                            <div class="summary-card-title">Клиентов {{ t.type }}</div>
+                            <div class="summary-card-value">{{ t.clients }}</div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+
+    {# ==== Основная таблица по клиентам ==== #}
+    <div id="clients-table-wrapper">
+        {% if not rows %}
+            <div class="message">Нет данных под выбранные фильтры.</div>
+        {% else %}
+            <div class="sheet-wrapper">
+                <div class="sheet-scroller">
+                    <table class="sheet-table">
+                        <thead>
+                        <tr>
+                            <th>Тип точки</th>
+                            <th>Клиент</th>
+                            <th>Количество</th>
+                            <th>Вес</th>
+                            <th>SKU</th>
+                            <th>Подробности</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for r in rows %}
+                            <tr>
+                                <td>{{ r.type }}</td>
+                                <td>{{ r.client }}</td>
+                                <td>{{ "%.2f"|format(r.qty) }}</td>
+                                <td>{{ "%.2f"|format(r.weight) }}</td>
+                                <td>{{ r.sku_count }}</td>
+                                <td>
+                                    <a class="btn"
+                                       href="/analytics/client?city={{ selected_city }}&client={{ r.client|urlencode }}&sale_type={{ r.type|urlencode }}{% for m in selected_months %}&months={{ m|urlencode }}{% endfor %}">
+                                        Детали
+                                    </a>
+                                    <a class="btn-secondary"
+                                        href="/analytics/charts?city={{ selected_city|urlencode }}
+                                            {% for m in selected_months %}&months={{ m|urlencode }}{% endfor %}
+                                            &client={{ r.client|urlencode }}
+                                            &sale_type={{ r.type|urlencode }}
+                                            {% if matched is sameas true %}&matched=1{% elif matched is sameas false %}&matched=0{% endif %}
+                                            ">
+                                        График
+                                    </a>
+
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{# ==== JS для мультиселектов месяцев и типов ==== #}
+<script>
+(function() {
+    const ms = document.getElementById("months-multiselect");
+    if (!ms) return;
+
+    const display = ms.querySelector(".multiselect-display");
+    const textSpan = ms.querySelector(".multiselect-text");
+    const dropdown = ms.querySelector(".multiselect-dropdown");
+
+    function updateText() {
+        const checked = dropdown.querySelectorAll('label.month-checkbox input:checked + span');
+        const names = Array.from(checked).map(el => el.textContent.trim());
+        if (names.length === 0) {
+            textSpan.textContent = "Все месяцы";
+        } else if (names.length <= 2) {
+            textSpan.textContent = names.join(", ");
+        } else {
+            textSpan.textContent = names.slice(0, 2).join(", ") + " +" + (names.length - 2);
+        }
+    }
+
+    display.addEventListener("click", function(e) {
+        e.preventDefault();
+        ms.classList.toggle("open");
+    });
+
+    dropdown.addEventListener("change", function(e) {
+        if (e.target.matches('input[type="checkbox"]')) {
+            updateText();
+        }
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!ms.contains(e.target)) {
+            ms.classList.remove("open");
+        }
+    });
+
+    updateText();
+})();
+
+(function() {
+    const ms = document.getElementById("types-multiselect");
+    if (!ms) return;
+
+    const display = ms.querySelector(".multiselect-display");
+    const textSpan = ms.querySelector(".multiselect-text");
+    const dropdown = ms.querySelector(".multiselect-dropdown");
+
+    function updateText() {
+        const checked = dropdown.querySelectorAll('label.month-checkbox input:checked + span');
+        const names = Array.from(checked).map(el => el.textContent.trim());
+        if (names.length === 0) {
+            textSpan.textContent = "Все типы";
+        } else if (names.length <= 2) {
+            textSpan.textContent = names.join(", ");
+        } else {
+            textSpan.textContent = names.slice(0, 2).join(", ") + " +" + (names.length - 2);
+        }
+    }
+
+    display.addEventListener("click", function(e) {
+        e.preventDefault();
+        ms.classList.toggle("open");
+    });
+
+    dropdown.addEventListener("change", function(e) {
+        if (e.target.matches('input[type="checkbox"]')) {
+            updateText();
+        }
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!ms.contains(e.target)) {
+            ms.classList.remove("open");
+        }
+    });
+
+    updateText();
+})();
+</script>
+
+{# ==== Сохранение фильтров по городу ==== #}
+<script>
+(function() {
+    const form = document.getElementById("clients-filters-form");
+    if (!form) return;
+
+    const hiddenCityInput = form.querySelector('input[name="city"]');
+    const currentCity = hiddenCityInput && hiddenCityInput.value;
+    if (!currentCity) return;
+
+    const storageKey = "clients_filters_" + currentCity;
+
+    form.addEventListener("submit", function() {
+        const months = Array.from(form.querySelectorAll('input[name="months"]:checked')).map(i => i.value);
+        const types = Array.from(form.querySelectorAll('input[name="sale_types"]:checked')).map(i => i.value);
+        const matched = (form.querySelector('select[name="matched"]') || {}).value || "";
+
+        const state = { months, types, matched };
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (e) {
+            console.warn("Не удалось сохранить фильтры:", e);
+        }
+    });
+})();
+</script>
+
+{# ==== Переключение городов с восстановлением фильтров ==== #}
+<script>
+(function() {
+    const tabs = document.querySelectorAll(".city-tab");
+    if (!tabs.length) return;
+
+    tabs.forEach(tab => {
+        tab.addEventListener("click", function(e) {
+            e.preventDefault();
+
+            const targetCity = tab.getAttribute("data-city");
+            if (!targetCity) {
+                window.location.href = tab.getAttribute("href");
+                return;
+            }
+
+            const storageKey = "clients_filters_" + targetCity;
+            let saved = null;
+            try {
+                const raw = localStorage.getItem(storageKey);
+                if (raw) {
+                    saved = JSON.parse(raw);
+                }
+            } catch (err) {
+                console.warn("Не удалось прочитать сохранённые фильтры города", targetCity, err);
+            }
+
+            const url = new URL(window.location.origin + "/analytics/clients");
+            url.searchParams.set("city", targetCity);
+
+            if (saved) {
+                if (Array.isArray(saved.months)) {
+                    saved.months.forEach(m => url.searchParams.append("months", m));
+                }
+                if (Array.isArray(saved.types)) {
+                    saved.types.forEach(t => url.searchParams.append("sale_types", t));
+                }
+                if (saved.matched && saved.matched !== "") {
+                    url.searchParams.set("matched", saved.matched);
+                }
+            }
+
+            window.location.href = url.toString();
+        });
+    });
+})();
+</script>
+
+{# ==== Сворачивание: скрываем и карточки, и таблицу ==== #}
+<script>
+(function() {
+    const toggle = document.querySelector(".summary-toggle");
+    const summaryBody = document.getElementById("summary-panel-body");
+
+    if (!toggle || !summaryBody) return;
+
+    toggle.addEventListener("click", function() {
+        const collapsed = summaryBody.classList.toggle("summary-collapsed");
+        toggle.textContent = collapsed ? "Развернуть" : "Свернуть";
+    });
+})();
+</script>
+
+{% endblock %}

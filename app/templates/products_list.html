@@ -1,0 +1,41 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>Справочник продуктов</h1>
+<div class="flex-row" style="margin-bottom:10px;">
+    <a href="/admin/products/new"><button type="button">Добавить продукт</button></a>
+    <a href="/admin/products/import"><button type="button" class="btn-secondary">Импорт списка</button></a>
+</div>
+<div class="sheet-wrapper">
+    <div class="sheet-scroller">
+        <table class="sheet-table">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Категория</th>
+                <th>Бренд</th>
+                <th>Линейка</th>
+                <th>Аромат</th>
+                <th>SKU</th>
+                <th>Номенклатура</th>
+                <th>Вес, г</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for p in products %}
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.category }}</td>
+                    <td>{{ p.brand }}</td>
+                    <td>{{ p.line or '' }}</td>
+                    <td>{{ p.flavor }}</td>
+                    <td>{{ p.canonical_sku }}</td>
+                    <td>{{ p.canonical_name }}</td>
+                    <td>{{ p.default_weight_g or '' }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

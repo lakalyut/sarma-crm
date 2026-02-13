@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Несопоставленные номенклатуры</h1>
+
+{% if not items %}
+    <div class="message ok">Все строки успешно сопоставлены 🎉</div>
+{% else %}
+    <div class="message error">
+        Не сопоставлено строк: {{ items|length }}.
+        Ниже список сырой номенклатуры, с которой парсер не справился.
+    </div>
+
+    <div class="sheet-wrapper">
+        <div class="sheet-scroller">
+            <table class="sheet-table">
+                <thead>
+                <tr>
+                    <th>Город</th>
+                    <th>Тип</th>
+                    <th>Клиент</th>
+                    <th>Сырая номенклатура</th>
+                    <th>Сырой SKU</th>
+                    <th>Кол-во</th>
+                    <th>Вес</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for s in items %}
+                    <tr>
+                        <td>{{ s.city }}</td>
+                        <td>{{ s.type }}</td>
+                        <td>{{ s.client }}</td>
+                        <td>{{ s.raw_name }}</td>
+                        <td>{{ s.raw_sku }}</td>
+                        <td>{{ "%.2f"|format(s.qty or 0) }}</td>
+                        <td>{{ "%.2f"|format(s.weight or 0) }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
