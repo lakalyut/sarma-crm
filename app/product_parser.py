@@ -1,6 +1,9 @@
 import re
+
 from rapidfuzz import fuzz, process
+
 from .models import Product
+
 
 # --------------------------
 # Нормализация текста
@@ -16,7 +19,6 @@ def normalize_text(s: str) -> str:
     s = re.sub(r"[^a-zа-я0-9\s]+", " ", s)
     # схлопываем пробелы
     return " ".join(s.split())
-
 
 
 # --------------------------
@@ -47,7 +49,7 @@ def parse_product_line(line: str):
     for marker in ["Легкая", "Крепкая"]:
         if rest.startswith(marker + " "):
             line_name = marker
-            flavor = rest[len(marker):].strip()
+            flavor = rest[len(marker) :].strip()
             break
 
     if not flavor:
@@ -63,7 +65,9 @@ def parse_product_line(line: str):
 # --------------------------
 # Построение SKU
 # --------------------------
-def build_canonical_sku(category: str, brand: str, line: str | None, flavor: str) -> str:
+def build_canonical_sku(
+    category: str, brand: str, line: str | None, flavor: str
+) -> str:
     if line:
         return f'{category} "{brand}" {line} {flavor}'
     return f'{category} "{brand}" {flavor}'
@@ -84,6 +88,7 @@ def build_canonical_name(canonical_sku: str, weight: int | None) -> str:
 def extract_weight(raw: str):
     m = re.search(r"(\d+)\s*(г|гр|g)", raw.lower())
     return int(m.group(1)) if m else None
+
 
 def extract_flavor_from_raw(raw: str, products: list[Product]) -> str:
     """
@@ -110,16 +115,18 @@ def extract_flavor_from_raw(raw: str, products: list[Product]) -> str:
     text = re.sub(r"\b(легкая|крепкая)\b", " ", text)
 
     # убираем бренд (Сарма / САРМА 360 и т.п.)
-    brands = sorted({p.brand.lower() for p in products if p.brand}, key=len, reverse=True)
+    brands = sorted(
+        {p.brand.lower() for p in products if p.brand}, key=len, reverse=True
+    )
     for b in brands:
         idx = text.find(b)
         if idx != -1:
             # откусываем всё до конца бренда
-            text = text[idx + len(b):]
+            text = text[idx + len(b) :]
             break
 
     # чистим всё, что не буквы/цифры/пробел/дефис
-    text = re.sub(r'[^a-zа-я0-9\s\-]+', ' ', text)
+    text = re.sub(r"[^a-zа-я0-9\s\-]+", " ", text)
 
     # дефис -> пробел
     text = text.replace("-", " ")
@@ -128,12 +135,10 @@ def extract_flavor_from_raw(raw: str, products: list[Product]) -> str:
     return " ".join(text.split())
 
 
-
-
 # --------------------------
 # Поиск продукта по аромату
 # --------------------------
-from rapidfuzz import fuzz, process
+
 
 def match_product_by_flavor(raw_name: str, products: list[Product]):
     """
@@ -174,5 +179,3 @@ def match_product_by_flavor(raw_name: str, products: list[Product]):
         return None, int(score)
 
     return flavor_map[best], int(score)
-
-

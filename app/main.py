@@ -1,22 +1,24 @@
-
 import io
 import os
+from collections import defaultdict
+from datetime import datetime
+
 import pandas as pd
-from fastapi import FastAPI, UploadFile, File, Request, Form, Depends, Query
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi import Depends, FastAPI, File, Form, Query, Request, UploadFile
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db
 from .models import Product, Sale
 from .product_parser import (
-    normalize_text,
-    parse_product_line,
-    build_canonical_sku,
     build_canonical_name,
+    build_canonical_sku,
     extract_weight,
     match_product_by_flavor,
+    normalize_text,
+    parse_product_line,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -25,8 +27,6 @@ app = FastAPI(title="Normalizer v3")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
-
-from datetime import datetime
 
 MONTHS_RU = {
     1: "Январь",
@@ -43,33 +43,39 @@ MONTHS_RU = {
     12: "Декабрь",
 }
 
+
 def format_month(value: str):
     try:
         dt = datetime.fromisoformat(value)
-        month_name = MONTHS_RU.get(dt.month, "")
-        return f"{month_name} {dt.year}"
-    except:
+    except (TypeError, ValueError):
         return value
+    month_name = MONTHS_RU.get(dt.month, "")
+    return f"{month_name} {dt.year}"
+
 
 templates.env.filters["format_month"] = format_month
-
-
 
 
 @app.get("/")
 def root():
     return RedirectResponse("/admin/products")
 
+
 # ---------- Products ----------
+
 
 @app.get("/admin/products")
 def products_list(request: Request, db: Session = Depends(get_db)):
     products = db.query(Product).order_by(Product.brand, Product.flavor).all()
-    return templates.TemplateResponse("products_list.html", {"request": request, "products": products})
+    return templates.TemplateResponse(
+        "products_list.html", {"request": request, "products": products}
+    )
+
 
 @app.get("/admin/products/new")
 def product_new_form(request: Request):
     return templates.TemplateResponse("product_new.html", {"request": request})
+
 
 @app.post("/admin/products/new")
 def product_new(
@@ -100,9 +106,11 @@ def product_new(
     db.commit()
     return RedirectResponse("/admin/products", status_code=303)
 
+
 @app.get("/admin/products/import")
 def products_import_form(request: Request):
     return templates.TemplateResponse("products_import.html", {"request": request})
+
 
 @app.post("/admin/products/import")
 def products_import(
@@ -140,13 +148,19 @@ def products_import(
         db.add(p)
         count += 1
     db.commit()
-    return templates.TemplateResponse("products_import.html", {"request": request, "message": f"Импортировано: {count} продуктов"})
+    return templates.TemplateResponse(
+        "products_import.html",
+        {"request": request, "message": f"Импортировано: {count} продуктов"},
+    )
+
 
 # ---------- XLSX import into sales ----------
+
 
 @app.get("/import-xlsx")
 def import_xlsx_form(request: Request):
     return templates.TemplateResponse("import_xlsx.html", {"request": request})
+
 
 @app.post("/import-xlsx")
 async def import_xlsx(
@@ -159,17 +173,23 @@ async def import_xlsx(
     try:
         df = pd.read_excel(io.BytesIO(content))
     except Exception as e:
-        return templates.TemplateResponse("import_xlsx.html", {"request": request, "error": f'Ошибка чтения XLSX: {e}'})
+        return templates.TemplateResponse(
+            "import_xlsx.html",
+            {"request": request, "error": f"Ошибка чтения XLSX: {e}"},
+        )
 
     required = ["Месяц", "Тип", "Клиент", "Номенклатура", "SKU", "Количество", "Вес"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        return templates.TemplateResponse("import_xlsx.html", {"request": request, "error": f'Нет колонок: {", ".join(missing)}'})
+        return templates.TemplateResponse(
+            "import_xlsx.html",
+            {"request": request, "error": f'Нет колонок: {", ".join(missing)}'},
+        )
 
     df["Количество"] = pd.to_numeric(df["Количество"], errors="coerce").fillna(0)
     df["Вес"] = pd.to_numeric(df["Вес"], errors="coerce").fillna(0)
 
-    products = db.query(Product).filter(Product.is_active == True).all()
+    products = db.query(Product).filter(Product.is_active.is_(True)).all()
 
     imported = 0
     unmatched = 0
@@ -206,12 +226,12 @@ async def import_xlsx(
     db.commit()
     return templates.TemplateResponse(
         "import_xlsx.html",
-        {"request": request, "message": f"Импортировано строк: {imported}, не сопоставлено: {unmatched}"}
+        {
+            "request": request,
+            "message": f"Импортировано строк: {imported}, не сопоставлено: {unmatched}",
+        },
     )
 
-from collections import defaultdict
-
-from collections import defaultdict
 
 @app.get("/analytics/clients")
 def analytics_clients(
@@ -256,9 +276,9 @@ def analytics_clients(
         filters.append(Sale.type.in_(selected_types))
 
     if matched == "1":
-        filters.append(Sale.matched == True)
+        filters.append(Sale.matched.is_(True))
     elif matched == "0":
-        filters.append(Sale.matched == False)
+        filters.append(Sale.matched.is_(False))
 
     # --- основной запрос по строкам (type, client) ---
     q = db.query(
@@ -328,7 +348,9 @@ def analytics_clients(
         "total_weight": total_weight,
         "unique_sku": unique_sku,
         "total_sku": total_sku,
-        "sku_per_client": (float(total_sku) / unique_clients) if unique_clients else 0.0,
+        "sku_per_client": (
+            (float(total_sku) / unique_clients) if unique_clients else 0.0
+        ),
     }
 
     matched_flag = None
@@ -353,6 +375,7 @@ def analytics_clients(
             "type_cards": type_cards,
         },
     )
+
 
 @app.get("/analytics/charts")
 def analytics_charts(
@@ -386,7 +409,7 @@ def analytics_charts(
     selected_types = sale_types or []
     if all_types:
         selected_types = [t for t in selected_types if t in all_types]
-    
+
         # --- клиенты для выпадающего списка (по текущему городу, с учетом месяцев/типов/ matched) ---
     client_filters = []
     if city:
@@ -396,16 +419,15 @@ def analytics_charts(
     if selected_types:
         client_filters.append(Sale.type.in_(selected_types))
     if matched == "1":
-        client_filters.append(Sale.matched == True)
+        client_filters.append(Sale.matched.is_(True))
     elif matched == "0":
-        client_filters.append(Sale.matched == False)
+        client_filters.append(Sale.matched.is_(False))
 
     clients_q = db.query(Sale.client).distinct()
     if client_filters:
         clients_q = clients_q.filter(*client_filters)
 
     all_clients = [c[0] for c in clients_q.order_by(Sale.client) if c[0]]
-
 
     matched_flag = None
     if matched == "1":
@@ -429,6 +451,7 @@ def analytics_charts(
             "selected_client": request.query_params.get("client") or "",
         },
     )
+
 
 @app.get("/api/charts/metrics")
 def api_charts_metrics(
@@ -461,9 +484,9 @@ def api_charts_metrics(
     elif sale_types:
         filters.append(Sale.type.in_(sale_types))
     if matched == "1":
-        filters.append(Sale.matched == True)
+        filters.append(Sale.matched.is_(True))
     elif matched == "0":
-        filters.append(Sale.matched == False)
+        filters.append(Sale.matched.is_(False))
 
     # helper: формат подписи месяца
     def _fmt(m: str) -> str:
@@ -489,7 +512,13 @@ def api_charts_metrics(
 
         # серии
         series_names = sorted({r.series for r in rows if r.series})
-        data_map = {s: {m: {"qty": 0, "weight": 0, "unique_sku": 0, "unique_clients": 0} for m in month_list} for s in series_names}
+        data_map = {
+            s: {
+                m: {"qty": 0, "weight": 0, "unique_sku": 0, "unique_clients": 0}
+                for m in month_list
+            }
+            for s in series_names
+        }
 
         for r in rows:
             if not r.month or not r.series:
@@ -503,13 +532,17 @@ def api_charts_metrics(
 
         series = []
         for s in series_names:
-            series.append({
-                "name": s,
-                "qty": [data_map[s][m]["qty"] for m in month_list],
-                "weight": [data_map[s][m]["weight"] for m in month_list],
-                "unique_sku": [data_map[s][m]["unique_sku"] for m in month_list],
-                "unique_clients": [data_map[s][m]["unique_clients"] for m in month_list],
-            })
+            series.append(
+                {
+                    "name": s,
+                    "qty": [data_map[s][m]["qty"] for m in month_list],
+                    "weight": [data_map[s][m]["weight"] for m in month_list],
+                    "unique_sku": [data_map[s][m]["unique_sku"] for m in month_list],
+                    "unique_clients": [
+                        data_map[s][m]["unique_clients"] for m in month_list
+                    ],
+                }
+            )
 
         return JSONResponse({"labels": labels, "series": series})
 
@@ -529,13 +562,15 @@ def api_charts_metrics(
     month_list = [r.month for r in rows if r.month]
     labels = [_fmt(m) for m in month_list]
 
-    series = [{
-        "name": "Итого",
-        "qty": [float(r.qty or 0) for r in rows],
-        "weight": [float(r.weight or 0) for r in rows],
-        "unique_sku": [int(r.unique_sku or 0) for r in rows],
-        "unique_clients": [int(r.unique_clients or 0) for r in rows],
-    }]
+    series = [
+        {
+            "name": "Итого",
+            "qty": [float(r.qty or 0) for r in rows],
+            "weight": [float(r.weight or 0) for r in rows],
+            "unique_sku": [int(r.unique_sku or 0) for r in rows],
+            "unique_clients": [int(r.unique_clients or 0) for r in rows],
+        }
+    ]
 
     return JSONResponse({"labels": labels, "series": series})
 
@@ -572,9 +607,9 @@ def analytics_client_detail(
         q = q.filter(Sale.month.in_(months))
 
     if matched == "1":
-        q = q.filter(Sale.matched == True)
+        q = q.filter(Sale.matched.is_(True))
     elif matched == "0":
-        q = q.filter(Sale.matched == False)
+        q = q.filter(Sale.matched.is_(False))
 
     q = q.group_by(Sale.name, Sale.sku).order_by(Sale.name)
 
@@ -610,5 +645,3 @@ def analytics_client_detail(
             "summary": summary,
         },
     )
-
-
