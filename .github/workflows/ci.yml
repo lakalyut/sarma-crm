@@ -37,5 +37,6 @@ jobs:
           # чтобы тесты не лезли в реальный Postgres
           DATABASE_URL: "sqlite:///./test.db"
           APP_SECRET_KEY: "ci-secret"
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest -q
