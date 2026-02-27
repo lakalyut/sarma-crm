@@ -356,7 +356,9 @@ def analytics_clients(
         "total_weight": total_weight,
         "unique_sku": unique_sku,
         "total_sku": total_sku,
-        "sku_per_client": ((float(total_sku) / unique_clients) if unique_clients else 0.0),
+        "sku_per_client": (
+            (float(total_sku) / unique_clients) if unique_clients else 0.0
+        ),
     }
 
     matched_flag = None
@@ -520,7 +522,8 @@ def api_charts_metrics(
         series_names = sorted({r.series for r in rows if r.series})
         data_map = {
             s: {
-                m: {"qty": 0, "weight": 0, "unique_sku": 0, "unique_clients": 0} for m in month_list
+                m: {"qty": 0, "weight": 0, "unique_sku": 0, "unique_clients": 0}
+                for m in month_list
             }
             for s in series_names
         }
@@ -543,7 +546,9 @@ def api_charts_metrics(
                     "qty": [data_map[s][m]["qty"] for m in month_list],
                     "weight": [data_map[s][m]["weight"] for m in month_list],
                     "unique_sku": [data_map[s][m]["unique_sku"] for m in month_list],
-                    "unique_clients": [data_map[s][m]["unique_clients"] for m in month_list],
+                    "unique_clients": [
+                        data_map[s][m]["unique_clients"] for m in month_list
+                    ],
                 }
             )
 

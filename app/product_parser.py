@@ -65,7 +65,9 @@ def parse_product_line(line: str):
 # --------------------------
 # Построение SKU
 # --------------------------
-def build_canonical_sku(category: str, brand: str, line: str | None, flavor: str) -> str:
+def build_canonical_sku(
+    category: str, brand: str, line: str | None, flavor: str
+) -> str:
     if line:
         return f'{category} "{brand}" {line} {flavor}'
     return f'{category} "{brand}" {flavor}'
@@ -113,7 +115,9 @@ def extract_flavor_from_raw(raw: str, products: list[Product]) -> str:
     text = re.sub(r"\b(легкая|крепкая)\b", " ", text)
 
     # убираем бренд (Сарма / САРМА 360 и т.п.)
-    brands = sorted({p.brand.lower() for p in products if p.brand}, key=len, reverse=True)
+    brands = sorted(
+        {p.brand.lower() for p in products if p.brand}, key=len, reverse=True
+    )
     for b in brands:
         idx = text.find(b)
         if idx != -1:
