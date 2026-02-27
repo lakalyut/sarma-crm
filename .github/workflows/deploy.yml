@@ -30,9 +30,12 @@ jobs:
             # 1) Поднять db
             sudo docker compose up -d db
 
+            # Подождать готовность Postgres
+            sudo docker compose exec -T db bash -lc 'until pg_isready -U sarma -d sarma; do sleep 1; done'
+
             # 2) Бэкап (до миграций)
             mkdir -p backups
-            sudo docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backups/backup_$(date +%F_%H-%M-%S).sql"
+            sudo docker compose exec -T db pg_dump -U sarma sarma > "backups/backup_$(date +%F_%H-%M-%S).sql"
 
             # 3) Собрать новый web
             sudo docker compose build web
