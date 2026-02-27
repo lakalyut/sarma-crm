@@ -1,14 +1,12 @@
 """init
 
 Revision ID: e539f27689bf
-Revises: 
+Revises:
 Create Date: 2026-02-27 18:22:54.883587
 
 """
-from alembic import op
-import sqlalchemy as sa
 
-revision = 'e539f27689bf'
+revision = "e539f27689bf"
 down_revision = None
 branch_labels = None
 depends_on = None

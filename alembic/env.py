@@ -1,10 +1,11 @@
 import os
 import sys
-from pathlib import Path
 from logging.config import fileConfig
+from pathlib import Path
+
+from sqlalchemy import create_engine
 
 from alembic import context
-from sqlalchemy import create_engine
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
@@ -15,8 +16,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # IMPORTANT: import Base + models so metadata is complete
-from app.database import Base  # noqa: E402
 from app import models  # noqa: F401, E402
+from app.database import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
