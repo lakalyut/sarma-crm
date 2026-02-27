@@ -21,9 +21,15 @@ from .product_parser import (
     parse_product_line,
 )
 
-Base.metadata.create_all(bind=engine)
-
+AUTO_CREATE_SCHEMA = os.getenv("AUTO_CREATE_SCHEMA", "0") == "1"
+if AUTO_CREATE_SCHEMA:
+    Base.metadata.create_all(bind=engine)
+ 
 app = FastAPI(title="Normalizer v3")
+
+@app.get("/health")
+def health():
+    return {"ok": True}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))

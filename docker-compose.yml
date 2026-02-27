@@ -2,13 +2,17 @@ services:
   db:
     image: postgres:16
     environment:
-      DATABASE_URL: postgresql+psycopg://...@db:5432/...
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   web:
     build: .
@@ -17,9 +21,17 @@ services:
       APP_SECRET_KEY: ${APP_SECRET_KEY}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # В проде НЕ включаем:
+      # AUTO_CREATE_SCHEMA: "0"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
 
   nginx:
     image: nginx:1.25
@@ -31,16 +43,24 @@ services:
       - certbot_www:/var/www/certbot
       - letsencrypt:/etc/letsencrypt
     depends_on:
-      - web
+      web:
+        condition: service_healthy
     restart: unless-stopped
 
+  # ВАЖНО: certbot лучше не держать как "вечный" сервис,
+  # но если хочешь — делаем renew правильно с webroot.
   certbot:
     image: certbot/certbot:latest
     volumes:
       - certbot_www:/var/www/certbot
       - letsencrypt:/etc/letsencrypt
     entrypoint: /bin/sh -c
-    command: "trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew; done"
+    command: >
+      "trap exit TERM;
+       while :; do
+         certbot renew --webroot -w /var/www/certbot --quiet;
+         sleep 12h & wait $${!};
+       done"
     restart: unless-stopped
 
 volumes:

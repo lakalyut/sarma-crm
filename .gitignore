@@ -8,8 +8,12 @@ __pycache__/
 
 # Virtual env
 venv/
+__pycache__/
+*.pyc
+*.db
 .env
-.env.*
+.idea/
+.vscode/
 
 # IDE
 .idea/

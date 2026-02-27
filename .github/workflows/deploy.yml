@@ -21,10 +21,30 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd ${{ secrets.VPS_APP_DIR }}
+
+            cd /home/ubuntu/sarma-crm
 
             git fetch --all
             git reset --hard origin/main
 
-            sudo docker compose up -d --build
+            # 1) Поднять db
+            sudo docker compose up -d db
+
+            # 2) Бэкап (до миграций)
+            mkdir -p backups
+            sudo docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backups/backup_$(date +%F_%H-%M-%S).sql"
+
+            # 3) Собрать новый web
+            sudo docker compose build web
+
+            # 4) Миграции
+            sudo docker compose run --rm web alembic upgrade head
+
+            # 5) Поднять всё
+            sudo docker compose up -d --build --remove-orphans
+
+            # 6) Проверка здоровья через nginx
+            curl -fsS http://127.0.0.1/health >/dev/null
+
+            # 7) Чистка
             sudo docker image prune -f
