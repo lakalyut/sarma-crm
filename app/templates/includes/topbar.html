@@ -22,13 +22,46 @@
                 </a>
             {% endif %}
 
-            <a href="/analytics/clients"
-               class="{% if request.url.path.startswith('/analytics/clients') %}active{% endif %}">
-                Клиенты
+            {% set city = request.query_params.get("city") %}
+            {% set months = request.query_params.getlist("months") %}
+            {% set sale_types = request.query_params.getlist("sale_types") %}
+            {% set matched = request.query_params.get("matched") %}
+
+            {% set query_parts = [] %}
+
+            {% if city %}
+                {% set _ = query_parts.append("city=" ~ city) %}
+            {% endif %}
+
+            {% for month in months %}
+                {% set _ = query_parts.append("months=" ~ month) %}
+            {% endfor %}
+
+            {% for sale_type in sale_types %}
+                {% set _ = query_parts.append("sale_types=" ~ sale_type) %}
+            {% endfor %}
+
+            {% if matched is not none and matched != "" %}
+                {% set _ = query_parts.append("matched=" ~ matched) %}
+            {% endif %}
+
+            {% set query_string = query_parts | join("&") %}
+            {% set clients_href = "/analytics/clients" %}
+            {% set charts_href = "/analytics/charts" %}
+
+            {% if query_string %}
+                {% set clients_href = clients_href ~ "?" ~ query_string %}
+                {% set charts_href = charts_href ~ "?" ~ query_string %}
+            {% endif %}
+
+            <a href="{{ clients_href }}"
+                class="{% if request.url.path.startswith('/analytics/clients') %}active{% endif %}">
+                 Клиенты
             </a>
-            <a href="/analytics/charts"
-               class="{% if request.url.path.startswith('/analytics/charts') %}active{% endif %}">
-                Графики
+
+            <a href="{{ charts_href }}"
+                class="{% if request.url.path.startswith('/analytics/charts') %}active{% endif %}">
+                 Графики
             </a>
 
             <form method="post" action="/auth/logout" style="display:inline-flex; margin:0;">

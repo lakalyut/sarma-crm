@@ -453,6 +453,49 @@
             background: #fee2e2;
         }
 
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-soft);
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 300;
+            padding: 6px;
+        }
+
+        .search-dropdown-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-main);
+            transition: background 0.15s ease;
+        }
+
+        .search-dropdown-item:hover {
+            background: #eef2ff;
+        }
+
+        .search-dropdown-item.hidden {
+            display: none;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 420px;
+            width: 100%;
+            padding: 12px;
+        }
+
+        .chart-block {
+            margin-top: 4px;
+        }
+
         @media (max-width: 768px) {
             .app-shell { padding: 12px; }
             .topbar { padding: 0 12px; flex-direction: column; align-items: flex-start; gap: 6px; }

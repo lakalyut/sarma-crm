@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Графики</h1>
+{% include "includes/messages.html" %}
 
 {% if cities %}
   <div class="city-tabs">
@@ -72,18 +73,24 @@
       </div>
     </div>
 
-    <div class="field" style="min-width: 320px;">
-      <label>Клиент (опционально)</label>
-      <input type="text"
-             name="client"
-             list="clients-list"
-             value="{{ selected_client }}"
-             placeholder="Начни вводить название клиента...">
-      <datalist id="clients-list">
-        {% for cl in all_clients %}
-          <option value="{{ cl }}"></option>
-        {% endfor %}
-      </datalist>
+    <div class="field" style="min-width:320px; position:relative;">
+        <label for="client-search">Клиент (опционально)</label>
+        <input
+            id="client-search"
+            type="text"
+            name="client"
+            value="{{ selected_client or '' }}"
+            placeholder="Начни вводить название клиента..."
+            autocomplete="off"
+        >
+
+        <div id="client-dropdown" class="search-dropdown" style="display:none;">
+            {% for client_name in all_clients %}
+                <div class="search-dropdown-item" data-value="{{ client_name }}">
+                    {{ client_name }}
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <div class="field" style="min-width: 220px;">
@@ -93,7 +100,7 @@
         <option value="type" {% if group == "type" %}selected{% endif %}>По типам</option>
       </select>
     </div>
-
+    {% if current_user and current_user.role == "admin" %}
     <div class="field" style="min-width: 150px;">
       <label>Только сопоставленные</label>
       <select name="matched">
@@ -102,9 +109,11 @@
         <option value="0" {% if matched is sameas false %}selected{% endif %}>Нет</option>
       </select>
     </div>
+    {% endif %}
 
     <div class="field" style="align-self:flex-end;">
       <button type="submit">Показать</button>
+      <a href="/analytics/clients" class="btn btn-secondary">Сбросить фильтры</a>
     </div>
   </div>
 </form>
@@ -133,10 +142,21 @@
       <label><input type="checkbox" class="metric-checkbox" value="unique_sku"> SKU</label>
     </div>
 
-    <div class="sheet-wrapper" style="margin-top:0;">
-      <div style="padding:12px;">
-        <canvas id="metricsChart" height="110"></canvas>
+    <div class="sheet-wrapper chart-block">
+      <div class="chart-wrap">
+        <canvas id="metricsChart"></canvas>
       </div>
+    </div>
+
+    <div class="sheet-wrapper">
+      <div class="sheet-scroller">
+        <table class="sheet-table" id="chart-data-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
     </div>
   </div>
 </div>
@@ -255,10 +275,48 @@
     });
   }
 
+  function renderTable(labels, series) {
+  const table = document.getElementById("chart-data-table");
+  if (!table) return;
+
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+
+  thead.innerHTML = "";
+  tbody.innerHTML = "";
+
+  if (!series.length) return;
+
+  const s = series[0];
+
+  thead.innerHTML = `
+    <tr>
+      <th>Период</th>
+      <th>Количество</th>
+      <th>Вес</th>
+      <th>Клиенты</th>
+      <th>SKU</th>
+    </tr>
+  `;
+
+  const rows = labels.map((label, i) => `
+    <tr>
+      <td>${label}</td>
+      <td>${Number(s.qty?.[i] ?? 0).toFixed(2)}</td>
+      <td>${Number(s.weight?.[i] ?? 0).toFixed(2)}</td>
+      <td>${Number(s.unique_clients?.[i] ?? 0)}</td>
+      <td>${Number(s.unique_sku?.[i] ?? 0)}</td>
+    </tr>
+  `).join("");
+
+  tbody.innerHTML = rows;
+}
+
   async function refresh() {
     try {
       const data = await loadData();
       render(data);
+      renderTable(data.labels || [], data.series || []);
     } catch (e) {
       console.warn(e);
     }
@@ -326,5 +384,46 @@
   });
 
 })();
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("client-search");
+    const dropdown = document.getElementById("client-dropdown");
+
+    if (!input || !dropdown) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const visible = !value || text.includes(value);
+            item.classList.toggle("hidden", !visible);
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            input.value = item.dataset.value;
+            dropdown.style.display = "none";
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+});
 </script>
 {% endblock %}

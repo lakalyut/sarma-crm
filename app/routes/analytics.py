@@ -25,9 +25,39 @@ def analytics_clients(
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
+    if _user.role != "admin":
+        matched = None
+
     cities = [c[0] for c in db.query(Sale.city).distinct().order_by(Sale.city) if c[0]]
 
     months_query = db.query(Sale.month).distinct()
+
+    if not city:
+        return render(
+            request,
+            "analytics/clients_summary.html",
+            {
+                "rows": [],
+                "cities": cities,
+                "all_months": [],
+                "all_types": [],
+                "selected_city": None,
+                "selected_months": [],
+                "selected_types": [],
+                "matched": None,
+                "summary": {
+                    "unique_clients": 0,
+                    "total_qty": 0,
+                    "total_weight": 0,
+                    "unique_sku": 0,
+                    "total_sku": 0,
+                    "sku_per_client": 0,
+                },
+                "type_cards": [],
+                "message": "Выберите нужный город",
+            },
+        )
+
     if city:
         months_query = months_query.filter(Sale.city == city)
     all_months = [m[0] for m in months_query.order_by(Sale.month) if m[0]]
@@ -148,7 +178,28 @@ def analytics_charts(
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
+    if _user.role != "admin":
+        matched = None
     cities = [c[0] for c in db.query(Sale.city).distinct().order_by(Sale.city) if c[0]]
+
+    if not city:
+        return render(
+            request,
+            "analytics/charts.html",
+            {
+                "cities": cities,
+                "all_months": [],
+                "all_types": [],
+                "selected_city": None,
+                "selected_months": [],
+                "selected_types": [],
+                "matched": None,
+                "group": group,
+                "all_clients": [],
+                "selected_client": "",
+                "message": "Выберите нужный город",
+            },
+        )
 
     months_q = db.query(Sale.month).distinct()
     if city:
@@ -222,7 +273,13 @@ def api_charts_metrics(
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
+    if _user.role != "admin":
+        matched = None
     filters = []
+    
+    if not city:
+        return JSONResponse({"labels": [], "series": [], "message": "Выберите нужный город"})
+
     if city:
         filters.append(Sale.city == city)
     if months:
@@ -332,6 +389,9 @@ def analytics_client_detail(
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
+    if _user.role != "admin":
+        matched = None
+        
     q = db.query(
         Sale.name.label("name"),
         Sale.sku.label("sku"),
