@@ -276,9 +276,11 @@ def api_charts_metrics(
     if _user.role != "admin":
         matched = None
     filters = []
-    
+
     if not city:
-        return JSONResponse({"labels": [], "series": [], "message": "Выберите нужный город"})
+        return JSONResponse(
+            {"labels": [], "series": [], "message": "Выберите нужный город"}
+        )
 
     if city:
         filters.append(Sale.city == city)
@@ -391,7 +393,7 @@ def analytics_client_detail(
 ):
     if _user.role != "admin":
         matched = None
-        
+
     q = db.query(
         Sale.name.label("name"),
         Sale.sku.label("sku"),
