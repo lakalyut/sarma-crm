@@ -8,7 +8,11 @@ from ..auth_deps import require_admin
 from ..auth_models import User
 from ..database import get_db
 from ..models import Product, Sale
-from ..product_parser import build_canonical_name, extract_weight, match_product_by_flavor
+from ..product_parser import (
+    build_canonical_name,
+    extract_weight,
+    match_product_by_flavor,
+)
 from ..render import render
 
 router = APIRouter()

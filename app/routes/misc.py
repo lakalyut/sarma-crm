@@ -27,5 +27,3 @@ def root(
         return RedirectResponse("/admin/products", status_code=HTTP_302_FOUND)
 
     return RedirectResponse("/analytics/clients", status_code=HTTP_302_FOUND)
-
-

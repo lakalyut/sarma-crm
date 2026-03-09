@@ -12,6 +12,7 @@ def normalize_text(s: str) -> str:
     s = re.sub(r"[^a-zа-я0-9\s]+", " ", s)
     return " ".join(s.split())
 
+
 def parse_product_line(line: str):
     line = line.strip()
     if '"' not in line:

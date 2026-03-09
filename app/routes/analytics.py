@@ -108,7 +108,9 @@ def analytics_clients(
         "total_weight": total_weight,
         "unique_sku": unique_sku,
         "total_sku": total_sku,
-        "sku_per_client": ((float(total_sku) / unique_clients) if unique_clients else 0.0),
+        "sku_per_client": (
+            (float(total_sku) / unique_clients) if unique_clients else 0.0
+        ),
     }
 
     matched_flag = None
@@ -283,7 +285,9 @@ def api_charts_metrics(
                     "qty": [data_map[s][m]["qty"] for m in month_list],
                     "weight": [data_map[s][m]["weight"] for m in month_list],
                     "unique_sku": [data_map[s][m]["unique_sku"] for m in month_list],
-                    "unique_clients": [data_map[s][m]["unique_clients"] for m in month_list],
+                    "unique_clients": [
+                        data_map[s][m]["unique_clients"] for m in month_list
+                    ],
                 }
             )
 
@@ -372,16 +376,12 @@ def analytics_client_detail(
         },
     )
 
+
 @router.get("/admin/unmatched")
 def unmatched_list(
     request: Request,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
-    rows = (
-        db.query(Sale)
-        .filter(Sale.matched.is_(False))
-        .order_by(Sale.id.desc())
-        .all()
-    )
+    rows = db.query(Sale).filter(Sale.matched.is_(False)).order_by(Sale.id.desc()).all()
     return render(request, "analytics/unmatched.html", {"rows": rows})

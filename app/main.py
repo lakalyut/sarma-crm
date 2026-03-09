@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
         db.close()
     yield
 
+
 app = FastAPI(title="Sarma CRM", lifespan=lifespan)
 
 app.include_router(auth_router)
@@ -42,6 +43,7 @@ app.include_router(misc_router)
 app.include_router(products_router)
 app.include_router(imports_router)
 app.include_router(analytics_router)
+
 
 def render(request: Request, template_name: str, context: dict[str, Any]):
     db = SessionLocal()
@@ -76,6 +78,7 @@ def _forbidden(request: Request, exc):
         status_code=403,
     )
 
+
 @app.exception_handler(404)
 def not_found_handler(request: Request, exc):
     db = SessionLocal()
@@ -93,6 +96,7 @@ def not_found_handler(request: Request, exc):
         status_code=404,
     )
 
+
 @app.exception_handler(Exception)
 def server_error_handler(request: Request, exc):
     db = SessionLocal()
@@ -109,4 +113,3 @@ def server_error_handler(request: Request, exc):
         },
         status_code=500,
     )
-

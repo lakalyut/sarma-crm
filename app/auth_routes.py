@@ -6,7 +6,13 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
-from .auth_models import PasswordToken, SessionModel, User, default_expiry, new_session_id
+from .auth_models import (
+    PasswordToken,
+    SessionModel,
+    User,
+    default_expiry,
+    new_session_id,
+)
 from .auth_security import hash_password, verify_password
 from .database import get_db
 from .templating import templates
@@ -23,6 +29,7 @@ def _as_utc_aware(dt: datetime) -> datetime:
         return dt.replace(tzinfo=UTC)
     return dt.astimezone(UTC)
 
+
 @router.get("/login")
 def login_form(request: Request):
     return templates.TemplateResponse("auth/login.html", {"request": request})
@@ -36,16 +43,24 @@ def login(
     db: Session = Depends(get_db),
 ):
     email = email.strip().lower()
-    
+
     user = db.query(User).filter(User.email == email).first()
     if not user or not user.is_active or not user.password_hash:
-        return templates.TemplateResponse("auth/login.html", {"request": request, "error": "Неверный логин или пароль"})
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {"request": request, "error": "Неверный логин или пароль"},
+        )
 
     if not verify_password(password, user.password_hash):
-        return templates.TemplateResponse("auth/login.html", {"request": request, "error": "Неверный логин или пароль"})
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {"request": request, "error": "Неверный логин или пароль"},
+        )
 
     sid = new_session_id()
-    sess = SessionModel(id=sid, user_id=user.id, expires_at=default_expiry(hours=24 * 14))
+    sess = SessionModel(
+        id=sid, user_id=user.id, expires_at=default_expiry(hours=24 * 14)
+    )
     db.add(sess)
     db.commit()
 
@@ -76,7 +91,9 @@ def logout(db: Session = Depends(get_db), request: Request = None):
 
 @router.get("/set-password")
 def set_password_form(request: Request, token: str):
-    return templates.TemplateResponse("auth/set_password.html", {"request": request, "token": token})
+    return templates.TemplateResponse(
+        "auth/set_password.html", {"request": request, "token": token}
+    )
 
 
 @router.post("/set-password")
@@ -89,11 +106,13 @@ def set_password(
 ):
     if password != password2:
         return templates.TemplateResponse(
-            "auth/set_password.html", {"request": request, "token": token, "error": "Пароли не совпадают"}
+            "auth/set_password.html",
+            {"request": request, "token": token, "error": "Пароли не совпадают"},
         )
     if len(password) < 8:
         return templates.TemplateResponse(
-            "auth/set_password.html", {"request": request, "token": token, "error": "Пароль слишком короткий"}
+            "auth/set_password.html",
+            {"request": request, "token": token, "error": "Пароль слишком короткий"},
         )
 
     th = sha256_hex(token)
@@ -105,20 +124,29 @@ def set_password(
     if not pt:
         return templates.TemplateResponse(
             "auth/set_password.html",
-            {"request": request, "token": token, "error": "Ссылка недействительна или устарела"},
+            {
+                "request": request,
+                "token": token,
+                "error": "Ссылка недействительна или устарела",
+            },
         )
 
     expires_at = _as_utc_aware(pt.expires_at)
     if expires_at < datetime.now(UTC):
         return templates.TemplateResponse(
             "auth/set_password.html",
-            {"request": request, "token": token, "error": "Ссылка недействительна или устарела"},
+            {
+                "request": request,
+                "token": token,
+                "error": "Ссылка недействительна или устарела",
+            },
         )
 
     user = db.query(User).filter(User.id == pt.user_id).first()
     if not user or not user.is_active:
         return templates.TemplateResponse(
-            "auth/set_password.html", {"request": request, "token": token, "error": "Пользователь не найден"}
+            "auth/set_password.html",
+            {"request": request, "token": token, "error": "Пользователь не найден"},
         )
 
     user.password_hash = hash_password(password)
@@ -127,5 +155,6 @@ def set_password(
     db.commit()
 
     return templates.TemplateResponse(
-        "auth/login.html", {"request": request, "message": "Пароль установлен. Теперь войдите."}
+        "auth/login.html",
+        {"request": request, "message": "Пароль установлен. Теперь войдите."},
     )

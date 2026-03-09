@@ -18,7 +18,9 @@ class User(Base):
     role = Column(String, nullable=False, default="user")
     is_active = Column(Boolean, default=True, nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
 
 
 class SessionModel(Base):
@@ -27,7 +29,9 @@ class SessionModel(Base):
     id = Column(String, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     expires_at = Column(DateTime(timezone=True), nullable=False)
 
     user = relationship("User")
@@ -42,7 +46,9 @@ class PasswordToken(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     purpose = Column(String, nullable=False, default="set_password")
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True), nullable=True)
 

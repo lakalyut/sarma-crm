@@ -50,7 +50,11 @@ def user_new_submit(
 
     exists = db.query(User).filter(User.email == email).first()
     if exists:
-        return render(request, "admin/user_new.html", {"error": "Пользователь с таким email уже существует"})
+        return render(
+            request,
+            "admin/user_new.html",
+            {"error": "Пользователь с таким email уже существует"},
+        )
 
     user = User(email=email, role=role, is_active=True)
     db.add(user)
@@ -153,6 +157,7 @@ def user_reset_link(
         "admin/user_created.html",
         {"email": user.email, "role": user.role, "link": link},
     )
+
 
 @router.post("/{user_id}/change-role")
 def user_change_role(
