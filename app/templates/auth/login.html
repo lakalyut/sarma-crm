@@ -1,0 +1,25 @@
+{% extends "base_auth.html" %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 0 auto;">
+<h1>Вход</h1>
+
+{% include "includes/messages.html" %}
+
+<form method="post" action="/auth/login">
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="text" required autocomplete="username" autofocus>
+  </div>
+
+  <div class="field">
+    <label for="password">Пароль</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+  </div>
+
+  <div class="flex-row" style="justify-content: flex-end; margin-top: 12px;">
+    <button type="submit">Войти</button>
+  </div>
+</form>
+</div>
+{% endblock %}

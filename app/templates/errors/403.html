@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 720px; margin: 0 auto; text-align: center; padding: 24px 0;">
+  <h1 style="margin-bottom: 12px;">Доступ ограничен</h1>
+
+  <div class="message error" style="display: inline-block; text-align: left; max-width: 520px;">
+    У вас нет прав для просмотра этой страницы.
+  </div>
+
+  <div style="margin-top: 18px; color: var(--text-muted); font-size: 13px;">
+    Если доступ нужен, обратитесь к администратору.
+  </div>
+
+  <div class="flex-row" style="justify-content: center; margin-top: 20px;">
+    {% if current_user and current_user.role == 'admin' %}
+      <a class="btn" href="/admin/products">Вернуться в админку</a>
+    {% elif current_user %}
+      <a class="btn" href="/analytics/clients">Перейти к клиентам</a>
+    {% else %}
+      <a class="btn" href="/auth/login">Войти</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

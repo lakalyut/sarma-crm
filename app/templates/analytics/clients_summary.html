@@ -2,7 +2,6 @@
 {% block content %}
 <h1>Аналитика по клиентам</h1>
 
-{# ==== Табы по городам ==== #}
 {% if cities %}
     <div class="city-tabs">
         {% for c in cities %}
@@ -15,12 +14,10 @@
     </div>
 {% endif %}
 
-{# ==== Форма фильтров ==== #}
 <form method="get" style="margin-bottom: 6px;" id="clients-filters-form">
     <input type="hidden" name="city" value="{{ selected_city or '' }}">
     <div class="flex-row filters-row">
 
-        {# Месяцы: мультиселект с чекбоксами #}
         <div class="field" style="min-width: 260px;">
             <label>Месяцы</label>
             <div class="multiselect" id="months-multiselect">
@@ -52,7 +49,6 @@
             </div>
         </div>
 
-        {# Тип точки: мультиселект с чекбоксами #}
         <div class="field" style="min-width: 220px;">
             <label>Тип точки</label>
             <div class="multiselect" id="types-multiselect">
@@ -82,7 +78,6 @@
             </div>
         </div>
 
-        {# Фильтр по сопоставленным #}
         <div class="field" style="min-width: 150px;">
             <label>Только сопоставленные</label>
             <select name="matched">
@@ -98,7 +93,6 @@
     </div>
 </form>
 
-{# ==== Выбранные фильтры текстом ==== #}
 {% if selected_city or selected_months or selected_types %}
     <p class="filter-summary">
         Город: <strong>{{ selected_city or 'Все' }}</strong>
@@ -119,10 +113,8 @@
     </p>
 {% endif %}
 
-{# ==== Сводка + таблица (общий блок, который будем сворачивать) ==== #}
 <div id="analytics-body">
 
-    {# ==== Верхний срез ==== #}
 {% if summary %}
     <div class="summary-panel">
         <div class="summary-panel-header">
@@ -177,8 +169,6 @@
     </div>
 {% endif %}
 
-
-    {# ==== Основная таблица по клиентам ==== #}
     <div id="clients-table-wrapper">
         {% if not rows %}
             <div class="message">Нет данных под выбранные фильтры.</div>
@@ -230,7 +220,6 @@
     </div>
 </div>
 
-{# ==== JS для мультиселектов месяцев и типов ==== #}
 <script>
 (function() {
     const ms = document.getElementById("months-multiselect");
@@ -313,7 +302,6 @@
 })();
 </script>
 
-{# ==== Сохранение фильтров по городу ==== #}
 <script>
 (function() {
     const form = document.getElementById("clients-filters-form");
@@ -340,7 +328,6 @@
 })();
 </script>
 
-{# ==== Переключение городов с восстановлением фильтров ==== #}
 <script>
 (function() {
     const tabs = document.querySelectorAll(".city-tab");
@@ -388,7 +375,6 @@
 })();
 </script>
 
-{# ==== Сворачивание: скрываем и карточки, и таблицу ==== #}
 <script>
 (function() {
     const toggle = document.querySelector(".summary-toggle");

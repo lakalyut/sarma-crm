@@ -18,7 +18,5 @@
     </div>
     <button type="submit">Импортировать</button>
 </form>
-{% if message %}
-    <div class="message ok">{{ message }}</div>
-{% endif %}
+{% include "includes/messages.html" %}
 {% endblock %}

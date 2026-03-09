@@ -10,6 +10,12 @@ from alembic import context
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 
+from app.auth_models import PasswordToken, SessionModel, User  # noqa: F401
+from app.database import Base
+from app.models import Product, Sale  # noqa: F401
+
+target_metadata = Base.metadata
+
 # Alembic Config
 config = context.config
 if config.config_file_name is not None:

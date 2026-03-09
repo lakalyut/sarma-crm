@@ -126,7 +126,6 @@
 
   <div class="summary-panel-body">
 
-    <!-- ✅ ЧЕКБОКСЫ С КЛАССОМ metric-checkbox -->
     <div class="flex-row" style="gap:14px; margin: 6px 0 12px;">
       <label><input type="checkbox" class="metric-checkbox" value="qty" checked> Количество</label>
       <label><input type="checkbox" class="metric-checkbox" value="weight" checked> Вес</label>
@@ -142,12 +141,10 @@
   </div>
 </div>
 
-<!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <script>
 (function() {
-  // ----- multiselect helpers -----
   function initMultiSelect(id, emptyText) {
     const ms = document.getElementById(id);
     if (!ms) return;
@@ -182,12 +179,11 @@
   initMultiSelect("months-multiselect", "Все месяцы");
   initMultiSelect("types-multiselect", "Все типы");
 
-  // ----- chart -----
   const canvas = document.getElementById("metricsChart");
   if (!canvas) return;
 
   let chart = null;
-  let selectedMetrics = ["qty", "weight"]; // по умолчанию
+  let selectedMetrics = ["qty", "weight"];
 
   function buildApiUrl() {
     const url = new URL(window.location.origin + "/api/charts/metrics");
@@ -215,7 +211,6 @@
     const series = (data.series || []);
     if (!series.length) return;
 
-    // Сейчас рисуем первую серию (обычно "Итого").
     const s = series[0];
 
     const metricMap = {
@@ -269,7 +264,6 @@
     }
   }
 
-  // ✅ обработчики чекбоксов внутри IIFE, чтобы видеть refresh/selectedMetrics
   document.querySelectorAll('.metric-checkbox').forEach(cb => {
     cb.addEventListener("change", () => {
       selectedMetrics = Array.from(
@@ -288,7 +282,6 @@
 
   refresh();
 
-  // ----- сохраняем фильтры по городу -----
   const form = document.getElementById("charts-filters-form");
   const cityInput = form ? form.querySelector('input[name="city"]') : null;
   const currentCity = cityInput ? cityInput.value : "";
@@ -304,7 +297,6 @@
     });
   }
 
-  // ----- переключение городов с восстановлением фильтров -----
   document.querySelectorAll(".city-tab").forEach(tab => {
     tab.addEventListener("click", function(e) {
       e.preventDefault();

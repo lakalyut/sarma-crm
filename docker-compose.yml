@@ -21,8 +21,6 @@ services:
       APP_SECRET_KEY: ${APP_SECRET_KEY}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      # В проде НЕ включаем:
-      # AUTO_CREATE_SCHEMA: "0"
     depends_on:
       db:
         condition: service_healthy
@@ -51,8 +49,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ВАЖНО: certbot лучше не держать как "вечный" сервис,
-  # но если хочешь — делаем renew правильно с webroot.
   certbot:
     image: certbot/certbot:latest
     volumes:

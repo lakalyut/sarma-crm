@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="max-width: 520px; margin: 0 auto;">
+  <h1>Новый пользователь</h1>
+
+ {% include "includes/messages.html" %}
+
+  <form method="post" action="/admin/users/new">
+    <div class="field">
+      <label>Email</label>
+      <input type="email" name="email" required placeholder="user@example.com">
+    </div>
+
+    <div class="field">
+      <label>Роль</label>
+      <select name="role">
+        <option value="user" selected>user (клиенты + графики)</option>
+        <option value="admin">admin (полный доступ)</option>
+      </select>
+    </div>
+
+    <div class="flex-row" style="justify-content: space-between; margin-top: 12px;">
+      <a class="btn btn-secondary" href="/admin/users">Назад</a>
+      <button type="submit">Создать</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

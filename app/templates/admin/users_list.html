@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Пользователи</h1>
+
+{% include "includes/messages.html" %}
+
+<div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+  <div style="color: var(--text-muted); font-size: 12px;">
+    Управление доступами пользователей CRM
+  </div>
+  <a class="btn" href="/admin/users/new">+ Новый пользователь</a>
+</div>
+
+<div class="sheet-wrapper">
+  <div class="sheet-scroller">
+    <table class="sheet-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Email</th>
+          <th>Роль</th>
+          <th>Статус</th>
+          <th>Создан</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.id }}</td>
+          <td>{{ u.email }}</td>
+          <td>
+            <form method="post" action="/admin/users/{{ u.id }}/change-role" style="display:inline-flex; gap:8px; align-items:center;">
+              <select name="role" style="min-width:120px;">
+                <option value="user" {% if u.role == "user" %}selected{% endif %}>user</option>
+                <option value="admin" {% if u.role == "admin" %}selected{% endif %}>admin</option>
+              </select>
+              <button type="submit" class="btn-secondary" style="padding:6px 12px;">Сохранить</button>
+            </form>
+          </td>
+          <td>
+            {% if u.is_active %}
+              <span class="message ok" style="display:inline-block; margin:0; padding:4px 8px;">active</span>
+            {% else %}
+              <span class="message error" style="display:inline-block; margin:0; padding:4px 8px;">disabled</span>
+            {% endif %}
+          </td>
+          <td>{{ u.created_at }}</td>
+          <td style="white-space: nowrap;">
+            <form method="post" action="/admin/users/{{u.id}}/reset-link" style="display:inline;">
+              <button type="submit" class="btn-secondary" style="padding:6px 12px;">Новая ссылка</button>
+            </form>
+
+            <form method="post" action="/admin/users/{{u.id}}/toggle-active" style="display:inline;">
+              {% if u.is_active %}
+                <button type="submit" class="btn-secondary" style="padding:6px 12px;">Отключить</button>
+              {% else %}
+                <button type="submit" style="padding:6px 12px;">Включить</button>
+              {% endif %}
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

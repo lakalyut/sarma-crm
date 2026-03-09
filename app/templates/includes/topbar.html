@@ -1,0 +1,44 @@
+<div class="topbar">
+    <div class="topbar-title">Сарма База Данных Клиентов</div>
+
+    <div class="topbar-nav">
+        {% if current_user %}
+            {% if current_user.role == 'admin' %}
+                <a href="/admin/users"
+                   class="{% if request.url.path.startswith('/admin/users') %}active{% endif %}">
+                    Пользователи
+                </a>
+                <a href="/admin/products"
+                   class="{% if request.url.path.startswith('/admin/products') %}active{% endif %}">
+                    Номенклатуры
+                </a>
+                <a href="/import-xlsx"
+                   class="{% if request.url.path.startswith('/import-xlsx') %}active{% endif %}">
+                    Импорт XLSX
+                </a>
+                <a href="/admin/unmatched"
+                   class="{% if request.url.path.startswith('/admin/unmatched') %}active{% endif %}">
+                    Несопоставленные
+                </a>
+            {% endif %}
+
+            <a href="/analytics/clients"
+               class="{% if request.url.path.startswith('/analytics/clients') %}active{% endif %}">
+                Клиенты
+            </a>
+            <a href="/analytics/charts"
+               class="{% if request.url.path.startswith('/analytics/charts') %}active{% endif %}">
+                Графики
+            </a>
+
+            <form method="post" action="/auth/logout" style="display:inline-flex; margin:0;">
+                <button type="submit" class="btn-secondary" style="padding:6px 12px;">Выйти</button>
+            </form>
+        {% else %}
+            <a href="/auth/login"
+               class="{% if request.url.path.startswith('/auth/login') %}active{% endif %}">
+                Вход
+            </a>
+        {% endif %}
+    </div>
+</div>
