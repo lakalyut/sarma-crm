@@ -10,4 +10,4 @@ psycopg[binary]
 alembic
 passlib[bcrypt]==1.7.4
 python-dotenv
-bcrypt==3.2.2S
+bcrypt==3.2.2
