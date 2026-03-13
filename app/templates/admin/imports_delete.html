@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Удаление импортированных продаж</h1>
+
+{% include "includes/messages.html" %}
+
+<div class="filter-summary" style="margin-bottom: 14px;">
+    Удаляются только записи продаж из базы. Справочник продуктов и пользователи не затрагиваются.
+</div>
+
+<form method="post" action="/admin/imports/delete/preview">
+    <div class="flex-row filters-row" style="gap:16px; margin-top:12px;">
+
+        <div class="field" style="min-width:220px;">
+            <label>Город</label>
+            <select name="city">
+                <option value="">Не выбран</option>
+                {% for c in cities %}
+                    <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+    <div class="field" style="min-width:260px;">
+        <label>Месяцы</label>
+        <div class="multiselect" id="delete-months-multiselect">
+            <div class="multiselect-display" type="button">
+                <span class="multiselect-text">
+                    {% if selected_months %}
+                        {% for m in selected_months %}
+                            {{ m }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        Не выбраны
+                    {% endif %}
+                </span>
+                <span class="multiselect-arrow">▾</span>
+            </div>
+
+            <div class="multiselect-dropdown">
+                <div class="month-checkboxes">
+                    {% for m in months %}
+                        <label class="month-checkbox">
+                            <input
+                                type="checkbox"
+                                name="months"
+                                value="{{ m }}"
+                                {% if m in selected_months %}checked{% endif %}
+                            >
+                            <span>{{ m }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div class="field" style="min-width:220px;">
+            <label>Тип точки</label>
+            <select name="sale_type">
+                <option value="">Не выбран</option>
+                {% for t in sale_types %}
+                    <option value="{{ t }}" {% if selected_type == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field" style="align-self:flex-end;">
+            <button type="submit">Показать количество</button>
+        </div>
+    </div>
+</form>
+
+{% if preview_count is not none %}
+    <div class="sheet-wrapper" style="margin-top:16px;">
+        <div style="padding:16px;">
+            <div style="font-size:14px; margin-bottom:10px;">
+                Будет удалено строк: <strong>{{ preview_count }}</strong>
+            </div>
+
+            <form method="post" action="/admin/imports/delete/confirm">
+                <input type="hidden" name="city" value="{{ selected_city }}">
+                <input type="hidden" name="sale_type" value="{{ selected_type }}">
+
+                {% for m in selected_months %}
+                    <input type="hidden" name="months" value="{{ m }}">
+                {% endfor %}
+
+                <div class="flex-row" style="gap:12px;">
+                    <button type="submit">Удалить данные</button>
+                    <a href="/admin/imports/delete" class="btn btn-secondary">Сбросить</a>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+(function() {
+  function initMultiSelect(id, emptyText) {
+    const ms = document.getElementById(id);
+    if (!ms) return;
+
+    const display = ms.querySelector(".multiselect-display");
+    const textSpan = ms.querySelector(".multiselect-text");
+    const dropdown = ms.querySelector(".multiselect-dropdown");
+    const checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+
+    function updateText() {
+      const checked = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+
+      if (checked.length === 0) {
+        textSpan.textContent = emptyText;
+      } else if (checked.length <= 2) {
+        textSpan.textContent = checked.join(", ");
+      } else {
+        textSpan.textContent = checked.slice(0, 2).join(", ") + " +" + (checked.length - 2);
+      }
+    }
+
+    display.addEventListener("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      ms.classList.toggle("open");
+    });
+
+    dropdown.addEventListener("click", function(e) {
+      e.stopPropagation();
+    });
+
+    checkboxes.forEach(cb => {
+      cb.addEventListener("change", function() {
+        updateText();
+      });
+    });
+
+    document.addEventListener("click", function() {
+      ms.classList.remove("open");
+    });
+
+    updateText();
+  }
+
+  initMultiSelect("delete-months-multiselect", "Не выбраны");
+})();
+</script>
+
+{% endblock %}

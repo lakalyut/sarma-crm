@@ -20,6 +20,10 @@
                    class="{% if request.url.path.startswith('/admin/unmatched') %}active{% endif %}">
                     Несопоставленные
                 </a>
+                <a href="/admin/imports/delete"
+                   class="{% if request.url.path.startswith('/admin/imports/delete') %}active{% endif %}">
+                    Удаление импорта
+                </a>
             {% endif %}
 
             {% set city = request.query_params.get("city") %}

@@ -40,7 +40,7 @@ async def import_xlsx(
     except Exception as e:
         return render(
             request,
-            "import_xlsx.html",
+            "imports/import_xlsx.html",
             {"error": f"Ошибка чтения XLSX: {e}"},
         )
 
@@ -49,7 +49,7 @@ async def import_xlsx(
     if missing:
         return render(
             request,
-            "import_xlsx.html",
+            "imports/import_xlsx.html",
             {"error": f'Нет колонок: {", ".join(missing)}'},
         )
 
@@ -94,7 +94,7 @@ async def import_xlsx(
 
     return render(
         request,
-        "import_xlsx.html",
+        "imports/import_xlsx.html",
         {
             "message": f"Импортировано строк: {imported}, не сопоставлено: {unmatched}",
         },
