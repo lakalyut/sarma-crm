@@ -172,6 +172,24 @@
     </div>
 {% endif %}
 
+    <div class="flex-row" style="justify-content: space-between; margin: 12px 0 8px; gap: 12px;">
+        <div class="field" style="min-width: 320px; margin-bottom: 0;">
+            <label for="client-table-search">Поиск клиента</label>
+            <input
+                id="client-table-search"
+                type="text"
+                placeholder="Начни вводить название клиента..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div style="align-self: flex-end;">
+            <button type="button" id="client-table-search-reset" class="btn btn-secondary">
+                Сбросить
+            </button>
+        </div>
+    </div>
+
     <div id="clients-table-wrapper">
         {% if not rows %}
             <div class="message">Нет данных под выбранные фильтры.</div>
@@ -190,30 +208,30 @@
                         </tr>
                         </thead>
                         <tbody>
-                        {% for r in rows %}
-                            <tr>
-                                <td>{{ r.type }}</td>
-                                <td>{{ r.client }}</td>
-                                <td>{{ "%.2f"|format(r.qty) }}</td>
-                                <td>{{ "%.2f"|format(r.weight) }}</td>
-                                <td>{{ r.sku_count }}</td>
-                                <td>
-                                    <a
-                                        class="btn"
-                                        href="/analytics/client?city={{ selected_city }}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}"
-                                    >
-                                    Детали
-                                    </a>
+                            {% for r in rows %}
+                                <tr class="client-row">
+                                    <td>{{ r.type }}</td>
+                                    <td class="client-name-cell">{{ r.client }}</td>
+                                    <td>{{ "%.2f"|format(r.qty) }}</td>
+                                    <td>{{ "%.2f"|format(r.weight) }}</td>
+                                    <td>{{ r.sku_count }}</td>
+                                    <td>
+                                        <a
+                                            class="btn"
+                                            href="/analytics/client?city={{ selected_city }}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}"
+                                        >
+                                            Детали
+                                        </a>
 
-                                    <a
-                                        class="btn"
-                                        href="/analytics/charts?city={{ selected_city }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% for sale_type in selected_types %}&sale_types={{ sale_type }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}"
-                                    >
-                                    График
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endfor %}
+                                        <a
+                                            class="btn"
+                                            href="/analytics/charts?city={{ selected_city }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% for sale_type in selected_types %}&sale_types={{ sale_type }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}"
+                                        >
+                                            График
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -389,6 +407,38 @@
         toggle.textContent = collapsed ? "Развернуть" : "Свернуть";
     });
 })();
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("client-table-search");
+    const resetBtn = document.getElementById("client-table-search-reset");
+    const rows = Array.from(document.querySelectorAll(".client-row"));
+
+    if (!input || !rows.length) return;
+
+    function applyFilter() {
+        const value = input.value.trim().toLowerCase();
+
+        rows.forEach(row => {
+            const clientCell = row.querySelector(".client-name-cell");
+            const clientText = (clientCell?.textContent || "").trim().toLowerCase();
+
+            const visible = !value || clientText.includes(value);
+            row.style.display = visible ? "" : "none";
+        });
+    }
+
+    input.addEventListener("input", applyFilter);
+
+    if (resetBtn) {
+        resetBtn.addEventListener("click", function () {
+            input.value = "";
+            applyFilter();
+            input.focus();
+        });
+    }
+});
 </script>
 
 {% endblock %}
