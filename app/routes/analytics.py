@@ -11,6 +11,7 @@ from ..database import get_db
 from ..models import Sale
 from ..render import render
 from ..templating import templates
+from ..utils.dates import month_sort_key
 
 router = APIRouter()
 
@@ -60,7 +61,8 @@ def analytics_clients(
 
     if city:
         months_query = months_query.filter(Sale.city == city)
-    all_months = [m[0] for m in months_query.order_by(Sale.month) if m[0]]
+    all_months = [m[0] for m in months_query if m[0]]
+    all_months = sorted(all_months, key=month_sort_key, reverse=True)
 
     types_query = db.query(Sale.type).distinct()
     if city:
@@ -204,7 +206,8 @@ def analytics_charts(
     months_q = db.query(Sale.month).distinct()
     if city:
         months_q = months_q.filter(Sale.city == city)
-    all_months = [m[0] for m in months_q.order_by(Sale.month) if m[0]]
+    all_months = [m[0] for m in months_q if m[0]]
+    all_months = sorted(all_months, key=month_sort_key, reverse=True)
 
     types_q = db.query(Sale.type).distinct()
     if city:
@@ -314,7 +317,7 @@ def api_charts_metrics(
         q = q.group_by(Sale.month, Sale.type).order_by(Sale.month, Sale.type)
         rows = q.all()
 
-        month_list = sorted({r.month for r in rows if r.month})
+        month_list = sorted({r.month for r in rows if r.month}, key=month_sort_key)
         labels = [_fmt(m) for m in month_list]
 
         series_names = sorted({r.series for r in rows if r.series})
@@ -361,8 +364,9 @@ def api_charts_metrics(
     )
     if filters:
         q = q.filter(*filters)
-    q = q.group_by(Sale.month).order_by(Sale.month)
-    rows = q.all()
+        q = q.group_by(Sale.month)
+        rows = q.all()
+        rows = sorted(rows, key=lambda r: month_sort_key(r.month))
 
     month_list = [r.month for r in rows if r.month]
     labels = [_fmt(m) for m in month_list]
