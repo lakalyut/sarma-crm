@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Редактирование продукта</h1>
+
+<div class="sheet-wrapper" style="max-width: 760px;">
+    <form method="post" style="padding: 20px;">
+        <div style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 18px;
+            align-items: end;
+        ">
+            <div class="field" style="margin-bottom: 0;">
+                <label for="category">Категория</label>
+                <input id="category" name="category" type="text" value="{{ product.category }}">
+            </div>
+
+            <div class="field" style="margin-bottom: 0;">
+                <label for="brand">Бренд</label>
+                <input id="brand" name="brand" type="text" value="{{ product.brand }}">
+            </div>
+
+            <div class="field" style="margin-bottom: 0;">
+                <label for="line">Линейка</label>
+                <input id="line" name="line" type="text" value="{{ product.line or '' }}">
+            </div>
+
+            <div class="field" style="margin-bottom: 0;">
+                <label for="flavor">Вкус</label>
+                <input id="flavor" name="flavor" type="text" value="{{ product.flavor }}">
+            </div>
+
+            <div class="field" style="margin-bottom: 0; max-width: 180px;">
+                <label for="default_weight_g">Вес, г</label>
+                <input id="default_weight_g" name="default_weight_g" type="number" value="{{ product.default_weight_g or '' }}">
+            </div>
+        </div>
+
+        <div class="flex-row" style="gap: 10px; margin-top: 22px;">
+            <button type="submit">Сохранить</button>
+            <a href="/admin/products" class="btn btn-secondary">Назад</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

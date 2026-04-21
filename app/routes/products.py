@@ -126,3 +126,51 @@ def products_import(
         "products_import.html",
         {"message": f"Импортировано: {count} продуктов"},
     )
+
+
+@router.get("/admin/products/edit/{product_id}")
+def edit_product_form(
+    product_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    product = db.query(Product).get(product_id)
+    if not product:
+        return {"error": "Product not found"}
+
+    return render(request, "products/product_edit.html", {"product": product})
+
+@router.post("/admin/products/edit/{product_id}")
+def edit_product(
+    product_id: int,
+    request: Request,
+    category: str = Form(...),
+    brand: str = Form(...),
+    line: str = Form(""),
+    flavor: str = Form(...),
+    default_weight_g: int | None = Form(None),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    product = db.query(Product).get(product_id)
+    if not product:
+        return RedirectResponse("/admin/products", status_code=302)
+
+    line_val = line.strip() or None
+
+    product.category = category
+    product.brand = brand
+    product.line = line_val
+    product.flavor = flavor
+    product.default_weight_g = default_weight_g
+
+    product.norm_brand = normalize_text(brand)
+    product.norm_flavor = normalize_text(flavor)
+
+    product.canonical_sku = build_canonical_sku(category, brand, line_val, flavor)
+    product.canonical_name = build_canonical_name(product.canonical_sku, default_weight_g)
+
+    db.commit()
+
+    return RedirectResponse("/admin/products", status_code=302)

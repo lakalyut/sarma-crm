@@ -1,28 +1,37 @@
-
 {% extends 'base.html' %}
+
 {% block content %}
 <h1>Справочник продуктов</h1>
-<div class="flex-row" style="margin-bottom:10px;">
-    <a href="/admin/products/new"><button type="button">Добавить продукт</button></a>
-    <a href="/admin/products/import"><button type="button" class="btn-secondary">Импорт списка</button></a>
+
+<div class="flex-row" style="margin-bottom:14px; gap:10px;">
+    <a href="/admin/products/new">
+        <button type="button">Добавить продукт</button>
+    </a>
+
+    <a href="/admin/products/import">
+        <button type="button" class="btn-secondary">Импорт списка</button>
+    </a>
 </div>
+
 <div class="sheet-wrapper">
     <div class="sheet-scroller">
         <table class="sheet-table">
             <thead>
-            <tr>
-                <th>ID</th>
-                <th>Категория</th>
-                <th>Бренд</th>
-                <th>Линейка</th>
-                <th>Аромат</th>
-                <th>SKU</th>
-                <th>Номенклатура</th>
-                <th>Вес, г</th>
-            </tr>
+                <tr>
+                    <th>ID</th>
+                    <th>Категория</th>
+                    <th>Бренд</th>
+                    <th>Линейка</th>
+                    <th>Аромат</th>
+                    <th>SKU</th>
+                    <th>Номенклатура</th>
+                    <th>Вес, г</th>
+                    <th style="width:120px;">Действия</th>
+                </tr>
             </thead>
+
             <tbody>
-            {% for p in products %}
+                {% for p in products %}
                 <tr>
                     <td>{{ p.id }}</td>
                     <td>{{ p.category }}</td>
@@ -32,10 +41,27 @@
                     <td>{{ p.canonical_sku }}</td>
                     <td>{{ p.canonical_name }}</td>
                     <td>{{ p.default_weight_g or '' }}</td>
+
+                    <td>
+                        <div class="flex-row" style="gap:6px;">
+                            <a href="/admin/products/edit/{{ p.id }}" class="btn">
+                                ✏️
+                            </a>
+                        </div>
+                    </td>
                 </tr>
-            {% endfor %}
+                {% endfor %}
+
+                {% if not products %}
+                <tr>
+                    <td colspan="9" style="text-align:center; padding:20px;">
+                        Нет данных
+                    </td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
 </div>
+
 {% endblock %}
