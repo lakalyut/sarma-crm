@@ -141,6 +141,7 @@ def edit_product_form(
 
     return render(request, "products/product_edit.html", {"product": product})
 
+
 @router.post("/admin/products/edit/{product_id}")
 def edit_product(
     product_id: int,
@@ -169,7 +170,9 @@ def edit_product(
     product.norm_flavor = normalize_text(flavor)
 
     product.canonical_sku = build_canonical_sku(category, brand, line_val, flavor)
-    product.canonical_name = build_canonical_name(product.canonical_sku, default_weight_g)
+    product.canonical_name = build_canonical_name(
+        product.canonical_sku, default_weight_g
+    )
 
     db.commit()
 
