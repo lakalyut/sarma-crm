@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Амбассадорские отчеты</h1>
+{% include "includes/messages.html" %}
+
+<div class="filters-card">
+    <form method="get" id="ambassadors-filters-form">
+        <div class="filters-grid ambassadors-filters-grid">
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="amb-city-search">Поиск региона</label>
+
+                <input type="hidden" name="city" id="amb-city-hidden" value="{{ selected_city or '' }}">
+
+                <input
+                    id="amb-city-search"
+                    type="text"
+                    value=""
+                    placeholder="Начни вводить регион..."
+                    autocomplete="off"
+                >
+
+                <div class="selected-city-text">
+                    {% if selected_city %}
+                        Выбранный регион:
+                        <span class="selected-city-value" id="amb-selected-city-label">{{ selected_city }}</span>
+                    {% else %}
+                        <span id="amb-selected-city-empty">Регион не выбран</span>
+                        <span class="selected-city-value" id="amb-selected-city-label" style="display:none;"></span>
+                    {% endif %}
+                </div>
+
+                <div id="amb-city-dropdown" class="search-dropdown" style="display:none;">
+                    {% for c in cities %}
+                        <div class="search-dropdown-item" data-value="{{ c }}">
+                            {{ c }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="amb-client-search">Клиенты</label>
+
+                <input
+                    id="amb-client-search"
+                    type="text"
+                    value=""
+                    placeholder="Начни вводить клиента..."
+                    autocomplete="off"
+                >
+
+                <div class="multiselect-tags" id="amb-clients-tags">
+                    {% if selected_clients %}
+                        {% for client in selected_clients %}
+                            <span class="filter-tag">
+                                <span>{{ client }}</span>
+                                <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                                <input type="hidden" name="clients" value="{{ client }}">
+                            </span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div id="amb-client-dropdown" class="search-dropdown" style="display:none;">
+                    {% for client_name in all_clients %}
+                        <div class="search-dropdown-item" data-value="{{ client_name }}">
+                            {{ client_name }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label>Месяцы</label>
+                <div class="multiselect" id="amb-months-multiselect">
+                    <div class="multiselect-display">
+                        <span class="multiselect-text">
+                            {% if selected_months %}
+                                {% for m in selected_months %}
+                                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Все месяцы
+                            {% endif %}
+                        </span>
+                        <span class="multiselect-arrow">▾</span>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="month-checkboxes">
+                            {% for m in all_months %}
+                                <label class="month-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        name="months"
+                                        value="{{ m }}"
+                                        {% if m in selected_months %}checked{% endif %}
+                                    >
+                                    <span>{{ m|format_month }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field filter-field filter-actions-row">
+                <label>&nbsp;</label>
+                <div class="filters-actions">
+                    <button type="submit">Показать</button>
+                    <a href="/analytics/ambassadors" class="btn btn-secondary">Сбросить</a>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+{% if report and report.clients %}
+    <div class="amb-report-list">
+        {% for client in report.clients %}
+            <div class="amb-card">
+                <div class="amb-card-header">
+                    <div class="amb-card-title-wrap">
+                        <button
+                            type="button"
+                            class="amb-toggle"
+                            data-target="amb-sku-{{ loop.index }}"
+                            aria-expanded="{% if client.expanded %}true{% else %}false{% endif %}"
+                        >
+                            {% if client.expanded %}⌄{% else %}›{% endif %}
+                        </button>
+                        <h2 class="amb-card-title">{{ client.name }}</h2>
+                    </div>
+
+                    <div class="amb-card-badges">
+                        <span class="amb-badge amb-badge-blue">SKU всего: {{ client.sku_total }}</span>
+                        <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(client.weight_total) }} кг</span>
+                    </div>
+                </div>
+
+                <div class="sheet-wrapper amb-summary-table">
+                    <div class="sheet-scroller">
+                        <table class="sheet-table">
+                            <thead>
+                                <tr>
+                                    <th>Метрика</th>
+                                    {% for month in report.months %}
+                                        <th>{{ month|format_month }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>SKU</strong></td>
+                                    {% for value in client.summary.sku %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td><strong>Вес, кг</strong></td>
+                                    {% for value in client.summary.weight %}
+                                        <td>{{ "%.2f"|format(value) }}</td>
+                                    {% endfor %}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="amb-sku-toggle-line">
+                    <button
+                        type="button"
+                        class="amb-link-toggle"
+                        data-target="amb-sku-{{ loop.index }}"
+                        aria-expanded="{% if client.expanded %}true{% else %}false{% endif %}"
+                    >
+                        {% if client.expanded %}Скрыть SKU{% else %}Показать SKU{% endif %}
+                    </button>
+                </div>
+
+                <div
+                    id="amb-sku-{{ loop.index }}"
+                    class="amb-sku-details {% if not client.expanded %}is-hidden{% endif %}"
+                >
+                    <div class="amb-sku-subtitle">Детализация по SKU (вес, кг)</div>
+
+                    <div class="sheet-wrapper">
+                        <div class="sheet-scroller">
+                            <table class="sheet-table">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        {% for month in report.months %}
+                                            <th>{{ month|format_month }}</th>
+                                        {% endfor %}
+                                        <th>Итого вес, кг</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sku_row in client.sku_details %}
+                                        <tr>
+                                            <td>{{ sku_row.sku }}</td>
+                                            {% for value in sku_row.months_data %}
+                                                <td>{{ "%.2f"|format(value) }}</td>
+                                            {% endfor %}
+                                            <td>{{ "%.2f"|format(sku_row.total) }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    <tr>
+                                        <td><strong>Итого</strong></td>
+                                        {% for value in client.summary.weight %}
+                                            <td><strong>{{ "%.2f"|format(value) }}</strong></td>
+                                        {% endfor %}
+                                        <td><strong>{{ "%.2f"|format(client.weight_total) }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="message">Выбери регион, клиентов и месяцы для формирования отчета.</div>
+{% endif %}
+
+<script>
+(function() {
+    const ms = document.getElementById("amb-months-multiselect");
+    if (!ms) return;
+
+    const display = ms.querySelector(".multiselect-display");
+    const textSpan = ms.querySelector(".multiselect-text");
+    const dropdown = ms.querySelector(".multiselect-dropdown");
+
+    function updateText() {
+        const checked = dropdown.querySelectorAll('label.month-checkbox input:checked + span');
+        const names = Array.from(checked).map(el => el.textContent.trim());
+
+        if (names.length === 0) {
+            textSpan.textContent = "Все месяцы";
+        } else if (names.length <= 2) {
+            textSpan.textContent = names.join(", ");
+        } else {
+            textSpan.textContent = names.slice(0, 2).join(", ") + " +" + (names.length - 2);
+        }
+    }
+
+    display.addEventListener("click", function(e) {
+        e.preventDefault();
+        ms.classList.toggle("open");
+    });
+
+    dropdown.addEventListener("change", function(e) {
+        if (e.target.matches('input[type="checkbox"]')) {
+            updateText();
+        }
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!ms.contains(e.target)) {
+            ms.classList.remove("open");
+        }
+    });
+
+    updateText();
+})();
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("ambassadors-filters-form");
+    const input = document.getElementById("amb-city-search");
+    const hidden = document.getElementById("amb-city-hidden");
+    const dropdown = document.getElementById("amb-city-dropdown");
+    const selectedCityLabel = document.getElementById("amb-selected-city-label");
+    const selectedCityEmpty = document.getElementById("amb-selected-city-empty");
+
+    if (!form || !input || !hidden || !dropdown) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const visible = !value || text.includes(value);
+            item.classList.toggle("hidden", !visible);
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    function buildRegionUrl(cityValue) {
+        const url = new URL(window.location.origin + "/analytics/ambassadors");
+        url.searchParams.set("city", cityValue);
+        return url.toString();
+    }
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const value = item.dataset.value;
+
+            hidden.value = value;
+
+            if (selectedCityLabel) {
+                selectedCityLabel.textContent = value;
+                selectedCityLabel.style.display = "";
+            }
+
+            if (selectedCityEmpty) {
+                selectedCityEmpty.style.display = "none";
+            }
+
+            input.value = "";
+            dropdown.style.display = "none";
+
+            window.location.href = buildRegionUrl(value);
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("amb-client-search");
+    const dropdown = document.getElementById("amb-client-dropdown");
+    const tags = document.getElementById("amb-clients-tags");
+
+    if (!input || !dropdown || !tags) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function existingValues() {
+        return Array.from(tags.querySelectorAll('input[name="clients"]')).map(i => i.value);
+    }
+
+    function attachRemoveHandler(tag) {
+        const btn = tag.querySelector(".filter-tag-remove");
+        if (!btn) return;
+
+        btn.addEventListener("click", function () {
+            tag.remove();
+            filterItems();
+        });
+    }
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        const selected = existingValues();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const alreadySelected = selected.includes(item.dataset.value);
+            const visible = !alreadySelected && (!value || text.includes(value));
+            item.classList.toggle("hidden", !visible);
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    function renderTag(value) {
+        const tag = document.createElement("span");
+        tag.className = "filter-tag";
+        tag.innerHTML = `
+            <span>${value}</span>
+            <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+            <input type="hidden" name="clients" value="${value}">
+        `;
+        attachRemoveHandler(tag);
+        tags.appendChild(tag);
+    }
+
+    Array.from(tags.querySelectorAll(".filter-tag")).forEach(attachRemoveHandler);
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const value = item.dataset.value;
+            if (!existingValues().includes(value)) {
+                renderTag(value);
+            }
+            input.value = "";
+            dropdown.style.display = "none";
+            filterItems();
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".amb-toggle, .amb-link-toggle").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const targetId = btn.dataset.target;
+            const box = document.getElementById(targetId);
+            if (!box) return;
+
+            const hidden = box.classList.toggle("is-hidden");
+            const expanded = !hidden;
+
+            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(linkedBtn => {
+                linkedBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+                if (linkedBtn.classList.contains("amb-toggle")) {
+                    linkedBtn.textContent = expanded ? "⌄" : "›";
+                }
+
+                if (linkedBtn.classList.contains("amb-link-toggle")) {
+                    linkedBtn.textContent = expanded ? "Скрыть SKU" : "Показать SKU";
+                }
+            });
+        });
+    });
+});
+</script>
+
+{% endblock %}

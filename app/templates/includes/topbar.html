@@ -68,6 +68,10 @@
                  Графики
             </a>
 
+            <a href="/analytics/ambassadors" class="{% if request.url.path == '/analytics/ambassadors' %}active{% endif %}">
+                Амбассадорские отчеты
+            </a>
+
             <form method="post" action="/auth/logout" style="display:inline-flex; margin:0;">
                 <button type="submit" class="btn-secondary" style="padding:6px 12px;">Выйти</button>
             </form>

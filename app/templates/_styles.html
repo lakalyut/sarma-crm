@@ -797,4 +797,182 @@
         }
     }
 
+    .ambassadors-filters-grid {
+        grid-template-columns: 1.1fr 1.2fr 1fr auto;
+        align-items: start;
+    }
+
+    .multiselect-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 18px;
+        margin-top: 8px;
+    }
+
+    .filter-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eef2ff;
+        color: var(--text-main);
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+    }
+
+    .filter-tag-remove {
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0;
+        min-height: auto;
+        box-shadow: none;
+    }
+
+    .filter-tag-remove:hover {
+        background: transparent;
+        color: var(--text-main);
+        transform: none;
+        box-shadow: none;
+    }
+
+    .amb-report-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .amb-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 14px 16px 16px;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .amb-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .amb-card-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .amb-card-title {
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .amb-toggle {
+        min-height: auto;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        box-shadow: none;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .amb-toggle:hover {
+        background: transparent;
+        transform: none;
+        box-shadow: none;
+        color: var(--primary);
+    }
+
+    .amb-card-badges {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .amb-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .amb-badge-blue {
+        background: #e8f3ff;
+        color: #2563eb;
+    }
+
+    .amb-badge-green {
+        background: #e8ffe8;
+        color: #15803d;
+    }
+
+    .amb-summary-table {
+        margin-top: 0;
+    }
+
+    .amb-sku-toggle-line {
+        margin-top: 10px;
+    }
+
+    .amb-link-toggle {
+        min-height: auto;
+        padding: 0;
+        background: transparent;
+        color: var(--primary);
+        box-shadow: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    .amb-link-toggle:hover {
+        background: transparent;
+        transform: none;
+        box-shadow: none;
+        text-decoration: underline;
+    }
+
+    .amb-sku-details {
+        margin-top: 12px;
+    }
+
+    .amb-sku-subtitle {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+
+    .is-hidden {
+        display: none;
+    }
+
+    @media (max-width: 1200px) {
+        .ambassadors-filters-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .ambassadors-filters-grid .filter-actions-row {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .ambassadors-filters-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .amb-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+
 </style>

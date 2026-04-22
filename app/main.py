@@ -16,6 +16,7 @@ from .routes.analytics import router as analytics_router
 from .routes.imports import router as imports_router
 from .routes.misc import router as misc_router
 from .routes.products import router as products_router
+from .routes.ambassadors import router as ambassadors_router
 from .startup import ensure_admin
 from .templating import templates
 
@@ -45,6 +46,7 @@ app.include_router(products_router)
 app.include_router(imports_router)
 app.include_router(analytics_router)
 app.include_router(admin_imports_router)
+app.include_router(ambassadors_router)
 
 
 def render(request: Request, template_name: str, context: dict[str, Any]):
