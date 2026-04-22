@@ -3,118 +3,123 @@
 <h1>Аналитика по клиентам</h1>
 {% include "includes/messages.html" %}
 
-{% if cities %}
-    <div class="city-tabs">
-        {% for c in cities %}
-            <a class="city-tab {% if c == selected_city %}active{% endif %}"
-               href="/analytics/clients?city={{ c|urlencode }}"
-               data-city="{{ c }}">
-                {{ c }}
-            </a>
-        {% endfor %}
-    </div>
-{% endif %}
+<div class="filters-card">
+    <form method="get" id="clients-filters-form">
+        <div class="filters-grid clients-filters-grid">
 
-<form method="get" style="margin-bottom: 6px;" id="clients-filters-form">
-    <input type="hidden" name="city" value="{{ selected_city or '' }}">
-    <div class="flex-row filters-row">
+            <div class="field filter-field filter-field-region-search">
+                <label for="city-search">Поиск региона</label>
 
-        <div class="field" style="min-width: 260px;">
-            <label>Месяцы</label>
-            <div class="multiselect" id="months-multiselect">
-                <div class="multiselect-display">
-                    <span class="multiselect-text">
-                        {% if selected_months %}
-                            {% for m in selected_months %}
-                                {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                <input type="hidden" name="city" id="city-hidden" value="{{ selected_city or '' }}">
+
+                <input
+                    id="city-search"
+                    type="text"
+                    value=""
+                    placeholder="Начни вводить регион..."
+                    autocomplete="off"
+                >
+
+                <div id="city-dropdown" class="search-dropdown" style="display:none;">
+                    {% for c in cities %}
+                        <div class="search-dropdown-item" data-value="{{ c }}">
+                            {{ c }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label>Месяцы</label>
+                <div class="multiselect" id="months-multiselect">
+                    <div class="multiselect-display">
+                        <span class="multiselect-text">
+                            {% if selected_months %}
+                                {% for m in selected_months %}
+                                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Все месяцы
+                            {% endif %}
+                        </span>
+                        <span class="multiselect-arrow">▾</span>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="month-checkboxes">
+                            {% for m in all_months %}
+                                <label class="month-checkbox">
+                                    <input type="checkbox"
+                                           name="months"
+                                           value="{{ m }}"
+                                           {% if m in selected_months %}checked{% endif %}>
+                                    <span>{{ m|format_month }}</span>
+                                </label>
                             {% endfor %}
-                        {% else %}
-                            Все месяцы
-                        {% endif %}
-                    </span>
-                    <span class="multiselect-arrow">▾</span>
-                </div>
-                <div class="multiselect-dropdown">
-                    <div class="month-checkboxes">
-                        {% for m in all_months %}
-                            <label class="month-checkbox">
-                                <input type="checkbox"
-                                       name="months"
-                                       value="{{ m }}"
-                                       {% if m in selected_months %}checked{% endif %}>
-                                <span>{{ m|format_month }}</span>
-                            </label>
-                        {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="field" style="min-width: 220px;">
-            <label>Тип точки</label>
-            <div class="multiselect" id="types-multiselect">
-                <div class="multiselect-display">
-                    <span class="multiselect-text">
-                        {% if selected_types %}
-                            {{ selected_types|join(', ') }}
-                        {% else %}
-                            Все типы
-                        {% endif %}
-                    </span>
-                    <span class="multiselect-arrow">▾</span>
-                </div>
-                <div class="multiselect-dropdown">
-                    <div class="month-checkboxes">
-                        {% for t in all_types %}
-                            <label class="month-checkbox">
-                                <input type="checkbox"
-                                       name="sale_types"
-                                       value="{{ t }}"
-                                       {% if t in selected_types %}checked{% endif %}>
-                                <span>{{ t }}</span>
-                            </label>
-                        {% endfor %}
+            <div class="field filter-field">
+                <label>Тип точки</label>
+                <div class="multiselect" id="types-multiselect">
+                    <div class="multiselect-display">
+                        <span class="multiselect-text">
+                            {% if selected_types %}
+                                {{ selected_types|join(', ') }}
+                            {% else %}
+                                Все типы
+                            {% endif %}
+                        </span>
+                        <span class="multiselect-arrow">▾</span>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="month-checkboxes">
+                            {% for t in all_types %}
+                                <label class="month-checkbox">
+                                    <input type="checkbox"
+                                           name="sale_types"
+                                           value="{{ t }}"
+                                           {% if t in selected_types %}checked{% endif %}>
+                                    <span>{{ t }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        {% if current_user and current_user.role == "admin" %}
-        <div class="field" style="min-width: 150px;">
-            <label>Только сопоставленные</label>
-            <select name="matched">
-                <option value="" {% if matched is none %}selected{% endif %}>Все</option>
-                <option value="1" {% if matched is sameas true %}selected{% endif %}>Да</option>
-                <option value="0" {% if matched is sameas false %}selected{% endif %}>Нет</option>
-            </select>
-        </div>
-        {% endif %}
 
-        <div class="field" style="align-self:flex-end;">
-            <button type="submit">Показать</button>
-            <a href="/analytics/clients" class="btn btn-secondary">Сбросить фильтры</a>
+            {% if current_user and current_user.role == "admin" %}
+            <div class="field filter-field">
+                <label>Только сопоставленные</label>
+                <select name="matched">
+                    <option value="" {% if matched is none %}selected{% endif %}>Все</option>
+                    <option value="1" {% if matched is sameas true %}selected{% endif %}>Да</option>
+                    <option value="0" {% if matched is sameas false %}selected{% endif %}>Нет</option>
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="field filter-field filter-actions-row">
+                <label>&nbsp;</label>
+                <div class="filters-actions">
+                    <button type="submit">Показать</button>
+                    <a href="/analytics/clients" class="btn btn-secondary">Сбросить</a>
+                </div>
+            </div>
+
         </div>
+    </form>
+    <div class="selected-city-text">
+            {% if selected_city %}
+                Выбранный регион:
+                <span class="selected-city-value" id="selected-city-label">{{ selected_city }}</span>
+            {% else %}
+                <span id="selected-city-empty">Регион не выбран</span>
+                <span class="selected-city-value" id="selected-city-label" style="display:none;"></span>
+            {% endif %}
     </div>
-</form>
-
-{% if selected_city or selected_months or selected_types %}
-    <p class="filter-summary">
-        Город: <strong>{{ selected_city or 'Все' }}</strong>
-        • Период:
-        {% if selected_months %}
-            {% for m in selected_months %}
-                {{ m|format_month }}{% if not loop.last %}, {% endif %}
-            {% endfor %}
-        {% else %}
-            все месяцы
-        {% endif %}
-        • Типы:
-        {% if selected_types %}
-            {{ selected_types|join(', ') }}
-        {% else %}
-            все
-        {% endif %}
-    </p>
-{% endif %}
+</div>
 
 <div id="analytics-body">
 
@@ -173,7 +178,7 @@
 {% endif %}
 
     <div class="flex-row" style="justify-content: space-between; margin: 12px 0 8px; gap: 12px;">
-        <div class="field" style="min-width: 320px; margin-bottom: 0;">
+        <div class="field" style="margin-bottom: 0;">
             <label for="client-table-search">Поиск клиента</label>
             <input
                 id="client-table-search"
@@ -196,20 +201,57 @@
         {% else %}
             <div class="sheet-wrapper">
                 <div class="sheet-scroller">
-                    <table class="sheet-table">
+                    <table class="sheet-table" id="clients-table">
                         <thead>
                         <tr>
-                            <th>Тип точки</th>
+                            <th class="filterable-th" id="type-filter-th">
+                                <div class="th-filter-trigger" id="type-filter-trigger">
+                                    <span>Тип точки</span>
+                                    <span class="sort-icon">☰</span>
+                                </div>
+
+                                <div class="th-filter-dropdown" id="type-filter-dropdown">
+                                    <div class="th-filter-title">Фильтр по типу</div>
+
+                                    <div class="th-filter-options" id="type-filter-options">
+                                        {% for t in all_types %}
+                                            <label class="th-filter-option">
+                                                <input type="checkbox" class="type-filter-checkbox" value="{{ t }}">
+                                                <span>{{ t }}</span>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+
+                                    <div class="th-filter-actions">
+                                        <button type="button" class="btn btn-secondary btn-small" id="type-filter-reset">
+                                            Сбросить
+                                        </button>
+                                    </div>
+                                </div>
+                            </th>
                             <th>Клиент</th>
-                            <th>Количество</th>
-                            <th>Вес</th>
-                            <th>SKU</th>
+                            <th data-sort="qty" class="sortable">
+                                Количество <span class="sort-icon">↕</span>
+                            </th>
+                            <th data-sort="weight" class="sortable">
+                                Вес <span class="sort-icon">↕</span>
+                            </th>
+                            <th data-sort="sku" class="sortable">
+                                SKU <span class="sort-icon">↕</span>
+                            </th>
                             <th>Подробности</th>
                         </tr>
                         </thead>
                         <tbody>
                             {% for r in rows %}
-                                <tr class="client-row">
+                                <tr
+                                    class="client-row"
+                                    data-type="{{ r.type }}"
+                                    data-client="{{ r.client }}"
+                                    data-qty="{{ r.qty }}"
+                                    data-weight="{{ r.weight }}"
+                                    data-sku="{{ r.sku_count }}"
+                                >
                                     <td>{{ r.type }}</td>
                                     <td class="client-name-cell">{{ r.client }}</td>
                                     <td>{{ "%.2f"|format(r.qty) }}</td>
@@ -348,52 +390,7 @@
 })();
 </script>
 
-<script>
-(function() {
-    const tabs = document.querySelectorAll(".city-tab");
-    if (!tabs.length) return;
 
-    tabs.forEach(tab => {
-        tab.addEventListener("click", function(e) {
-            e.preventDefault();
-
-            const targetCity = tab.getAttribute("data-city");
-            if (!targetCity) {
-                window.location.href = tab.getAttribute("href");
-                return;
-            }
-
-            const storageKey = "clients_filters_" + targetCity;
-            let saved = null;
-            try {
-                const raw = localStorage.getItem(storageKey);
-                if (raw) {
-                    saved = JSON.parse(raw);
-                }
-            } catch (err) {
-                console.warn("Не удалось прочитать сохранённые фильтры города", targetCity, err);
-            }
-
-            const url = new URL(window.location.origin + "/analytics/clients");
-            url.searchParams.set("city", targetCity);
-
-            if (saved) {
-                if (Array.isArray(saved.months)) {
-                    saved.months.forEach(m => url.searchParams.append("months", m));
-                }
-                if (Array.isArray(saved.types)) {
-                    saved.types.forEach(t => url.searchParams.append("sale_types", t));
-                }
-                if (saved.matched && saved.matched !== "") {
-                    url.searchParams.set("matched", saved.matched);
-                }
-            }
-
-            window.location.href = url.toString();
-        });
-    });
-})();
-</script>
 
 <script>
 (function() {
@@ -411,21 +408,124 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("clients-filters-form") || document.querySelector('form[method="get"]');
+    const input = document.getElementById("city-search");
+    const hidden = document.getElementById("city-hidden");
+    const dropdown = document.getElementById("city-dropdown");
+    const selectedCityLabel = document.getElementById("selected-city-label");
+    const selectedCityEmpty = document.getElementById("selected-city-empty");
+
+    if (!form || !input || !hidden || !dropdown) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const visible = !value || text.includes(value);
+            item.classList.toggle("hidden", !visible);
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    function buildRegionUrl(cityValue) {
+        const url = new URL(window.location.origin + "/analytics/clients");
+        url.searchParams.set("city", cityValue);
+
+        const storageKey = "clients_filters_" + cityValue;
+
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) {
+                const saved = JSON.parse(raw);
+
+                if (Array.isArray(saved.months)) {
+                    saved.months.forEach(m => url.searchParams.append("months", m));
+                }
+
+                if (Array.isArray(saved.types)) {
+                    saved.types.forEach(t => url.searchParams.append("sale_types", t));
+                }
+
+                if (saved.matched !== undefined && saved.matched !== null && saved.matched !== "") {
+                    url.searchParams.set("matched", saved.matched);
+                }
+            }
+        } catch (e) {
+            console.warn("Не удалось восстановить фильтры региона:", cityValue, e);
+        }
+
+        return url.toString();
+    }
+
+    input.addEventListener("focus", filterItems);
+
+    input.addEventListener("input", function () {
+        filterItems();
+    });
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const value = item.dataset.value;
+
+            hidden.value = value;
+
+            if (selectedCityLabel) {
+                selectedCityLabel.textContent = value;
+                selectedCityLabel.style.display = "";
+            }
+
+            if (selectedCityEmpty) {
+                selectedCityEmpty.style.display = "none";
+            }
+
+            input.value = "";
+            dropdown.style.display = "none";
+
+            window.location.href = buildRegionUrl(value);
+        });
+    });
+
+    input.addEventListener("blur", function () {
+        setTimeout(() => {
+            input.value = "";
+            dropdown.style.display = "none";
+        }, 150);
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
     const input = document.getElementById("client-table-search");
     const resetBtn = document.getElementById("client-table-search-reset");
-    const rows = Array.from(document.querySelectorAll(".client-row"));
 
-    if (!input || !rows.length) return;
+    if (!input) return;
+
+    function getRows() {
+        return Array.from(document.querySelectorAll("#clients-table-wrapper .client-row"));
+    }
 
     function applyFilter() {
         const value = input.value.trim().toLowerCase();
+        const rows = getRows();
 
         rows.forEach(row => {
             const clientCell = row.querySelector(".client-name-cell");
-            const clientText = (clientCell?.textContent || "").trim().toLowerCase();
+            const clientText = (clientCell ? clientCell.textContent : "").trim().toLowerCase();
 
-            const visible = !value || clientText.includes(value);
-            row.style.display = visible ? "" : "none";
+            row.style.display = !value || clientText.includes(value) ? "" : "none";
         });
     }
 
@@ -438,6 +538,176 @@ document.addEventListener("DOMContentLoaded", function () {
             input.focus();
         });
     }
+
+    applyFilter();
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const table = document.getElementById("clients-table");
+    if (!table) return;
+
+    const tbody = table.querySelector("tbody");
+    const headers = table.querySelectorAll("thead th");
+    const searchInput = document.getElementById("client-table-search");
+
+    const typeFilterTh = document.getElementById("type-filter-th");
+    const typeFilterTrigger = document.getElementById("type-filter-trigger");
+    const typeFilterDropdown = document.getElementById("type-filter-dropdown");
+    const typeFilterReset = document.getElementById("type-filter-reset");
+    const typeFilterCheckboxes = Array.from(document.querySelectorAll(".type-filter-checkbox"));
+
+    let selectedTypes = [];
+    let sortState = {
+        field: null,
+        direction: null, // "asc" | "desc" | null
+    };
+
+    function getAllRows() {
+        return Array.from(tbody.querySelectorAll(".client-row"));
+    }
+
+    function getVisibleBySearch(rows) {
+        const searchValue = (searchInput?.value || "").trim().toLowerCase();
+
+        return rows.filter(row => {
+            const clientText = (row.dataset.client || "").toLowerCase();
+            return !searchValue || clientText.includes(searchValue);
+        });
+    }
+
+    function applyTypeFilter(rows) {
+        if (!selectedTypes.length) return rows;
+        return rows.filter(row => selectedTypes.includes(row.dataset.type));
+    }
+
+    function applySort(rows) {
+        if (!sortState.field || !sortState.direction) return rows;
+
+        const factor = sortState.direction === "asc" ? 1 : -1;
+
+        return [...rows].sort((a, b) => {
+            const av = parseFloat(a.dataset[sortState.field] || "0");
+            const bv = parseFloat(b.dataset[sortState.field] || "0");
+            return (av - bv) * factor;
+        });
+    }
+
+    function renderRows() {
+        const allRows = getAllRows();
+
+        allRows.forEach(row => {
+            row.style.display = "";
+        });
+
+        let rows = getVisibleBySearch(allRows);
+        rows = applyTypeFilter(rows);
+        rows = applySort(rows);
+
+        allRows.forEach(row => {
+            row.style.display = "none";
+        });
+
+        rows.forEach(row => {
+            row.style.display = "";
+            tbody.appendChild(row);
+        });
+
+        updateHeaderState();
+    }
+
+    function updateHeaderState() {
+        headers.forEach(th => {
+            const icon = th.querySelector(".sort-icon");
+
+            th.classList.remove("sort-active", "filter-active");
+
+            if (th.dataset.sort && icon) {
+                icon.textContent = "↕";
+            }
+        });
+
+        headers.forEach(th => {
+            const icon = th.querySelector(".sort-icon");
+
+            if (th.dataset.sort && th.dataset.sort === sortState.field) {
+                th.classList.add("sort-active");
+                if (icon) {
+                    icon.textContent = sortState.direction === "asc" ? "↑" : "↓";
+                }
+            }
+        });
+
+        if (typeFilterTh) {
+            typeFilterTh.classList.toggle("filter-active", selectedTypes.length > 0);
+        }
+    }
+
+    headers.forEach(th => {
+        if (th.dataset.sort) {
+            th.addEventListener("click", function () {
+                const field = th.dataset.sort;
+
+                if (sortState.field !== field) {
+                    sortState.field = field;
+                    sortState.direction = "desc";
+                } else if (sortState.direction === "desc") {
+                    sortState.direction = "asc";
+                } else if (sortState.direction === "asc") {
+                    sortState.field = null;
+                    sortState.direction = null;
+                } else {
+                    sortState.direction = "desc";
+                }
+
+                renderRows();
+            });
+        }
+    });
+
+    if (typeFilterTrigger && typeFilterDropdown) {
+        typeFilterTrigger.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            typeFilterDropdown.classList.toggle("open");
+        });
+
+        typeFilterDropdown.addEventListener("click", function (e) {
+            e.stopPropagation();
+        });
+
+        document.addEventListener("click", function () {
+            typeFilterDropdown.classList.remove("open");
+        });
+    }
+
+    typeFilterCheckboxes.forEach(cb => {
+        cb.addEventListener("change", function () {
+            selectedTypes = typeFilterCheckboxes
+                .filter(item => item.checked)
+                .map(item => item.value);
+
+            renderRows();
+        });
+    });
+
+    if (typeFilterReset) {
+        typeFilterReset.addEventListener("click", function () {
+            typeFilterCheckboxes.forEach(cb => {
+                cb.checked = false;
+            });
+
+            selectedTypes = [];
+            renderRows();
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener("input", renderRows);
+    }
+
+    renderRows();
 });
 </script>
 
