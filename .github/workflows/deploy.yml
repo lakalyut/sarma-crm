@@ -36,7 +36,7 @@ jobs:
 
             find /home/ubuntu/sarma_backups -type f -name "backup_*.sql.gz" -mtime +14 -delete
 
-            sudo docker compose build web
+            sudo docker compose build web 
 
             sudo docker compose run --rm web alembic upgrade head
 
