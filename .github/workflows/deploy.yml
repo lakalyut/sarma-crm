@@ -31,10 +31,10 @@ jobs:
 
             sudo docker compose exec -T db bash -lc 'until pg_isready -U sarma -d sarma; do sleep 1; done'
 
-            mkdir -p /home/***/sarma_backups
-            sudo docker compose exec -T db pg_dump -U sarma sarma | gzip > "/home/***/sarma_backups/backup_$(date +%F_%H-%M-%S).sql.gz"
+            mkdir -p /home/ubuntu/sarma_backups
+            sudo docker compose exec -T db pg_dump -U sarma sarma | gzip > "/home/ubuntu/sarma_backups/backup_$(date +%F_%H-%M-%S).sql.gz"
 
-            find /home/***/sarma_backups -type f -name "backup_*.sql.gz" -mtime +14 -delete
+            find /home/ubuntu/sarma_backups -type f -name "backup_*.sql.gz" -mtime +14 -delete
 
             sudo docker compose build web
 
