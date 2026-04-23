@@ -44,7 +44,7 @@ def analytics_ambassadors(
 
     selected_months = [m for m in selected_months if m in all_months]
     selected_months = sorted(selected_months, key=month_sort_key)
-    
+
     selected_clients = [c for c in selected_clients if c in all_clients]
 
     report = {"months": [], "clients": []}
