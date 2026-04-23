@@ -278,6 +278,7 @@ def api_charts_metrics(
 ):
     if _user.role != "admin":
         matched = None
+
     filters = []
 
     if not city:
@@ -312,8 +313,10 @@ def api_charts_metrics(
             func.count(func.distinct(Sale.sku)).label("unique_sku"),
             func.count(func.distinct(Sale.client)).label("unique_clients"),
         )
+
         if filters:
             q = q.filter(*filters)
+
         q = q.group_by(Sale.month, Sale.type).order_by(Sale.month, Sale.type)
         rows = q.all()
 
@@ -332,6 +335,7 @@ def api_charts_metrics(
         for r in rows:
             if not r.month or not r.series:
                 continue
+
             data_map[r.series][r.month] = {
                 "qty": float(r.qty or 0),
                 "weight": float(r.weight or 0),
@@ -357,31 +361,90 @@ def api_charts_metrics(
 
     q = db.query(
         Sale.month.label("month"),
+        Sale.type.label("type"),
         func.sum(Sale.qty).label("qty"),
         func.sum(Sale.weight).label("weight"),
         func.count(func.distinct(Sale.sku)).label("unique_sku"),
         func.count(func.distinct(Sale.client)).label("unique_clients"),
     )
+
     if filters:
         q = q.filter(*filters)
-        q = q.group_by(Sale.month)
-        rows = q.all()
-        rows = sorted(rows, key=lambda r: month_sort_key(r.month))
 
-    month_list = [r.month for r in rows if r.month]
+    q = q.group_by(Sale.month, Sale.type)
+    rows = q.all()
+
+    month_list = sorted({r.month for r in rows if r.month}, key=month_sort_key)
+    type_list = sorted({r.type for r in rows if r.type})
+
     labels = [_fmt(m) for m in month_list]
+
+    data = {
+        m: {
+            "qty": 0,
+            "weight": 0,
+            "unique_sku": 0,
+            "unique_clients": 0,
+            "types": {t: {"sku": 0, "clients": 0} for t in type_list},
+        }
+        for m in month_list
+    }
+
+    for r in rows:
+        if not r.month:
+            continue
+
+        data[r.month]["qty"] += float(r.qty or 0)
+        data[r.month]["weight"] += float(r.weight or 0)
+        data[r.month]["unique_sku"] += int(r.unique_sku or 0)
+        data[r.month]["unique_clients"] += int(r.unique_clients or 0)
+
+        if r.type:
+            data[r.month]["types"][r.type]["sku"] += int(r.unique_sku or 0)
+            data[r.month]["types"][r.type]["clients"] += int(r.unique_clients or 0)
 
     series = [
         {
             "name": "Итого",
-            "qty": [float(r.qty or 0) for r in rows],
-            "weight": [float(r.weight or 0) for r in rows],
-            "unique_sku": [int(r.unique_sku or 0) for r in rows],
-            "unique_clients": [int(r.unique_clients or 0) for r in rows],
+            "qty": [data[m]["qty"] for m in month_list],
+            "weight": [data[m]["weight"] for m in month_list],
+            "unique_sku": [data[m]["unique_sku"] for m in month_list],
+            "unique_clients": [data[m]["unique_clients"] for m in month_list],
+            "sku_per_client": [
+                (
+                    (data[m]["unique_sku"] / data[m]["unique_clients"])
+                    if data[m]["unique_clients"]
+                    else 0
+                )
+                for m in month_list
+            ],
+            "clients_by_type": {
+                t: [data[m]["types"][t]["clients"] for m in month_list]
+                for t in type_list
+            },
+            "sku_by_type": {
+                t: [data[m]["types"][t]["sku"] for m in month_list] for t in type_list
+            },
+            "sku_per_client_by_type": {
+                t: [
+                    (
+                        (data[m]["types"][t]["sku"] / data[m]["types"][t]["clients"])
+                        if data[m]["types"][t]["clients"]
+                        else 0
+                    )
+                    for m in month_list
+                ]
+                for t in type_list
+            },
         }
     ]
 
-    return JSONResponse({"labels": labels, "series": series})
+    return JSONResponse(
+        {
+            "labels": labels,
+            "series": series,
+        }
+    )
 
 
 @router.get("/analytics/client")

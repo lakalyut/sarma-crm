@@ -625,6 +625,27 @@
         color: var(--text-muted);
     }
 
+    .table-group-header {
+        text-align: center !important;
+        font-weight: 600 !important;
+    }
+
+    .table-group-type {
+        background: #eef4ff !important;
+    }
+
+    .table-group-type-cell {
+        background: #f8fbff !important;
+    }
+
+    #chart-data-table thead tr:nth-child(2) th.table-group-type {
+        background: #eef4ff !important;
+    }
+
+    #chart-data-table tbody tr:nth-child(even) td.table-group-type-cell {
+        background: #f1f6ff !important;
+    }
+
     #clients-table th:nth-child(1),
     #clients-table td:nth-child(1) {
         width: 140px;
@@ -700,6 +721,20 @@
     table.sheet-table th:first-child,
     table.sheet-table td:first-child {
         border-left: 1px solid var(--border);
+    }
+
+    .table-period-header {
+        min-width: 140px;
+        text-align: left !important;
+    }
+
+    #chart-data-table th {
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    #chart-data-table td {
+        white-space: nowrap;
     }
 
     table.sheet-table th {
