@@ -189,17 +189,35 @@
                         <div class="sheet-scroller">
                             <table class="sheet-table">
                                 <thead>
-                                    <tr>
-                                        <th>SKU</th>
-                                        {% for month in report.months %}
-                                            <th>{{ month|format_month }}</th>
-                                        {% endfor %}
-                                        <th>Итого вес, кг</th>
-                                    </tr>
+    <tr>
+        <th>SKU</th>
+        {% for month in report.months %}
+            <th
+                class="sortable"
+                data-sort-type="number"
+                data-sort-key="month-{{ loop.index0 }}"
+            >
+                {{ month|format_month }} <span class="sort-icon">↕</span>
+            </th>
+        {% endfor %}
+        <th
+            class="sortable"
+            data-sort-type="number"
+            data-sort-key="total"
+        >
+            Итого вес, кг <span class="sort-icon">↕</span>
+        </th>
+    </tr>
                                 </thead>
                                 <tbody>
                                     {% for sku_row in client.sku_details %}
-                                        <tr>
+                                        <tr
+                                            class="amb-sku-row"
+                                            data-total="{{ sku_row.total }}"
+                                            {% for value in sku_row.months_data %}
+                                                data-month-{{ loop.index0 }}="{{ value }}"
+                                            {% endfor %}
+                                        >
                                             <td>{{ sku_row.sku }}</td>
                                             {% for value in sku_row.months_data %}
                                                 <td>{{ "%.2f"|format(value) }}</td>
@@ -207,7 +225,7 @@
                                             <td>{{ "%.2f"|format(sku_row.total) }}</td>
                                         </tr>
                                     {% endfor %}
-                                    <tr>
+                                    <tr class="amb-sku-total-row">
                                         <td><strong>Итого</strong></td>
                                         {% for value in client.summary.weight %}
                                             <td><strong>{{ "%.2f"|format(value) }}</strong></td>
@@ -434,6 +452,98 @@ document.addEventListener("DOMContentLoaded", function () {
                     linkedBtn.textContent = expanded ? "Скрыть SKU" : "Показать SKU";
                 }
             });
+        });
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const cards = document.querySelectorAll(".amb-card");
+
+    cards.forEach(card => {
+        const tables = card.querySelectorAll(".sheet-table");
+
+        tables.forEach(table => {
+            const sortableHeaders = table.querySelectorAll("th.sortable");
+            const tbody = table.querySelector("tbody");
+
+            if (!sortableHeaders.length || !tbody) return;
+
+            let sortState = {
+                key: null,
+                direction: null, // "asc" | "desc" | null
+            };
+
+            function getSortableRows() {
+                return Array.from(tbody.querySelectorAll("tr.amb-sku-row"));
+            }
+
+            function getTotalRow() {
+                return tbody.querySelector("tr.amb-sku-total-row");
+            }
+
+            function updateHeaderState() {
+                sortableHeaders.forEach(th => {
+                    th.classList.remove("sort-active");
+                    const icon = th.querySelector(".sort-icon");
+                    if (icon) icon.textContent = "↕";
+
+                    if (th.dataset.sortKey === sortState.key && sortState.direction) {
+                        th.classList.add("sort-active");
+                        if (icon) {
+                            icon.textContent = sortState.direction === "asc" ? "↑" : "↓";
+                        }
+                    }
+                });
+            }
+
+            function renderRows() {
+                const rows = getSortableRows();
+                const totalRow = getTotalRow();
+
+                if (!sortState.key || !sortState.direction) {
+                    rows.forEach(row => tbody.appendChild(row));
+                    if (totalRow) tbody.appendChild(totalRow);
+                    updateHeaderState();
+                    return;
+                }
+
+                const factor = sortState.direction === "asc" ? 1 : -1;
+
+                rows.sort((a, b) => {
+                    const av = parseFloat(a.dataset[sortState.key] || "0");
+                    const bv = parseFloat(b.dataset[sortState.key] || "0");
+                    return (av - bv) * factor;
+                });
+
+                rows.forEach(row => tbody.appendChild(row));
+                if (totalRow) tbody.appendChild(totalRow);
+
+                updateHeaderState();
+            }
+
+            sortableHeaders.forEach(th => {
+                th.addEventListener("click", function () {
+                    const key = th.dataset.sortKey;
+
+                    if (sortState.key !== key) {
+                        sortState.key = key;
+                        sortState.direction = "desc";
+                    } else if (sortState.direction === "desc") {
+                        sortState.direction = "asc";
+                    } else if (sortState.direction === "asc") {
+                        sortState.key = null;
+                        sortState.direction = null;
+                    } else {
+                        sortState.direction = "desc";
+                    }
+
+                    renderRows();
+                });
+            });
+
+            updateHeaderState();
         });
     });
 });

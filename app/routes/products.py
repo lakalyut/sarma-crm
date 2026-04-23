@@ -123,7 +123,7 @@ def products_import(
 
     return render(
         request,
-        "products_import.html",
+        "products/products_import.html",
         {"message": f"Импортировано: {count} продуктов"},
     )
 

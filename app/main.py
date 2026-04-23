@@ -12,11 +12,11 @@ from .auth_routes import router as auth_router
 from .database import Base, SessionLocal, engine
 from .routes.admin_imports import router as admin_imports_router
 from .routes.admin_users import router as admin_users_router
-from .routes.ambassadors import router as ambassadors_router
 from .routes.analytics import router as analytics_router
 from .routes.imports import router as imports_router
 from .routes.misc import router as misc_router
 from .routes.products import router as products_router
+from .routes.ambassadors import router as ambassadors_router
 from .startup import ensure_admin
 from .templating import templates
 

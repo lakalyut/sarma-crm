@@ -1,85 +1,52 @@
 <div class="topbar">
-    <div class="topbar-title">Сарма База Данных Клиентов</div>
+    <div class="topbar-left">
+        <div class="topbar-title">Сарма База Данных Клиентов</div>
+    </div>
 
-    <div class="topbar-nav">
-        {% if current_user %}
-            {% if current_user.role == 'admin' %}
-                <a href="/admin/users"
-                   class="{% if request.url.path.startswith('/admin/users') %}active{% endif %}">
-                    Пользователи
-                </a>
-                <a href="/admin/products"
-                   class="{% if request.url.path.startswith('/admin/products') %}active{% endif %}">
-                    Номенклатуры
-                </a>
-                <a href="/import-xlsx"
-                   class="{% if request.url.path.startswith('/import-xlsx') %}active{% endif %}">
-                    Импорт XLSX
-                </a>
-                <a href="/admin/unmatched"
-                   class="{% if request.url.path.startswith('/admin/unmatched') %}active{% endif %}">
-                    Несопоставленные
-                </a>
-                <a href="/admin/imports/delete"
-                   class="{% if request.url.path.startswith('/admin/imports/delete') %}active{% endif %}">
-                    Удаление импорта
-                </a>
-            {% endif %}
+    <button
+        type="button"
+        class="topbar-burger"
+        id="topbar-burger"
+        aria-label="Открыть меню"
+        aria-expanded="false"
+    >
+        ☰
+    </button>
 
-            {% set city = request.query_params.get("city") %}
-            {% set months = request.query_params.getlist("months") %}
-            {% set sale_types = request.query_params.getlist("sale_types") %}
-            {% set matched = request.query_params.get("matched") %}
-
-            {% set query_parts = [] %}
-
-            {% if city %}
-                {% set _ = query_parts.append("city=" ~ city) %}
-            {% endif %}
-
-            {% for month in months %}
-                {% set _ = query_parts.append("months=" ~ month) %}
-            {% endfor %}
-
-            {% for sale_type in sale_types %}
-                {% set _ = query_parts.append("sale_types=" ~ sale_type) %}
-            {% endfor %}
-
-            {% if matched is not none and matched != "" %}
-                {% set _ = query_parts.append("matched=" ~ matched) %}
-            {% endif %}
-
-            {% set query_string = query_parts | join("&") %}
-            {% set clients_href = "/analytics/clients" %}
-            {% set charts_href = "/analytics/charts" %}
-
-            {% if query_string %}
-                {% set clients_href = clients_href ~ "?" ~ query_string %}
-                {% set charts_href = charts_href ~ "?" ~ query_string %}
-            {% endif %}
-
-            <a href="{{ clients_href }}"
-                class="{% if request.url.path.startswith('/analytics/clients') %}active{% endif %}">
-                 Клиенты
-            </a>
-
-            <a href="{{ charts_href }}"
-                class="{% if request.url.path.startswith('/analytics/charts') %}active{% endif %}">
-                 Графики
-            </a>
-
-            <a href="/analytics/ambassadors" class="{% if request.url.path == '/analytics/ambassadors' %}active{% endif %}">
-                Амбассадорские отчеты
-            </a>
-
-            <form method="post" action="/auth/logout" style="display:inline-flex; margin:0;">
-                <button type="submit" class="btn-secondary" style="padding:6px 12px;">Выйти</button>
-            </form>
-        {% else %}
-            <a href="/auth/login"
-               class="{% if request.url.path.startswith('/auth/login') %}active{% endif %}">
-                Вход
-            </a>
-        {% endif %}
+    <div class="topbar-nav-wrap" id="topbar-nav-wrap">
+        <nav class="topbar-nav">
+            <a href="/admin/users" class="{% if request.url.path == '/admin/users' %}active{% endif %}">Пользователи</a>
+            <a href="/admin/products" class="{% if request.url.path == '/admin/products' %}active{% endif %}">Номенклатуры</a>
+            <a href="/import-xlsx" class="{% if request.url.path == '/import-xlsx' %}active{% endif %}">Импорт XLSX</a>
+            <a href="/admin/unmatched" class="{% if request.url.path == '/admin/unmatched' %}active{% endif %}">Несопоставленные</a>
+            <a href="/admin/imports/delete" class="{% if request.url.path == '/admin/imports/delete' %}active{% endif %}">Удаление импорта</a>
+            <a href="/analytics/clients" class="{% if request.url.path == '/analytics/clients' %}active{% endif %}">Клиенты</a>
+            <a href="/analytics/charts" class="{% if request.url.path == '/analytics/charts' %}active{% endif %}">Графики</a>
+            <a href="/analytics/ambassadors" class="{% if request.url.path == '/analytics/ambassadors' %}active{% endif %}">Амбассадорские отчеты</a>
+            <a href="/auth/logout" class="topbar-logout">Выйти</a>
+        </nav>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const burger = document.getElementById("topbar-burger");
+    const navWrap = document.getElementById("topbar-nav-wrap");
+
+    if (!burger || !navWrap) return;
+
+    burger.addEventListener("click", function () {
+        const isOpen = navWrap.classList.toggle("open");
+        burger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        burger.textContent = isOpen ? "✕" : "☰";
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!navWrap.contains(e.target) && e.target !== burger) {
+            navWrap.classList.remove("open");
+            burger.setAttribute("aria-expanded", "false");
+            burger.textContent = "☰";
+        }
+    });
+});
+</script>
