@@ -443,7 +443,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const topHeaderCells = [
         '<th rowspan="2" class="table-period-header">Период</th>',
-        '<th colspan="5" class="table-group-header">Общие метрики</th>',
+        '<th colspan="4" class="table-group-header">Общие метрики</th>',
     ];
 
     typeNames.forEach(typeName => {
@@ -451,7 +451,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     const secondHeaderCells = [
-        '<th>Количество</th>',
         '<th>Вес</th>',
         '<th>Клиенты</th>',
         '<th>SKU</th>',
@@ -472,7 +471,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const rows = labels.map((label, i) => {
         const cells = [
             `<td>${label}</td>`,
-            `<td>${Number(s.qty?.[i] ?? 0).toFixed(2)}</td>`,
             `<td>${Number(s.weight?.[i] ?? 0).toFixed(2)}</td>`,
             `<td>${Number(s.unique_clients?.[i] ?? 0)}</td>`,
             `<td>${Number(s.unique_sku?.[i] ?? 0)}</td>`,
