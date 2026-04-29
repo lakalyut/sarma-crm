@@ -1,0 +1,127 @@
+.chart-wrap {
+        position: relative;
+        height: 420px;
+        width: 100%;
+        padding: 12px;
+    }
+
+.chart-block {
+        margin-top: 4px;
+    }
+
+.chart-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+.chart-tab {
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 13px;
+        background: #eef2ff;
+        color: var(--text-main);
+        box-shadow: none;
+        min-height: 36px;
+    }
+
+.chart-tab:hover {
+        background: #e0e7ff;
+        transform: none;
+        box-shadow: none;
+    }
+
+.chart-tab.active {
+        background: var(--primary);
+        color: #fff;
+    }
+
+.metrics-cards {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: 8px 0 12px;
+    }
+
+.metric-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 12px 14px;
+        box-shadow: var(--shadow-soft);
+    }
+
+.metric-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+
+.metric-value {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+.metric-delta-wrap {
+        margin-top: 4px;
+        font-size: 12px;
+    }
+
+.metric-delta {
+        font-weight: 500;
+    }
+
+.metric-delta.delta-up {
+        color: #16a34a;
+    }
+
+.metric-delta.delta-down {
+        color: #dc2626;
+    }
+
+.metric-delta.delta-neutral,
+.metric-delta.muted {
+        color: var(--text-muted);
+    }
+
+.chart-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+    }
+
+.table-group-header {
+        text-align: center !important;
+        font-weight: 600 !important;
+    }
+
+.table-group-type {
+        background: #eef4ff !important;
+    }
+
+.table-group-type-cell {
+        background: #f8fbff !important;
+    }
+
+#chart-data-table thead tr:nth-child(2) th.table-group-type {
+        background: #eef4ff !important;
+    }
+
+#chart-data-table tbody tr:nth-child(even) td.table-group-type-cell {
+        background: #f1f6ff !important;
+    }
+
+.table-period-header {
+        min-width: 140px;
+        text-align: left !important;
+    }
+
+#chart-data-table th {
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+#chart-data-table td {
+        white-space: nowrap;
+    }

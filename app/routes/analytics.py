@@ -408,6 +408,13 @@ def api_charts_metrics(
             "name": "Итого",
             "qty": [data[m]["qty"] for m in month_list],
             "weight": [data[m]["weight"] for m in month_list],
+            "weight_by_type": {
+                t: [
+                    sum(float(r.weight or 0) for r in rows if r.month == m and r.type == t)
+                    for m in month_list
+                ]
+                for t in type_list
+            },
             "unique_sku": [data[m]["unique_sku"] for m in month_list],
             "unique_clients": [data[m]["unique_clients"] for m in month_list],
             "sku_per_client": [

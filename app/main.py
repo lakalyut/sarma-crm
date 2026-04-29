@@ -5,6 +5,7 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.status import HTTP_302_FOUND
 
 from .auth_deps import get_current_user
@@ -47,6 +48,7 @@ app.include_router(imports_router)
 app.include_router(analytics_router)
 app.include_router(admin_imports_router)
 app.include_router(ambassadors_router)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 def render(request: Request, template_name: str, context: dict[str, Any]):

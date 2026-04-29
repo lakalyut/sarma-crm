@@ -1,0 +1,244 @@
+.filters-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+    }
+
+.filters-grid {
+        display: grid;
+        gap: 18px;
+    }
+
+.clients-filters-grid {
+        grid-template-columns: 1.25fr 1fr 1fr 1fr auto;
+        align-items: start;
+    }
+
+.charts-filters-grid {
+        grid-template-columns: 1.2fr 1fr 1fr 1.2fr 1fr auto;
+        align-items: start;
+    }
+
+.ambassadors-filters-grid {
+        grid-template-columns: 1.1fr 1.2fr 1fr auto;
+        align-items: start;
+    }
+
+.filter-field {
+        margin-bottom: 0;
+        min-width: 0;
+    }
+
+.filter-field-region-search {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+.filter-field-region-search input[type="text"] {
+        margin-bottom: 6px;
+    }
+
+.filter-field .multiselect,
+.filter-field input[type="text"],
+.filter-field input[type="email"],
+.filter-field input[type="password"],
+.filter-field input[type="number"],
+.filter-field select,
+.filter-field .multiselect-display {
+        width: 100%;
+    }
+.filter-field .multiselect {
+        min-width: 0;
+    }
+
+.multiselect {
+        position: relative;
+    }
+
+.multiselect-display {
+        font-weight: 500;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        background: #fff;
+        padding: 8px 12px;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+
+.multiselect-text {
+        font-size: 13px;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+.multiselect-arrow {
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-left: 8px;
+        flex: 0 0 auto;
+    }
+
+.multiselect-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: var(--shadow-soft);
+        padding: 6px 8px;
+        max-height: 260px;
+        overflow: auto;
+        min-width: 100%;
+        z-index: 100;
+        display: none;
+    }
+
+.multiselect.open .multiselect-dropdown {
+        display: block;
+    }
+
+.month-checkboxes {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+.month-checkbox {
+        font-size: 12px;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+    }
+
+.month-checkbox:hover {
+        background: #f1f5f9;
+        border-color: var(--border);
+    }
+
+.month-checkbox input {
+        margin: 0;
+        accent-color: var(--primary);
+    }
+
+.month-checkbox input[type="checkbox"] {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        flex: 0 0 auto;
+        accent-color: var(--primary);
+    }
+
+.filters-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        min-height: 42px;
+    }
+
+.filter-actions-row {
+        min-width: 0;
+    }
+
+.search-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow-soft);
+        max-height: 260px;
+        overflow-y: auto;
+        z-index: 300;
+        padding: 6px;
+    }
+
+.search-dropdown-item {
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--text-main);
+        transition: background 0.15s ease;
+    }
+
+.search-dropdown-item:hover {
+        background: #eef2ff;
+    }
+
+.search-dropdown-item.hidden {
+        display: none;
+    }
+
+.selected-city-text {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.2;
+        min-height: 18px;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+.selected-city-value {
+        color: var(--primary);
+        font-weight: 600;
+        margin-left: 4px;
+    }
+
+.multiselect-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 18px;
+        margin-top: 8px;
+    }
+
+.filter-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eef2ff;
+        color: var(--text-main);
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+    }
+
+.filter-tag-remove {
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0;
+        min-height: auto;
+        box-shadow: none;
+    }
+
+.filter-tag-remove:hover {
+        background: transparent;
+        color: var(--text-main);
+        transform: none;
+        box-shadow: none;
+    }
