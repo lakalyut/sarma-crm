@@ -410,7 +410,11 @@ def api_charts_metrics(
             "weight": [data[m]["weight"] for m in month_list],
             "weight_by_type": {
                 t: [
-                    sum(float(r.weight or 0) for r in rows if r.month == m and r.type == t)
+                    sum(
+                        float(r.weight or 0)
+                        for r in rows
+                        if r.month == m and r.type == t
+                    )
                     for m in month_list
                 ]
                 for t in type_list
