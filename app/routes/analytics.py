@@ -7,17 +7,17 @@ from ..auth_models import User
 from ..database import get_db
 from ..models import Sale
 from ..render import render
-from ..services.sale_filters import build_sale_filters
 from ..services.charts_service import get_charts_metrics_data
 from ..services.clients_service import (
-    get_clients_summary_data,
     get_client_detail_data,
+    get_clients_summary_data,
 )
+from ..services.sale_filters import build_sale_filters
 from ..services.sales_options_service import (
     get_cities,
+    get_clients,
     get_months,
     get_types,
-    get_clients,
 )
 
 router = APIRouter()

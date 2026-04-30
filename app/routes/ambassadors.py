@@ -2,17 +2,15 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Sale
 from ..render import render
-from ..utils.dates import month_sort_key
 from ..services.ambassadors_service import (
     build_ambassadors_report,
     normalize_selected_months,
 )
 from ..services.sales_options_service import (
     get_cities,
-    get_months,
     get_clients,
+    get_months,
 )
 
 router = APIRouter()
