@@ -43,7 +43,11 @@ def analytics_ambassadors(
     ]
 
     selected_months = [m for m in selected_months if m in all_months]
-    selected_months = sorted(selected_months, key=month_sort_key)
+
+    if selected_months:
+        selected_months = sorted(selected_months, key=month_sort_key)
+    else:
+        selected_months = sorted(all_months, key=month_sort_key)
 
     selected_clients = [c for c in selected_clients if c in all_clients]
 
@@ -87,11 +91,7 @@ def analytics_ambassadors(
                 unique_sku_total_by_client[client].add(sku_key_value)
                 sku_weight_by_client[client][sku_key_value][month] += weight
 
-        ordered_clients = [
-            c
-            for c in selected_clients
-            if c in weight_by_client_month or c in unique_sku_total_by_client
-        ]
+        ordered_clients = selected_clients
 
         for client in ordered_clients:
             sku_summary = []

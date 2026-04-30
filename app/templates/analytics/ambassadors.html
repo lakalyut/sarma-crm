@@ -396,11 +396,25 @@ document.addEventListener("DOMContentLoaded", function () {
     function renderTag(value) {
         const tag = document.createElement("span");
         tag.className = "filter-tag";
-        tag.innerHTML = `
-            <span>${value}</span>
-            <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
-            <input type="hidden" name="clients" value="${value}">
-        `;
+
+        const text = document.createElement("span");
+        text.textContent = value;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "filter-tag-remove";
+        button.setAttribute("aria-label", "Удалить");
+        button.textContent = "×";
+
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = "clients";
+        hidden.value = value;
+
+        tag.appendChild(text);
+        tag.appendChild(button);
+        tag.appendChild(hidden);
+
         attachRemoveHandler(tag);
         tags.appendChild(tag);
     }
