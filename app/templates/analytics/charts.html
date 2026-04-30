@@ -479,7 +479,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    function renderCards(data) {
+    function renderCards(data, labels) {
         const container = document.getElementById("metrics-cards");
         if (!container) return;
 
@@ -546,11 +546,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="metric-card">
                     <div class="metric-label">${label}</div>
                     <div class="metric-value">${formatNumber(current, digits)} ${unit}</div>
+                    <div class="metric-period">за ${labels[lastIndex]}</div>
 
                     <div class="metric-delta-wrap">
-                        ${formatDelta(prevDelta, "к прошлому месяцу")}
-                        ${formatDelta(avgDelta, "к среднему за период")}
-                        ${formatDelta(firstDelta, "к началу периода")}
+                        ${formatDelta(
+                            prevDelta,
+                            prevIndex >= 0
+                                ? `к прошлому месяцу (${labels[prevIndex]})`
+                                : "к прошлому месяцу"
+                        )}
+
+                        ${formatDelta(
+                            avgDelta,
+                            `к среднему за период`
+                        )}
+
+                        ${formatDelta(
+                            firstDelta,
+                            `к началу периода (${labels[0]})`
+                        )}
                     </div>
                 </div>
             `;
@@ -797,7 +811,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-        renderCards(data);
+        renderCards(data, labels);
         renderTable(labels, series);
     }
 
