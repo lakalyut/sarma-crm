@@ -43,53 +43,75 @@
         margin: 8px 0 12px;
     }
 
+.metrics-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 8px 0 12px;
+}
+
 .metric-card {
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 12px 14px;
-        box-shadow: var(--shadow-soft);
-    }
+    min-height: 128px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-soft);
+}
 
 .metric-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 4px;
-    }
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
 
 .metric-value {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--text-main);
-    }
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-main);
+}
 
 .metric-delta-wrap {
-        margin-top: 4px;
-        font-size: 12px;
-    }
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 12px;
+}
+
+.metric-delta-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
 
 .metric-delta {
-        font-weight: 500;
-    }
+    font-weight: 600;
+    min-width: 42px;
+}
+
+.metric-delta-label {
+    color: var(--text-muted);
+}
 
 .metric-delta.delta-up {
-        color: #16a34a;
-    }
+    color: #16a34a;
+}
 
 .metric-delta.delta-down {
-        color: #dc2626;
-    }
+    color: #dc2626;
+}
 
 .metric-delta.delta-neutral,
 .metric-delta.muted {
-        color: var(--text-muted);
-    }
+    color: var(--text-muted);
+}
 
 .chart-hint {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 6px;
-    }
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
 
 #chart-data-table {
     width: 100%;
@@ -232,3 +254,4 @@
 #chart-data-table .table-metric-name {
     text-align: left !important;
 }
+

@@ -484,6 +484,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!container) return;
 
         const s = data.series?.[0];
+
         if (!s || !s.weight?.length) {
             container.innerHTML = "";
             return;
@@ -492,30 +493,65 @@ document.addEventListener("DOMContentLoaded", function () {
         const lastIndex = s.weight.length - 1;
         const prevIndex = lastIndex - 1;
 
-        function calcDelta(current, prev) {
-            if (prev === null || prev === undefined || Number(prev) === 0) return null;
-            return ((Number(current || 0) - Number(prev || 0)) / Number(prev)) * 100;
+        function calcDelta(current, base) {
+            current = Number(current || 0);
+            base = Number(base || 0);
+
+            if (!base) return null;
+
+            return ((current - base) / base) * 100;
         }
 
-        function formatDelta(delta) {
-            if (delta === null) return '<span class="metric-delta muted">нет сравнения</span>';
+        function calcAverage(arr) {
+            const values = (arr || []).map(Number).filter(v => !Number.isNaN(v));
+
+            if (!values.length) return null;
+
+            const sum = values.reduce((acc, value) => acc + value, 0);
+            return sum / values.length;
+        }
+
+        function formatDelta(delta, label) {
+            if (delta === null || delta === undefined || Number.isNaN(delta)) {
+                return `
+                    <div class="metric-delta-row">
+                        <span class="metric-delta muted">нет сравнения</span>
+                        <span class="metric-delta-label">${label}</span>
+                    </div>
+                `;
+            }
 
             const sign = delta > 0 ? "+" : "";
             const cls = delta > 0 ? "delta-up" : (delta < 0 ? "delta-down" : "delta-neutral");
 
-            return `<span class="metric-delta ${cls}">${sign}${delta.toFixed(0)}%</span>`;
+            return `
+                <div class="metric-delta-row">
+                    <span class="metric-delta ${cls}">${sign}${delta.toFixed(0)}%</span>
+                    <span class="metric-delta-label">${label}</span>
+                </div>
+            `;
         }
 
         function getCard(valueArr, label, digits = 2, unit = "") {
             const current = Number(valueArr?.[lastIndex] ?? 0);
             const prev = prevIndex >= 0 ? Number(valueArr?.[prevIndex] ?? 0) : null;
-            const delta = calcDelta(current, prev);
+            const first = Number(valueArr?.[0] ?? 0);
+            const average = calcAverage(valueArr);
+
+            const prevDelta = calcDelta(current, prev);
+            const avgDelta = calcDelta(current, average);
+            const firstDelta = calcDelta(current, first);
 
             return `
                 <div class="metric-card">
                     <div class="metric-label">${label}</div>
                     <div class="metric-value">${formatNumber(current, digits)} ${unit}</div>
-                    <div class="metric-delta-wrap">${formatDelta(delta)}</div>
+
+                    <div class="metric-delta-wrap">
+                        ${formatDelta(prevDelta, "к прошлому месяцу")}
+                        ${formatDelta(avgDelta, "к среднему за период")}
+                        ${formatDelta(firstDelta, "к началу периода")}
+                    </div>
                 </div>
             `;
         }
