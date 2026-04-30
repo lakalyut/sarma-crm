@@ -1,8 +1,5 @@
-from collections import defaultdict
-
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..auth_deps import require_admin, require_user
@@ -10,8 +7,18 @@ from ..auth_models import User
 from ..database import get_db
 from ..models import Sale
 from ..render import render
-from ..templating import templates
-from ..utils.dates import month_sort_key
+from ..services.sale_filters import build_sale_filters
+from ..services.charts_service import get_charts_metrics_data
+from ..services.clients_service import (
+    get_clients_summary_data,
+    get_client_detail_data,
+)
+from ..services.sales_options_service import (
+    get_cities,
+    get_months,
+    get_types,
+    get_clients,
+)
 
 router = APIRouter()
 
@@ -29,9 +36,7 @@ def analytics_clients(
     if _user.role != "admin":
         matched = None
 
-    cities = [c[0] for c in db.query(Sale.city).distinct().order_by(Sale.city) if c[0]]
-
-    months_query = db.query(Sale.month).distinct()
+    cities = get_cities(db)
 
     if not city:
         return render(
@@ -59,15 +64,8 @@ def analytics_clients(
             },
         )
 
-    if city:
-        months_query = months_query.filter(Sale.city == city)
-    all_months = [m[0] for m in months_query if m[0]]
-    all_months = sorted(all_months, key=month_sort_key, reverse=True)
-
-    types_query = db.query(Sale.type).distinct()
-    if city:
-        types_query = types_query.filter(Sale.city == city)
-    all_types = [t[0] for t in types_query.order_by(Sale.type) if t[0]]
+    all_months = get_months(db, city=city, reverse=True)
+    all_types = get_types(db, city=city)
 
     selected_months = months or []
     if all_months:
@@ -77,73 +75,21 @@ def analytics_clients(
     if all_types:
         selected_types = [t for t in selected_types if t in all_types]
 
-    filters = []
-    if city:
-        filters.append(Sale.city == city)
-    if selected_months:
-        filters.append(Sale.month.in_(selected_months))
-    if selected_types:
-        filters.append(Sale.type.in_(selected_types))
-
-    if matched == "1":
-        filters.append(Sale.matched.is_(True))
-    elif matched == "0":
-        filters.append(Sale.matched.is_(False))
-
-    q = db.query(
-        Sale.type.label("type"),
-        Sale.client.label("client"),
-        func.sum(Sale.qty).label("qty"),
-        func.sum(Sale.weight).label("weight"),
-        func.count(func.distinct(Sale.sku)).label("sku_count"),
+    filters = build_sale_filters(
+        city=city,
+        months=selected_months,
+        sale_types=selected_types,
+        matched=matched,
     )
-    if filters:
-        q = q.filter(*filters)
 
-    q = q.group_by(Sale.type, Sale.client).order_by(Sale.type, Sale.client)
-    rows = q.all()
-
-    client_q = db.query(func.count(func.distinct(Sale.client)))
-    if filters:
-        client_q = client_q.filter(*filters)
-    unique_clients = int(client_q.scalar() or 0)
-
-    sku_q = db.query(func.count(func.distinct(Sale.sku)))
-    if filters:
-        sku_q = sku_q.filter(*filters)
-    unique_sku = int(sku_q.scalar() or 0)
-
-    sums_q = db.query(
-        func.sum(Sale.qty).label("qty_sum"),
-        func.sum(Sale.weight).label("weight_sum"),
+    clients_data = get_clients_summary_data(
+        db=db,
+        filters=filters,
     )
-    if filters:
-        sums_q = sums_q.filter(*filters)
-    sums = sums_q.one()
 
-    total_qty = float(sums.qty_sum or 0)
-    total_weight = float(sums.weight_sum or 0)
-    total_sku = int(sum(r.sku_count or 0 for r in rows)) if rows else 0
-
-    type_cards = []
-    if rows:
-        type_counts = defaultdict(int)
-        for r in rows:
-            t = r.type or "—"
-            type_counts[t] += 1
-        type_cards = [{"type": t, "clients": cnt} for t, cnt in type_counts.items()]
-        type_cards.sort(key=lambda x: str(x["type"]))
-
-    summary = {
-        "unique_clients": unique_clients,
-        "total_qty": total_qty,
-        "total_weight": total_weight,
-        "unique_sku": unique_sku,
-        "total_sku": total_sku,
-        "sku_per_client": (
-            (float(total_sku) / unique_clients) if unique_clients else 0.0
-        ),
-    }
+    rows = clients_data["rows"]
+    summary = clients_data["summary"]
+    type_cards = clients_data["type_cards"]
 
     matched_flag = None
     if matched == "1":
@@ -182,7 +128,8 @@ def analytics_charts(
 ):
     if _user.role != "admin":
         matched = None
-    cities = [c[0] for c in db.query(Sale.city).distinct().order_by(Sale.city) if c[0]]
+
+    cities = get_cities(db)
 
     if not city:
         return render(
@@ -203,16 +150,8 @@ def analytics_charts(
             },
         )
 
-    months_q = db.query(Sale.month).distinct()
-    if city:
-        months_q = months_q.filter(Sale.city == city)
-    all_months = [m[0] for m in months_q if m[0]]
-    all_months = sorted(all_months, key=month_sort_key, reverse=True)
-
-    types_q = db.query(Sale.type).distinct()
-    if city:
-        types_q = types_q.filter(Sale.city == city)
-    all_types = [t[0] for t in types_q.order_by(Sale.type) if t[0]]
+    all_months = get_months(db, city=city, reverse=True)
+    all_types = get_types(db, city=city)
 
     selected_months = months or []
     if all_months:
@@ -222,23 +161,14 @@ def analytics_charts(
     if all_types:
         selected_types = [t for t in selected_types if t in all_types]
 
-    client_filters = []
-    if city:
-        client_filters.append(Sale.city == city)
-    if selected_months:
-        client_filters.append(Sale.month.in_(selected_months))
-    if selected_types:
-        client_filters.append(Sale.type.in_(selected_types))
-    if matched == "1":
-        client_filters.append(Sale.matched.is_(True))
-    elif matched == "0":
-        client_filters.append(Sale.matched.is_(False))
+    client_filters = build_sale_filters(
+        city=city,
+        months=selected_months,
+        sale_types=selected_types,
+        matched=matched,
+    )
 
-    clients_q = db.query(Sale.client).distinct()
-    if client_filters:
-        clients_q = clients_q.filter(*client_filters)
-
-    all_clients = [c[0] for c in clients_q.order_by(Sale.client) if c[0]]
+    all_clients = get_clients(db, filters=client_filters)
 
     matched_flag = None
     if matched == "1":
@@ -279,240 +209,27 @@ def api_charts_metrics(
     if _user.role != "admin":
         matched = None
 
-    filters = []
-
     if not city:
         return JSONResponse(
             {"labels": [], "series": [], "message": "Выберите нужный город"}
         )
 
-    if city:
-        filters.append(Sale.city == city)
-    if months:
-        filters.append(Sale.month.in_(months))
-    if client:
-        filters.append(Sale.client == client)
-    if sale_type:
-        filters.append(Sale.type == sale_type)
-    elif sale_types:
-        filters.append(Sale.type.in_(sale_types))
-    if matched == "1":
-        filters.append(Sale.matched.is_(True))
-    elif matched == "0":
-        filters.append(Sale.matched.is_(False))
-
-    def _fmt(m: str) -> str:
-        return templates.env.filters["format_month"](m)
-
-    if group == "type":
-        q = db.query(
-            Sale.month.label("month"),
-            Sale.type.label("series"),
-            func.sum(Sale.qty).label("qty"),
-            func.sum(Sale.weight).label("weight"),
-            func.count(func.distinct(Sale.sku)).label("unique_sku"),
-            func.count(func.distinct(Sale.client)).label("unique_clients"),
-        )
-
-        if filters:
-            q = q.filter(*filters)
-
-        q = q.group_by(Sale.month, Sale.type).order_by(Sale.month, Sale.type)
-        rows = q.all()
-
-        month_list = sorted({r.month for r in rows if r.month}, key=month_sort_key)
-        labels = [_fmt(m) for m in month_list]
-
-        series_names = sorted({r.series for r in rows if r.series})
-        data_map = {
-            s: {
-                m: {"qty": 0, "weight": 0, "unique_sku": 0, "unique_clients": 0}
-                for m in month_list
-            }
-            for s in series_names
-        }
-
-        for r in rows:
-            if not r.month or not r.series:
-                continue
-
-            data_map[r.series][r.month] = {
-                "qty": float(r.qty or 0),
-                "weight": float(r.weight or 0),
-                "unique_sku": int(r.unique_sku or 0),
-                "unique_clients": int(r.unique_clients or 0),
-            }
-
-        series = []
-        for s in series_names:
-            series.append(
-                {
-                    "name": s,
-                    "qty": [data_map[s][m]["qty"] for m in month_list],
-                    "weight": [data_map[s][m]["weight"] for m in month_list],
-                    "unique_sku": [data_map[s][m]["unique_sku"] for m in month_list],
-                    "unique_clients": [
-                        data_map[s][m]["unique_clients"] for m in month_list
-                    ],
-                }
-            )
-
-        return JSONResponse({"labels": labels, "series": series})
-
-    q = db.query(
-        Sale.month.label("month"),
-        Sale.type.label("type"),
-        func.sum(Sale.qty).label("qty"),
-        func.sum(Sale.weight).label("weight"),
-        func.count(func.distinct(Sale.sku)).label("unique_sku"),
-        func.count(func.distinct(Sale.client)).label("unique_clients"),
+    filters = build_sale_filters(
+        city=city,
+        months=months,
+        sale_types=sale_types,
+        client=client,
+        sale_type=sale_type,
+        matched=matched,
     )
 
-    totals_q = db.query(
-        Sale.month.label("month"),
-        func.sum(Sale.qty).label("qty"),
-        func.sum(Sale.weight).label("weight"),
-        func.count(func.distinct(Sale.sku)).label("unique_sku"),
-        func.count(func.distinct(Sale.client)).label("unique_clients"),
+    data = get_charts_metrics_data(
+        db=db,
+        filters=filters,
+        group=group,
     )
 
-    total_sku_q = db.query(
-        Sale.month.label("month"),
-        Sale.type.label("type"),
-        Sale.client.label("client"),
-        func.count(func.distinct(Sale.sku)).label("sku_count"),
-    )
-
-    if filters:
-        q = q.filter(*filters)
-        totals_q = totals_q.filter(*filters)
-        total_sku_q = total_sku_q.filter(*filters)
-
-    q = q.group_by(Sale.month, Sale.type)
-    rows = q.all()
-
-    totals_q = totals_q.group_by(Sale.month)
-    total_rows = totals_q.all()
-
-    total_sku_q = total_sku_q.group_by(
-        Sale.month,
-        Sale.type,
-        Sale.client,
-    )
-    total_sku_rows = total_sku_q.all()
-
-    month_list = sorted(
-        {r.month for r in rows if r.month}
-        | {r.month for r in total_rows if r.month}
-        | {r.month for r in total_sku_rows if r.month},
-        key=month_sort_key,
-    )
-    type_list = sorted({r.type for r in rows if r.type})
-
-    labels = [_fmt(m) for m in month_list]
-
-    data = {
-        m: {
-            "qty": 0,
-            "weight": 0,
-            "unique_sku": 0,
-            "unique_clients": 0,
-            "total_sku": 0,
-            "types": {
-                t: {
-                    "qty": 0,
-                    "weight": 0,
-                    "sku": 0,
-                    "clients": 0,
-                    "total_sku": 0,
-                }
-                for t in type_list
-            },
-        }
-        for m in month_list
-    }
-
-    for r in total_rows:
-        if not r.month or r.month not in data:
-            continue
-
-        data[r.month]["qty"] = float(r.qty or 0)
-        data[r.month]["weight"] = float(r.weight or 0)
-        data[r.month]["unique_sku"] = int(r.unique_sku or 0)
-        data[r.month]["unique_clients"] = int(r.unique_clients or 0)
-
-    for r in rows:
-        if not r.month or not r.type:
-            continue
-
-        data[r.month]["types"][r.type]["qty"] = float(r.qty or 0)
-        data[r.month]["types"][r.type]["weight"] = float(r.weight or 0)
-        data[r.month]["types"][r.type]["sku"] = int(r.unique_sku or 0)
-        data[r.month]["types"][r.type]["clients"] = int(r.unique_clients or 0)
-
-    for r in total_sku_rows:
-        if not r.month or r.month not in data:
-            continue
-
-        sku_count = int(r.sku_count or 0)
-
-        data[r.month]["total_sku"] += sku_count
-
-        if r.type and r.type in data[r.month]["types"]:
-            data[r.month]["types"][r.type]["total_sku"] += sku_count
-
-    series = [
-        {
-            "name": "Итого",
-            "qty": [data[m]["qty"] for m in month_list],
-            "weight": [data[m]["weight"] for m in month_list],
-            "weight_by_type": {
-                t: [data[m]["types"][t]["weight"] for m in month_list]
-                for t in type_list
-            },
-            "unique_sku": [data[m]["unique_sku"] for m in month_list],
-            "unique_clients": [data[m]["unique_clients"] for m in month_list],
-            "total_sku": [data[m]["total_sku"] for m in month_list],
-            "sku_per_client": [
-                (
-                    data[m]["total_sku"] / data[m]["unique_clients"]
-                    if data[m]["unique_clients"]
-                    else 0
-                )
-                for m in month_list
-            ],
-            "clients_by_type": {
-                t: [data[m]["types"][t]["clients"] for m in month_list]
-                for t in type_list
-            },
-            "sku_by_type": {
-                t: [data[m]["types"][t]["sku"] for m in month_list] for t in type_list
-            },
-            "total_sku_by_type": {
-                t: [data[m]["types"][t]["total_sku"] for m in month_list]
-                for t in type_list
-            },
-            "sku_per_client_by_type": {
-                t: [
-                    (
-                        data[m]["types"][t]["total_sku"]
-                        / data[m]["types"][t]["clients"]
-                        if data[m]["types"][t]["clients"]
-                        else 0
-                    )
-                    for m in month_list
-                ]
-                for t in type_list
-            },
-        }
-    ]
-
-    return JSONResponse(
-        {
-            "labels": labels,
-            "series": series,
-        }
-    )
+    return JSONResponse(data)
 
 
 @router.get("/analytics/client")
@@ -529,36 +246,17 @@ def analytics_client_detail(
     if _user.role != "admin":
         matched = None
 
-    q = db.query(
-        Sale.name.label("name"),
-        Sale.sku.label("sku"),
-        func.sum(Sale.qty).label("qty"),
-        func.sum(Sale.weight).label("weight"),
-    ).filter(
-        Sale.city == city,
-        Sale.client == client,
-        Sale.type == sale_type,
+    detail_data = get_client_detail_data(
+        db=db,
+        city=city,
+        client=client,
+        sale_type=sale_type,
+        months=months,
+        matched=matched,
     )
 
-    if months:
-        q = q.filter(Sale.month.in_(months))
-
-    if matched == "1":
-        q = q.filter(Sale.matched.is_(True))
-    elif matched == "0":
-        q = q.filter(Sale.matched.is_(False))
-
-    q = q.group_by(Sale.name, Sale.sku).order_by(Sale.name)
-    rows = q.all()
-
-    summary = None
-    if rows:
-        summary = {
-            "nomenclatures": len(rows),
-            "unique_sku": len({r.sku for r in rows if r.sku}),
-            "total_qty": float(sum(r.qty or 0 for r in rows)),
-            "total_weight": float(sum(r.weight or 0 for r in rows)),
-        }
+    rows = detail_data["rows"]
+    summary = detail_data["summary"]
 
     return render(
         request,
