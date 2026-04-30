@@ -91,72 +91,144 @@
         margin-bottom: 6px;
     }
 
-.table-group-header {
-        text-align: center !important;
-        font-weight: 600 !important;
-    }
-
-.table-group-type {
-        background: #eef4ff !important;
-    }
-
-.table-group-type-cell {
-        background: #f8fbff !important;
-    }
-
-#chart-data-table thead tr:nth-child(2) th.table-group-type {
-        background: #eef4ff !important;
-    }
-
-#chart-data-table tbody tr:nth-child(even) td.table-group-type-cell {
-        background: #f1f6ff !important;
-    }
-
-.table-period-header {
-        min-width: 140px;
-        text-align: left !important;
-    }
-
-#chart-data-table th {
-        white-space: normal;
-        line-height: 1.2;
-    }
-
-#chart-data-table td {
-        white-space: nowrap;
-    }
-
-    #chart-data-table {
-    table-layout: auto;
-    min-width: max-content;
+#chart-data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 12px;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
 #chart-data-table th,
 #chart-data-table td {
-    min-width: 88px;
-    white-space: nowrap;
+    padding: 8px 10px;
+    min-width: 0;
+    white-space: normal;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+}
+
+#chart-data-table th {
+    line-height: 1.2;
+    background: var(--pastel-blue);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: left;
 }
 
 #chart-data-table th:first-child,
 #chart-data-table td:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 8;
-    min-width: 130px;
-    max-width: 130px;
+    width: 130px;
+}
+
+#chart-data-table th:nth-child(2),
+#chart-data-table td:nth-child(2) {
+    width: 220px;
+}
+
+#chart-data-table th:not(:first-child):not(:nth-child(2)),
+#chart-data-table td:not(:first-child):not(:nth-child(2)) {
+    text-align: right;
+}
+
+#chart-data-table .table-period-cell {
+    vertical-align: top;
+    padding-top: 12px;
+    font-weight: 700;
+    background: #f8fbff;
+}
+
+#chart-data-table .table-total-row td {
+    font-weight: 700;
+    background: #eef4ff;
+    border-top: 2px solid #dbeafe;
+}
+
+#chart-data-table .table-type-total {
+    font-weight: 700;
+}
+
+#chart-data-table .table-empty-cell {
+    color: var(--text-muted);
+}
+
+#chart-data-table tbody tr:has(.table-period-cell) td {
+    border-top: 2px solid #dbeafe;
+}
+
+#chart-data-table tbody tr:hover td {
+    background: inherit;
+}
+
+#chart-data-table tbody tr.table-total-row:hover td {
+    background: #e8f1ff;
+}
+
+.table-view-tabs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0 10px;
+    padding: 0 2px;
+}
+
+.table-view-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 18px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
     background: #fff;
+    color: var(--text-main);
+    cursor: pointer;
+    box-shadow: none;
 }
 
-#chart-data-table th:first-child {
-    z-index: 12;
-    background: var(--pastel-blue);
+.table-view-tab:hover {
+    background: #eef2ff;
+    transform: none;
 }
 
-#chart-data-table .table-group-header {
-    min-width: 260px;
+.table-view-tab.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22);
 }
 
-#chart-data-table th.table-period-header {
-    min-width: 130px;
-    max-width: 130px;
+.table-metric-name {
+    font-weight: 600;
+    text-align: left !important;
+}
+
+#chart-data-table .table-total-cell {
+    font-weight: 700;
+    background: #eef4ff;
+    text-align: right;
+}
+
+#chart-data-table td:nth-child(n+3),
+#chart-data-table th:nth-child(n+3) {
+    text-align: right;
+}
+
+#chart-data-table td:nth-child(2),
+#chart-data-table th:nth-child(2) {
+    text-align: left;
+}
+
+#chart-data-table .table-number {
+    text-align: right !important;
+}
+
+#chart-data-table .table-type-name,
+#chart-data-table .table-type-total,
+#chart-data-table .table-metric-name {
+    text-align: left !important;
 }

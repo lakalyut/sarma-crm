@@ -166,7 +166,8 @@
             <label><input type="checkbox" class="metric-checkbox" value="qty" checked> Количество</label>
             <label><input type="checkbox" class="metric-checkbox" value="weight" checked> Вес</label>
             <label><input type="checkbox" class="metric-checkbox" value="unique_clients"> Клиенты</label>
-            <label><input type="checkbox" class="metric-checkbox" value="unique_sku"> SKU</label>
+            <label><input type="checkbox" class="metric-checkbox" value="total_sku"> Всего SKU</label>
+            <label><input type="checkbox" class="metric-checkbox" value="unique_sku"> Уникальные SKU</label>
             <label><input type="checkbox" class="metric-checkbox" value="sku_per_client"> SKU на клиента</label>
         </div>
 
@@ -180,6 +181,16 @@
 
         <div class="sheet-wrapper">
             <div class="sheet-scroller">
+
+                <div class="table-view-tabs">
+                    <button type="button" class="table-view-tab active" data-table-view="standard">
+                        Стандартная
+                    </button>
+                    <button type="button" class="table-view-tab" data-table-view="metrics">
+                        По метрикам
+                    </button>
+                </div>
+
                 <table class="sheet-table" id="chart-data-table">
                     <thead></thead>
                     <tbody></tbody>
@@ -416,7 +427,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const modeConfig = {
         volume: ["weight"],
         volume_stacked: ["weight_by_type"],
-        assortment: ["unique_sku", "sku_per_client"],
+        assortment: ["total_sku", "unique_sku", "sku_per_client"],
         clients: ["unique_clients"]
     };
 
@@ -512,14 +523,28 @@ document.addEventListener("DOMContentLoaded", function () {
         container.innerHTML = [
             getCard(s.weight, "Вес", 2, "кг"),
             getCard(s.unique_clients, "Клиенты", 0),
-            getCard(s.unique_sku, "SKU", 0),
-            getCard(s.sku_per_client, "SKU/клиент", 2),
+            getCard(s.total_sku, "Всего SKU", 0),
+            getCard(s.sku_per_client, "SKU на клиента", 2),
         ].join("");
     }
 
-
+    let currentTableView = "standard";
+    let lastTableLabels = [];
+    let lastTableSeries = [];
 
     function renderTable(labels, series) {
+        lastTableLabels = labels;
+        lastTableSeries = series;
+
+        if (currentTableView === "metrics") {
+            renderTableByMetrics(labels, series);
+            return;
+        }
+
+        renderTableStandard(labels, series);
+    }
+
+    function renderTableStandard(labels, series) {
         const table = document.getElementById("chart-data-table");
         if (!table) return;
 
@@ -534,49 +559,119 @@ document.addEventListener("DOMContentLoaded", function () {
         const s = series[0];
         const typeNames = Object.keys(s.clients_by_type || {});
 
-        const topHeaderCells = [
-            '<th rowspan="2" class="table-period-header">Период</th>',
-            '<th colspan="4" class="table-group-header">Общие метрики</th>',
-        ];
-
-        typeNames.forEach(typeName => {
-            topHeaderCells.push(`<th colspan="3" class="table-group-header table-group-type">${typeName}</th>`);
-        });
-
-        const secondHeaderCells = [
-            '<th>Вес</th>',
-            '<th>Клиенты</th>',
-            '<th>SKU</th>',
-            '<th>SKU/клиент</th>',
-        ];
-
-        typeNames.forEach(() => {
-            secondHeaderCells.push('<th class="table-group-type">Клиенты</th>');
-            secondHeaderCells.push('<th class="table-group-type">SKU</th>');
-            secondHeaderCells.push('<th class="table-group-type">SKU/клиент</th>');
-        });
-
         thead.innerHTML = `
-            <tr>${topHeaderCells.join("")}</tr>
-            <tr>${secondHeaderCells.join("")}</tr>
+            <tr>
+                <th class="table-period-header">Период</th>
+                <th>Тип точки</th>
+                <th>Вес</th>
+                <th>Клиенты</th>
+                <th>Всего SKU</th>
+                <th>SKU на клиента</th>
+            </tr>
         `;
 
         const rows = labels.map((label, i) => {
-            const cells = [
-                `<td>${label}</td>`,
-                `<td>${formatNumber(s.weight?.[i], 2)}</td>`,
-                `<td>${formatNumber(s.unique_clients?.[i], 0)}</td>`,
-                `<td>${formatNumber(s.unique_sku?.[i], 0)}</td>`,
-                `<td>${formatNumber(s.sku_per_client?.[i], 2)}</td>`,
-            ];
+            const rowCount = typeNames.length + 1;
 
-            typeNames.forEach(typeName => {
-                cells.push(`<td class="table-group-type-cell">${formatNumber(s.clients_by_type?.[typeName]?.[i], 0)}</td>`);
-                cells.push(`<td class="table-group-type-cell">${formatNumber(s.sku_by_type?.[typeName]?.[i], 0)}</td>`);
-                cells.push(`<td class="table-group-type-cell">${formatNumber(s.sku_per_client_by_type?.[typeName]?.[i], 2)}</td>`);
-            });
+            const typeRows = typeNames.map((typeName, idx) => {
+                const periodCell = idx === 0
+                    ? `<td rowspan="${rowCount}" class="table-period-cell">${label}</td>`
+                    : "";
 
-            return `<tr>${cells.join("")}</tr>`;
+                return `
+                    <tr>
+                        ${periodCell}
+                        <td class="table-type-name">${typeName}</td>
+                        <td class="table-number">${formatNumber(s.weight_by_type?.[typeName]?.[i], 2)}</td>
+                        <td class="table-number">${formatNumber(s.clients_by_type?.[typeName]?.[i], 0)}</td>
+                       <td class="table-number">${formatNumber(s.total_sku_by_type?.[typeName]?.[i], 0)}</td>
+                        <td class="table-number">${formatNumber(s.sku_per_client_by_type?.[typeName]?.[i], 2)}</td>
+                    </tr>
+                `;
+            }).join("");
+
+            const totalRow = `
+                <tr class="table-total-row">
+                    ${typeNames.length === 0 ? `<td rowspan="1" class="table-period-cell">${label}</td>` : ""}
+                    <td class="table-type-total">Итого</td>
+                    <td class="table-number">${formatNumber(s.weight?.[i], 2)}</td>
+                    <td class="table-number">${formatNumber(s.unique_clients?.[i], 0)}</td>
+                    <td class="table-number">${formatNumber(s.total_sku?.[i], 0)}</td>
+                    <td class="table-number">${formatNumber(s.sku_per_client?.[i], 2)}</td>
+                </tr>
+            `;
+
+            return `${typeRows}${totalRow}`;
+        }).join("");
+
+        tbody.innerHTML = rows;
+    }
+
+    function renderTableByMetrics(labels, series) {
+        const table = document.getElementById("chart-data-table");
+        if (!table) return;
+
+        const thead = table.querySelector("thead");
+        const tbody = table.querySelector("tbody");
+
+        thead.innerHTML = "";
+        tbody.innerHTML = "";
+
+        if (!series.length) return;
+
+        const s = series[0];
+        const typeNames = Object.keys(s.clients_by_type || {});
+
+        thead.innerHTML = `
+        <tr>
+            <th class="table-period-header">Период</th>
+            <th>Метрика</th>
+            ${typeNames.map(typeName => `<th>${typeName}</th>`).join("")}
+            <th>Итого</th>
+        </tr>
+    `;
+
+        const metrics = [
+            {
+                label: "Вес",
+                total: i => formatNumber(s.weight?.[i], 2),
+                byType: (typeName, i) => formatNumber(s.weight_by_type?.[typeName]?.[i], 2)
+            },
+            {
+                label: "Клиенты",
+                total: i => formatNumber(s.unique_clients?.[i], 0),
+                byType: (typeName, i) => formatNumber(s.clients_by_type?.[typeName]?.[i], 0)
+            },
+            {
+                label: "Всего SKU",
+                total: i => formatNumber(s.total_sku?.[i], 0),
+                byType: (typeName, i) => formatNumber(s.total_sku_by_type?.[typeName]?.[i], 0)
+            },
+            {
+                label: "SKU на клиента",
+                total: i => formatNumber(s.sku_per_client?.[i], 2),
+                byType: (typeName, i) => formatNumber(s.sku_per_client_by_type?.[typeName]?.[i], 2)
+            },
+        ];
+
+        const rows = labels.map((label, i) => {
+            return metrics.map((metric, metricIndex) => {
+                const periodCell = metricIndex === 0
+                    ? `<td rowspan="${metrics.length}" class="table-period-cell">${label}</td>`
+                    : "";
+
+                return `
+                    <tr>
+                        ${periodCell}
+                        <td class="table-metric-name">${metric.label}</td>
+                        ${typeNames.map(typeName => {
+                            const value = metric.byType(typeName, i);
+                            return `<td class="table-number">${value || ""}</td>`;
+                        }).join("")}
+                        <td class="table-number table-total-cell">${metric.total(i)}</td>
+                    </tr>
+                `;
+            }).join("");
         }).join("");
 
         tbody.innerHTML = rows;
@@ -596,15 +691,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 hint.innerHTML = "Показывает, из каких типов точек складывается общий вес";
             } else {
                 hint.innerHTML = "";
-            }
+        }
         }
 
         const metricMap = {
             qty: { label: "Количество", data: s.qty || [], axis: "y" },
             weight: { label: "Вес", data: s.weight || [], axis: "y" },
             unique_clients: { label: "Клиенты", data: s.unique_clients || [], axis: "y1" },
-            unique_sku: { label: "SKU", data: s.unique_sku || [], axis: "y1" },
-            sku_per_client: { label: "SKU/клиент", data: s.sku_per_client || [], axis: "y1" }
+            total_sku: { label: "Всего SKU", data: s.total_sku || [], axis: "y1" },
+            unique_sku: { label: "Уникальные SKU", data: s.unique_sku || [], axis: "y1" },
+            sku_per_client: { label: "SKU на клиента", data: s.sku_per_client || [], axis: "y1" }
         };
 
         let datasets = [];
@@ -658,7 +754,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     display: !selectedMetrics.includes("weight_by_type"),
                     title: {
                         display: true,
-                        text: "Клиенты / SKU / SKU на клиента"
+                        text: "Клиенты / SKU"
                     }
                 }
             }
@@ -696,9 +792,30 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    const tableViewTabs = document.querySelectorAll(".table-view-tab");
+
+    tableViewTabs.forEach(button => {
+        button.addEventListener("click", function () {
+            const nextView = this.getAttribute("data-table-view");
+
+            if (!nextView || nextView === currentTableView) return;
+
+            currentTableView = nextView;
+
+            tableViewTabs.forEach(tab => {
+                tab.classList.toggle("active", tab === this);
+            });
+
+            renderTable(lastTableLabels, lastTableSeries);
+        });
+    });
+
     syncCheckboxes();
     refresh();
-})();
+    })();
+
+
+
 </script>
 
 {% endblock %}

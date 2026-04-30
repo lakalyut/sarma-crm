@@ -368,13 +368,45 @@ def api_charts_metrics(
         func.count(func.distinct(Sale.client)).label("unique_clients"),
     )
 
+    totals_q = db.query(
+        Sale.month.label("month"),
+        func.sum(Sale.qty).label("qty"),
+        func.sum(Sale.weight).label("weight"),
+        func.count(func.distinct(Sale.sku)).label("unique_sku"),
+        func.count(func.distinct(Sale.client)).label("unique_clients"),
+    )
+
+    total_sku_q = db.query(
+        Sale.month.label("month"),
+        Sale.type.label("type"),
+        Sale.client.label("client"),
+        func.count(func.distinct(Sale.sku)).label("sku_count"),
+    )
+
     if filters:
         q = q.filter(*filters)
+        totals_q = totals_q.filter(*filters)
+        total_sku_q = total_sku_q.filter(*filters)
 
     q = q.group_by(Sale.month, Sale.type)
     rows = q.all()
 
-    month_list = sorted({r.month for r in rows if r.month}, key=month_sort_key)
+    totals_q = totals_q.group_by(Sale.month)
+    total_rows = totals_q.all()
+
+    total_sku_q = total_sku_q.group_by(
+        Sale.month,
+        Sale.type,
+        Sale.client,
+    )
+    total_sku_rows = total_sku_q.all()
+
+    month_list = sorted(
+        {r.month for r in rows if r.month}
+        | {r.month for r in total_rows if r.month}
+        | {r.month for r in total_sku_rows if r.month},
+        key=month_sort_key,
+    )
     type_list = sorted({r.type for r in rows if r.type})
 
     labels = [_fmt(m) for m in month_list]
@@ -385,23 +417,49 @@ def api_charts_metrics(
             "weight": 0,
             "unique_sku": 0,
             "unique_clients": 0,
-            "types": {t: {"sku": 0, "clients": 0} for t in type_list},
+            "total_sku": 0,
+            "types": {
+                t: {
+                    "qty": 0,
+                    "weight": 0,
+                    "sku": 0,
+                    "clients": 0,
+                    "total_sku": 0,
+                }
+                for t in type_list
+            },
         }
         for m in month_list
     }
 
-    for r in rows:
-        if not r.month:
+    for r in total_rows:
+        if not r.month or r.month not in data:
             continue
 
-        data[r.month]["qty"] += float(r.qty or 0)
-        data[r.month]["weight"] += float(r.weight or 0)
-        data[r.month]["unique_sku"] += int(r.unique_sku or 0)
-        data[r.month]["unique_clients"] += int(r.unique_clients or 0)
+        data[r.month]["qty"] = float(r.qty or 0)
+        data[r.month]["weight"] = float(r.weight or 0)
+        data[r.month]["unique_sku"] = int(r.unique_sku or 0)
+        data[r.month]["unique_clients"] = int(r.unique_clients or 0)
 
-        if r.type:
-            data[r.month]["types"][r.type]["sku"] += int(r.unique_sku or 0)
-            data[r.month]["types"][r.type]["clients"] += int(r.unique_clients or 0)
+    for r in rows:
+        if not r.month or not r.type:
+            continue
+
+        data[r.month]["types"][r.type]["qty"] = float(r.qty or 0)
+        data[r.month]["types"][r.type]["weight"] = float(r.weight or 0)
+        data[r.month]["types"][r.type]["sku"] = int(r.unique_sku or 0)
+        data[r.month]["types"][r.type]["clients"] = int(r.unique_clients or 0)
+
+    for r in total_sku_rows:
+        if not r.month or r.month not in data:
+            continue
+
+        sku_count = int(r.sku_count or 0)
+
+        data[r.month]["total_sku"] += sku_count
+
+        if r.type and r.type in data[r.month]["types"]:
+            data[r.month]["types"][r.type]["total_sku"] += sku_count
 
     series = [
         {
@@ -409,21 +467,15 @@ def api_charts_metrics(
             "qty": [data[m]["qty"] for m in month_list],
             "weight": [data[m]["weight"] for m in month_list],
             "weight_by_type": {
-                t: [
-                    sum(
-                        float(r.weight or 0)
-                        for r in rows
-                        if r.month == m and r.type == t
-                    )
-                    for m in month_list
-                ]
+                t: [data[m]["types"][t]["weight"] for m in month_list]
                 for t in type_list
             },
             "unique_sku": [data[m]["unique_sku"] for m in month_list],
             "unique_clients": [data[m]["unique_clients"] for m in month_list],
+            "total_sku": [data[m]["total_sku"] for m in month_list],
             "sku_per_client": [
                 (
-                    (data[m]["unique_sku"] / data[m]["unique_clients"])
+                    data[m]["total_sku"] / data[m]["unique_clients"]
                     if data[m]["unique_clients"]
                     else 0
                 )
@@ -436,10 +488,15 @@ def api_charts_metrics(
             "sku_by_type": {
                 t: [data[m]["types"][t]["sku"] for m in month_list] for t in type_list
             },
+            "total_sku_by_type": {
+                t: [data[m]["types"][t]["total_sku"] for m in month_list]
+                for t in type_list
+            },
             "sku_per_client_by_type": {
                 t: [
                     (
-                        (data[m]["types"][t]["sku"] / data[m]["types"][t]["clients"])
+                        data[m]["types"][t]["total_sku"]
+                        / data[m]["types"][t]["clients"]
                         if data[m]["types"][t]["clients"]
                         else 0
                     )
