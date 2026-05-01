@@ -239,12 +239,14 @@
             Итого вес, кг <span class="sort-icon">↕</span>
         </th>
     </tr>
+
+
                                 </thead>
                                 <tbody>
                                     {% for sku_row in client.sku_details %}
                                         <tr
-                                            class="amb-sku-row {% if sku_row.is_new %}amb-sku-row-new{% endif %}"
-                                            data-status="{% if sku_row.is_new %}new{% else %}existing{% endif %}"
+                                            class="amb-sku-row amb-sku-row-{{ sku_row.status }}"
+                                            data-status="{{ sku_row.status }}"
                                             data-total="{{ sku_row.total }}"
                                             {% for value in sku_row.months_data %}
                                                 data-month-{{ loop.index0 }}="{{ value }}"
@@ -252,16 +254,11 @@
                                         >
                                             <td>{{ sku_row.sku }}</td>
                                             <td>
-                                                {% if sku_row.is_new %}
-                                                    <span class="amb-sku-status amb-sku-status-new">
-                                                        Новый с {{ sku_row.first_month|format_month }}
-                                                    </span>
-                                                {% else %}
-                                                    <span class="amb-sku-status">
-                                                        Был с начала
-                                                    </span>
-                                                {% endif %}
+                                                <span class="amb-sku-status amb-sku-status-{{ sku_row.status }}">
+                                                    {{ sku_row.status_label }}
+                                                </span>
                                             </td>
+
                                             {% for value in sku_row.months_data %}
                                                 <td>{{ "%.2f"|format(value) }}</td>
                                             {% endfor %}
@@ -587,10 +584,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const statusLabels = {
             all: "Все",
             new: "Новые",
+            lost: "Пропали",
             existing: "Были с начала"
         };
 
-        const statusOrder = ["all", "new", "existing"];
+        const statusOrder = ["new", "lost", "existing"];
         const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
 
         filterBox.innerHTML = availableStatuses.map(status => `

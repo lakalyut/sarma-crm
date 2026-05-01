@@ -85,6 +85,7 @@ def build_ambassadors_report(
         client_skus = sorted(sku_weight_by_client[client].keys())
 
         period_start_month = selected_months[0] if selected_months else None
+        period_end_month = selected_months[-1] if selected_months else None
 
         for sku_name in client_skus:
             months_data = []
@@ -100,13 +101,40 @@ def build_ambassadors_report(
                 months_data.append(value)
                 total += value
 
+            first_value = months_data[0] if months_data else 0
+            last_value = months_data[-1] if months_data else 0
+
+            is_new = bool(first_month and first_month != period_start_month)
+            is_lost = bool(first_value > 0 and last_value == 0)
+
+            if is_lost:
+                status = "lost"
+                status_label = "Пропал"
+            elif is_new:
+                status = "new"
+                status_label = f"Новый с {first_month}"
+            else:
+                status = "existing"
+                status_label = "Был с начала"
+
+            delta_percent = None
+
+            if first_value > 0:
+                delta_percent = ((last_value - first_value) / first_value) * 100
+            elif first_value == 0 and last_value > 0:
+                delta_percent = 100
+
             sku_details.append(
                 {
                     "sku": sku_name,
                     "months_data": months_data,
                     "total": round(total, 2),
                     "first_month": first_month,
-                    "is_new": bool(first_month and first_month != period_start_month),
+                    "status": status,
+                    "status_label": status_label,
+                    "is_new": status == "new",
+                    "is_lost": status == "lost",
+                    "delta_percent": delta_percent,
                 }
             )
 
