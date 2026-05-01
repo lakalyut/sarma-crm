@@ -585,10 +585,13 @@ document.addEventListener("DOMContentLoaded", function () {
             all: "Все",
             new: "Новые",
             lost: "Пропали",
+            risk: "Под риском",
+            returned: "Вернулись",
+            unstable: "Нестабильные",
             existing: "Были с начала"
         };
 
-        const statusOrder = ["new", "lost", "existing"];
+        const statusOrder = ["new", "lost", "risk", "returned", "unstable", "existing"];
         const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
 
         filterBox.innerHTML = availableStatuses.map(status => `

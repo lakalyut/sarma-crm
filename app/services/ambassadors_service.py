@@ -100,21 +100,72 @@ def build_ambassadors_report(
                 months_data.append(value)
                 total += value
 
-            first_value = months_data[0] if months_data else 0
-            last_value = months_data[-1] if months_data else 0
+                first_value = months_data[0] if months_data else 0
+                last_value = months_data[-1] if months_data else 0
 
-            is_new = bool(first_month and first_month != period_start_month)
-            is_lost = bool(first_value > 0 and last_value == 0)
+                active_month_indexes = [
+                    index for index, value in enumerate(months_data) if value > 0
+                ]
 
-            if is_lost:
-                status = "lost"
-                status_label = "Пропал"
-            elif is_new:
-                status = "new"
-                status_label = f"Новый с {first_month}"
-            else:
-                status = "existing"
-                status_label = "Был с начала"
+                has_sales = bool(active_month_indexes)
+                first_active_index = active_month_indexes[0] if has_sales else None
+                last_active_index = active_month_indexes[-1] if has_sales else None
+
+                is_new = bool(
+                    has_sales
+                    and first_active_index is not None
+                    and first_active_index > 0
+                )
+
+                missing_months_at_end = (
+                    len(months_data) - 1 - last_active_index
+                    if has_sales and last_active_index is not None
+                    else 0
+                )
+
+                has_gaps_inside = False
+                max_gap_before_last_sale = 0
+                current_gap = 0
+
+                if has_sales:
+                    for index, value in enumerate(months_data):
+                        if index > last_active_index:
+                            break
+
+                        if value == 0:
+                            current_gap += 1
+                            max_gap_before_last_sale = max(
+                                max_gap_before_last_sale, current_gap
+                            )
+                        else:
+                            current_gap = 0
+
+                if not has_sales:
+                    status = "empty"
+                    status_label = "Нет продаж"
+                elif last_value > 0:
+                    if is_new and max_gap_before_last_sale >= 2:
+                        status = "returned"
+                        status_label = "Вернулся"
+                    elif is_new:
+                        status = "new"
+                        status_label = f"Новый с {selected_months[first_active_index]}"
+                    elif max_gap_before_last_sale >= 2:
+                        status = "returned"
+                        status_label = "Вернулся"
+                    elif has_gaps_inside or max_gap_before_last_sale == 1:
+                        status = "unstable"
+                        status_label = "Нестабильный"
+                    else:
+                        status = "existing"
+                        status_label = "Был с начала"
+                else:
+                    if missing_months_at_end >= 2:
+                        status = "lost"
+                        status_label = "Пропал"
+                    else:
+                        status = "risk"
+                        status_label = "Под риском"
 
             delta_percent = None
 

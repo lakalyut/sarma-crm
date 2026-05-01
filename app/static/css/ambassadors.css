@@ -191,3 +191,47 @@
 .amb-sku-details .sheet-scroller {
     overflow-x: auto;
 }
+.sheet-table tbody tr.amb-sku-row-lost td {
+    background: #fff1f2 !important;
+}
+
+.sheet-table tbody tr.amb-sku-row-risk td {
+    background: #fff7ed !important;
+}
+
+.sheet-table tbody tr.amb-sku-row-returned td {
+    background: #eff6ff !important;
+}
+
+.sheet-table tbody tr.amb-sku-row-unstable td {
+    background: #fefce8 !important;
+}
+
+.amb-sku-status-lost {
+    color: #be123c;
+    background: #ffe4e6;
+    font-weight: 600;
+}
+
+.amb-sku-status-risk {
+    color: #c2410c;
+    background: #ffedd5;
+    font-weight: 600;
+}
+
+.amb-sku-status-returned {
+    color: #1d4ed8;
+    background: #dbeafe;
+    font-weight: 600;
+}
+
+.amb-sku-status-unstable {
+    color: #a16207;
+    background: #fef3c7;
+    font-weight: 600;
+}
+
+.amb-sku-status-existing {
+    color: var(--text-muted);
+    background: #f1f5f9;
+}
