@@ -163,7 +163,8 @@
                     </div>
 
                     <div class="amb-card-badges">
-                        <span class="amb-badge amb-badge-blue">SKU всего: {{ client.sku_total }}</span>
+                        <span class="amb-badge amb-badge-blue">Всего SKU: {{ client.sku_total }}</span>
+                        <span class="amb-badge amb-badge-blue">Уникальных SKU: {{ client.unique_sku_total }}</span>
                         <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(client.weight_total) }} кг</span>
                     </div>
                 </div>
@@ -181,7 +182,7 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><strong>SKU</strong></td>
+                                    <td><strong>Всего SKU</strong></td>
                                     {% for value in client.summary.sku %}
                                         <td>{{ value }}</td>
                                     {% endfor %}
@@ -220,6 +221,7 @@
                                 <thead>
     <tr>
         <th>SKU</th>
+        <th>Статус</th>
         {% for month in report.months %}
             <th
                 class="sortable"
@@ -241,13 +243,24 @@
                                 <tbody>
                                     {% for sku_row in client.sku_details %}
                                         <tr
-                                            class="amb-sku-row"
+                                            class="amb-sku-row {% if sku_row.is_new %}amb-sku-row-new{% endif %}"
                                             data-total="{{ sku_row.total }}"
                                             {% for value in sku_row.months_data %}
                                                 data-month-{{ loop.index0 }}="{{ value }}"
                                             {% endfor %}
                                         >
                                             <td>{{ sku_row.sku }}</td>
+                                            <td>
+                                                {% if sku_row.is_new %}
+                                                    <span class="amb-sku-status amb-sku-status-new">
+                                                        Новый с {{ sku_row.first_month|format_month }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="amb-sku-status">
+                                                        Был с начала
+                                                    </span>
+                                                {% endif %}
+                                            </td>
                                             {% for value in sku_row.months_data %}
                                                 <td>{{ "%.2f"|format(value) }}</td>
                                             {% endfor %}
@@ -256,6 +269,7 @@
                                     {% endfor %}
                                     <tr class="amb-sku-total-row">
                                         <td><strong>Итого</strong></td>
+                                        <td></td>
                                         {% for value in client.summary.weight %}
                                             <td><strong>{{ "%.2f"|format(value) }}</strong></td>
                                         {% endfor %}

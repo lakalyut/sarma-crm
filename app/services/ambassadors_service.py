@@ -84,12 +84,19 @@ def build_ambassadors_report(
         sku_details = []
         client_skus = sorted(sku_weight_by_client[client].keys())
 
+        period_start_month = selected_months[0] if selected_months else None
+
         for sku_name in client_skus:
             months_data = []
             total = 0.0
+            first_month = None
 
             for month in selected_months:
                 value = round(sku_weight_by_client[client][sku_name].get(month, 0.0), 2)
+
+                if value > 0 and first_month is None:
+                    first_month = month
+
                 months_data.append(value)
                 total += value
 
@@ -98,13 +105,16 @@ def build_ambassadors_report(
                     "sku": sku_name,
                     "months_data": months_data,
                     "total": round(total, 2),
+                    "first_month": first_month,
+                    "is_new": bool(first_month and first_month != period_start_month),
                 }
             )
 
         report["clients"].append(
             {
                 "name": client,
-                "sku_total": len(unique_sku_total_by_client[client]),
+                "sku_total": sum(sku_summary),
+                "unique_sku_total": len(unique_sku_total_by_client[client]),
                 "weight_total": round(weight_total_by_client[client], 2),
                 "expanded": False,
                 "summary": {
