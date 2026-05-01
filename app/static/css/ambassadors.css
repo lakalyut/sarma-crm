@@ -166,3 +166,28 @@
     border-color: var(--primary);
     color: #fff;
 }
+.amb-sku-details .sheet-table {
+    table-layout: auto;
+    min-width: max-content;
+}
+
+.amb-sku-details .sheet-table th,
+.amb-sku-details .sheet-table td {
+    white-space: nowrap;
+}
+
+.amb-sku-details .sheet-table th:first-child,
+.amb-sku-details .sheet-table td:first-child {
+    min-width: 260px;
+    max-width: 320px;
+    white-space: normal;
+}
+
+.amb-sku-details .sheet-table th:nth-child(2),
+.amb-sku-details .sheet-table td:nth-child(2) {
+    min-width: 160px;
+}
+
+.amb-sku-details .sheet-scroller {
+    overflow-x: auto;
+}
