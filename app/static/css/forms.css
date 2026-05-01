@@ -40,7 +40,8 @@ select:focus {
     }
 
 button,
-a.btn {
+a.btn,
+label.btn {
         font-weight: 500;
         letter-spacing: 0.01em;
         border: none;
@@ -62,7 +63,8 @@ a.btn {
     }
 
 button:hover,
-a.btn:hover {
+a.btn:hover,
+label.btn:hover {
         background: var(--primary-hover);
         text-decoration: none;
         transform: translateY(-1px);
@@ -70,7 +72,8 @@ a.btn:hover {
     }
 
 button:active,
-a.btn:active {
+a.btn:active,
+label.btn:active {
         transform: translateY(0);
         box-shadow: 0 1px 4px rgba(37, 99, 235, 0.25);
     }
@@ -92,3 +95,29 @@ a.btn-secondary:hover {
         padding: 6px 12px;
         font-size: 12px;
     }
+
+.file-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.file-upload-btn {
+    cursor: pointer;
+}
+
+.file-upload-name {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+label.btn {
+    margin-bottom: 0;
+    color: #fff;
+}
+
+.file-upload-row button,
+.file-upload-row .btn {
+    min-width: 150px;
+}

@@ -260,3 +260,7 @@
         transform: none;
         box-shadow: none;
     }
+
+.selected-city-text + .selected-city-text {
+    margin-top: 4px;
+}

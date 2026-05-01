@@ -20,16 +20,6 @@
                     autocomplete="off"
                 >
 
-                <div class="selected-city-text">
-                    {% if selected_city %}
-                        Выбранный регион:
-                        <span class="selected-city-value" id="charts-selected-city-label">{{ selected_city }}</span>
-                    {% else %}
-                        <span id="charts-selected-city-empty">Регион не выбран</span>
-                        <span class="selected-city-value" id="charts-selected-city-label" style="display:none;"></span>
-                    {% endif %}
-                </div>
-
                 <div id="charts-city-dropdown" class="search-dropdown" style="display:none;">
                     {% for c in cities %}
                         <div class="search-dropdown-item" data-value="{{ c }}">
@@ -156,6 +146,40 @@
 
         </div>
     </form>
+
+    <div class="selected-city-text">
+        {% if selected_city %}
+            Выбранный регион:
+            <span class="selected-city-value" id="charts-selected-city-label">{{ selected_city }}</span>
+        {% else %}
+            <span id="charts-selected-city-empty">Регион не выбран</span>
+            <span class="selected-city-value" id="charts-selected-city-label" style="display:none;"></span>
+        {% endif %}
+    </div>
+
+    <div class="selected-city-text">
+        {% if selected_months %}
+            Месяцы:
+            <span class="selected-city-value">
+                {% for m in selected_months %}
+                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </span>
+        {% else %}
+            <span>Все месяцы</span>
+        {% endif %}
+    </div>
+
+    <div class="selected-city-text">
+        {% if selected_types %}
+            Типы точек:
+            <span class="selected-city-value">
+                {{ selected_types|join(', ') }}
+            </span>
+        {% else %}
+            <span>Все типы</span>
+        {% endif %}
+    </div>
 </div>
 
 <div class="summary-panel" style="margin-top: 10px;">

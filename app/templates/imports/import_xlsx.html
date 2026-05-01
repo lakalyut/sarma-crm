@@ -1,7 +1,7 @@
 
 {% extends 'base.html' %}
 {% block content %}
-<h1>Импорт XLSX → нормализация → БД</h1>
+<h1>Импорт XLSX → Нормализация → БД</h1>
 <form method="post" enctype="multipart/form-data">
     <div class="field">
         <label>Город</label>
@@ -9,12 +9,35 @@
     </div>
     <div class="field">
         <label>Файл XLSX</label>
-        <input type="file" name="file" accept=".xlsx" required>
+
+        <div class="file-upload-row">
+            <label class="btn file-upload-btn">
+                Выбрать файл
+                <input type="file" name="file" accept=".xlsx" required hidden>
+            </label>
+
+            <button type="submit">Импортировать</button>
+
+            <span class="file-upload-name" id="file-upload-name">Файл не выбран</span>
+        </div>
     </div>
-    <button type="submit">Импортировать</button>
 </form>
 {% if error %}
     <div class="message error">{{ error }}</div>
 {% endif %}
 {% include "includes/messages.html" %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.querySelector('input[type="file"][name="file"]');
+    const label = document.getElementById("file-upload-name");
+
+    if (!input || !label) return;
+
+    input.addEventListener("change", function () {
+        label.textContent = input.files.length ? input.files[0].name : "Файл не выбран";
+    });
+});
+</script>
+
 {% endblock %}

@@ -135,6 +135,31 @@
                 <span class="selected-city-value" id="selected-city-label" style="display:none;"></span>
             {% endif %}
     </div>
+
+    <div class="selected-city-text">
+        {% if selected_months %}
+            Месяцы:
+            <span class="selected-city-value">
+                {% for m in selected_months %}
+                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </span>
+        {% else %}
+            <span>Все месяцы</span>
+        {% endif %}
+    </div>
+
+    <div class="selected-city-text">
+        {% if selected_types %}
+            Типы точек:
+            <span class="selected-city-value">
+                {{ selected_types|join(', ') }}
+            </span>
+        {% else %}
+            <span>Все типы</span>
+        {% endif %}
+    </div>
+
 </div>
 
 <div id="analytics-body">

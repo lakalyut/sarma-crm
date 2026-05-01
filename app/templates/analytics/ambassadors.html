@@ -120,6 +120,29 @@
 
         </div>
     </form>
+
+    <div class="selected-city-text">
+        {% if selected_city %}
+            Выбранный регион:
+            <span class="selected-city-value" id="amb-selected-city-label">{{ selected_city }}</span>
+        {% else %}
+            <span id="amb-selected-city-empty">Регион не выбран</span>
+            <span class="selected-city-value" id="amb-selected-city-label" style="display:none;"></span>
+        {% endif %}
+    </div>
+
+    <div class="selected-city-text">
+        {% if selected_months %}
+            Месяцы:
+            <span class="selected-city-value">
+                {% for m in selected_months %}
+                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </span>
+        {% else %}
+            <span>Все месяцы</span>
+        {% endif %}
+    </div>
 </div>
 
 {% if report and report.clients %}
