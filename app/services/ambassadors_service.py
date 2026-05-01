@@ -85,7 +85,6 @@ def build_ambassadors_report(
         client_skus = sorted(sku_weight_by_client[client].keys())
 
         period_start_month = selected_months[0] if selected_months else None
-        period_end_month = selected_months[-1] if selected_months else None
 
         for sku_name in client_skus:
             months_data = []
