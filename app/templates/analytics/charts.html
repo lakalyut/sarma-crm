@@ -55,6 +55,10 @@
                         <span class="multiselect-arrow">▾</span>
                     </div>
                     <div class="multiselect-dropdown">
+                        <label class="month-checkbox month-checkbox-all">
+                            <input type="checkbox" class="multiselect-select-all-checkbox">
+                            <span>Выбрать все</span>
+                        </label>
                         <div class="month-checkboxes">
                             {% for m in all_months %}
                                 <label class="month-checkbox">
@@ -85,7 +89,14 @@
                         </span>
                         <span class="multiselect-arrow">▾</span>
                     </div>
+
                     <div class="multiselect-dropdown">
+
+                        <label class="month-checkbox month-checkbox-all">
+                            <input type="checkbox" class="multiselect-select-all-checkbox">
+                            <span>Выбрать все</span>
+                        </label>
+
                         <div class="month-checkboxes">
                             {% for t in all_types %}
                                 <label class="month-checkbox">
@@ -99,6 +110,7 @@
                                 </label>
                             {% endfor %}
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -204,43 +216,19 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <script>
-(function() {
-    function initMultiSelect(id, emptyText) {
-        const ms = document.getElementById(id);
-        if (!ms) return;
+document.addEventListener("DOMContentLoaded", function () {
+    initCheckboxMultiselect({
+        id: "charts-months-multiselect",
+        inputName: "months",
+        emptyText: "Все месяцы"
+    });
 
-        const display = ms.querySelector(".multiselect-display");
-        const textSpan = ms.querySelector(".multiselect-text");
-        const dropdown = ms.querySelector(".multiselect-dropdown");
-
-        function updateText() {
-            const checked = dropdown.querySelectorAll('label.month-checkbox input:checked + span');
-            const names = Array.from(checked).map(el => el.textContent.trim());
-
-            if (names.length === 0) textSpan.textContent = emptyText;
-            else if (names.length <= 2) textSpan.textContent = names.join(", ");
-            else textSpan.textContent = names.slice(0, 2).join(", ") + " +" + (names.length - 2);
-        }
-
-        display.addEventListener("click", function(e) {
-            e.preventDefault();
-            ms.classList.toggle("open");
-        });
-
-        dropdown.addEventListener("change", function(e) {
-            if (e.target.matches('input[type="checkbox"]')) updateText();
-        });
-
-        document.addEventListener("click", function(e) {
-            if (!ms.contains(e.target)) ms.classList.remove("open");
-        });
-
-        updateText();
-    }
-
-    initMultiSelect("charts-months-multiselect", "Все месяцы");
-    initMultiSelect("charts-types-multiselect", "Все типы");
-})();
+    initCheckboxMultiselect({
+        id: "charts-types-multiselect",
+        inputName: "sale_types",
+        emptyText: "Все типы"
+    });
+});
 </script>
 
 <script>

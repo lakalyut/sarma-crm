@@ -31,33 +31,41 @@
 
             <div class="field filter-field">
                 <label>Месяцы</label>
-                <div class="multiselect" id="months-multiselect">
-                    <div class="multiselect-display">
-                        <span class="multiselect-text">
-                            {% if selected_months %}
-                                {% for m in selected_months %}
-                                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
-                                {% endfor %}
-                            {% else %}
-                                Все месяцы
-                            {% endif %}
-                        </span>
-                        <span class="multiselect-arrow">▾</span>
-                    </div>
-                    <div class="multiselect-dropdown">
-                        <div class="month-checkboxes">
-                            {% for m in all_months %}
-                                <label class="month-checkbox">
-                                    <input type="checkbox"
-                                           name="months"
-                                           value="{{ m }}"
-                                           {% if m in selected_months %}checked{% endif %}>
-                                    <span>{{ m|format_month }}</span>
-                                </label>
+            <div class="multiselect" id="months-multiselect">
+                <div class="multiselect-display">
+                    <span class="multiselect-text">
+                        {% if selected_months %}
+                            {% for m in selected_months %}
+                                {{ m|format_month }}{% if not loop.last %}, {% endif %}
                             {% endfor %}
-                        </div>
+                        {% else %}
+                            Все месяцы
+                        {% endif %}
+                    </span>
+                    <span class="multiselect-arrow">▾</span>
+                </div>
+
+                <div class="multiselect-dropdown">
+                    <label class="month-checkbox month-checkbox-all">
+                        <input type="checkbox" class="multiselect-select-all-checkbox">
+                        <span>Выбрать все</span>
+                    </label>
+
+                    <div class="month-checkboxes">
+                        {% for m in all_months %}
+                            <label class="month-checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="months"
+                                    value="{{ m }}"
+                                    {% if m in selected_months %}checked{% endif %}
+                                >
+                                <span>{{ m|format_month }}</span>
+                            </label>
+                        {% endfor %}
                     </div>
                 </div>
+            </div>
             </div>
 
             <div class="field filter-field">
@@ -73,14 +81,22 @@
                         </span>
                         <span class="multiselect-arrow">▾</span>
                     </div>
+
                     <div class="multiselect-dropdown">
+                        <label class="month-checkbox month-checkbox-all">
+                            <input type="checkbox" class="multiselect-select-all-checkbox">
+                            <span>Выбрать все</span>
+                        </label>
+
                         <div class="month-checkboxes">
                             {% for t in all_types %}
                                 <label class="month-checkbox">
-                                    <input type="checkbox"
-                                           name="sale_types"
-                                           value="{{ t }}"
-                                           {% if t in selected_types %}checked{% endif %}>
+                                    <input
+                                        type="checkbox"
+                                        name="sale_types"
+                                        value="{{ t }}"
+                                        {% if t in selected_types %}checked{% endif %}
+                                    >
                                     <span>{{ t }}</span>
                                 </label>
                             {% endfor %}
@@ -283,85 +299,19 @@
 </div>
 
 <script>
-(function() {
-    const ms = document.getElementById("months-multiselect");
-    if (!ms) return;
-
-    const display = ms.querySelector(".multiselect-display");
-    const textSpan = ms.querySelector(".multiselect-text");
-    const dropdown = ms.querySelector(".multiselect-dropdown");
-
-    function updateText() {
-        const checked = dropdown.querySelectorAll('label.month-checkbox input:checked + span');
-        const names = Array.from(checked).map(el => el.textContent.trim());
-        if (names.length === 0) {
-            textSpan.textContent = "Все месяцы";
-        } else if (names.length <= 2) {
-            textSpan.textContent = names.join(", ");
-        } else {
-            textSpan.textContent = names.slice(0, 2).join(", ") + " +" + (names.length - 2);
-        }
-    }
-
-    display.addEventListener("click", function(e) {
-        e.preventDefault();
-        ms.classList.toggle("open");
+document.addEventListener("DOMContentLoaded", function () {
+    initCheckboxMultiselect({
+        id: "months-multiselect",
+        inputName: "months",
+        emptyText: "Все месяцы"
     });
 
-    dropdown.addEventListener("change", function(e) {
-        if (e.target.matches('input[type="checkbox"]')) {
-            updateText();
-        }
+    initCheckboxMultiselect({
+        id: "types-multiselect",
+        inputName: "sale_types",
+        emptyText: "Все типы"
     });
-
-    document.addEventListener("click", function(e) {
-        if (!ms.contains(e.target)) {
-            ms.classList.remove("open");
-        }
-    });
-
-    updateText();
-})();
-
-(function() {
-    const ms = document.getElementById("types-multiselect");
-    if (!ms) return;
-
-    const display = ms.querySelector(".multiselect-display");
-    const textSpan = ms.querySelector(".multiselect-text");
-    const dropdown = ms.querySelector(".multiselect-dropdown");
-
-    function updateText() {
-        const checked = dropdown.querySelectorAll('label.month-checkbox input:checked + span');
-        const names = Array.from(checked).map(el => el.textContent.trim());
-        if (names.length === 0) {
-            textSpan.textContent = "Все типы";
-        } else if (names.length <= 2) {
-            textSpan.textContent = names.join(", ");
-        } else {
-            textSpan.textContent = names.slice(0, 2).join(", ") + " +" + (names.length - 2);
-        }
-    }
-
-    display.addEventListener("click", function(e) {
-        e.preventDefault();
-        ms.classList.toggle("open");
-    });
-
-    dropdown.addEventListener("change", function(e) {
-        if (e.target.matches('input[type="checkbox"]')) {
-            updateText();
-        }
-    });
-
-    document.addEventListener("click", function(e) {
-        if (!ms.contains(e.target)) {
-            ms.classList.remove("open");
-        }
-    });
-
-    updateText();
-})();
+});
 </script>
 
 <script>

@@ -14,7 +14,7 @@
 
         <div class="field" style="min-width:220px;">
             <label>Город</label>
-            <select name="city">
+            <select name="city" id="delete-import-city">
                 <option value="">Не выбран</option>
                 {% for c in cities %}
                     <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
@@ -22,53 +22,87 @@
             </select>
         </div>
 
-    <div class="field" style="min-width:260px;">
-        <label>Месяцы</label>
-        <div class="multiselect" id="delete-months-multiselect">
-            <div class="multiselect-display" type="button">
-                <span class="multiselect-text">
-                    {% if selected_months %}
-                        {% for m in selected_months %}
-                            {{ m }}{% if not loop.last %}, {% endif %}
-                        {% endfor %}
-                    {% else %}
-                        Не выбраны
-                    {% endif %}
-                </span>
-                <span class="multiselect-arrow">▾</span>
-            </div>
+        <div class="field" style="min-width:260px;">
+            <label>Месяцы</label>
 
-            <div class="multiselect-dropdown">
-                <div class="month-checkboxes">
-                    {% for m in months %}
-                        <label class="month-checkbox">
-                            <input
-                                type="checkbox"
-                                name="months"
-                                value="{{ m }}"
-                                {% if m in selected_months %}checked{% endif %}
-                            >
-                            <span>{{ m }}</span>
-                        </label>
-                    {% endfor %}
+            <div class="multiselect" id="delete-months-multiselect">
+                <div class="multiselect-display">
+                    <span class="multiselect-text">
+                        {% if selected_months %}
+                            {% for m in selected_months %}
+                                {{ m }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Не выбраны
+                        {% endif %}
+                    </span>
+                    <span class="multiselect-arrow">▾</span>
+                </div>
+
+                <div class="multiselect-dropdown">
+                    <label class="month-checkbox month-checkbox-all">
+                        <input type="checkbox" id="months-select-all">
+                        <span>Выбрать все</span>
+                    </label>
+
+                    <div class="month-checkboxes" id="delete-import-months-list">
+                        {% for m in months %}
+                            <label class="month-checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="months"
+                                    value="{{ m }}"
+                                    {% if m in selected_months %}checked{% endif %}
+                                >
+                                <span>{{ m }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
         <div class="field" style="min-width:220px;">
             <label>Тип точки</label>
-            <select name="sale_type">
-                <option value="">Не выбран</option>
-                {% for t in sale_types %}
-                    <option value="{{ t }}" {% if selected_type == t %}selected{% endif %}>{{ t }}</option>
-                {% endfor %}
-            </select>
-        </div>
+            <div class="multiselect" id="delete-types-multiselect">
+                <div class="multiselect-display">
+                    <span class="multiselect-text">
+                        {% if selected_type %}
+                            {{ selected_type }}
+                        {% else %}
+                            Не выбраны
+                        {% endif %}
+                    </span>
+                    <span class="multiselect-arrow">▾</span>
+                </div>
 
-        <div class="field" style="align-self:flex-end;">
-            <button type="submit">Показать количество</button>
+                <div class="multiselect-dropdown">
+
+                    <label class="month-checkbox month-checkbox-all">
+                        <input type="checkbox" id="types-select-all">
+                        <span>Выбрать все</span>
+                    </label>
+
+                    <div class="month-checkboxes" id="delete-import-types-list">
+                        {% for t in sale_types %}
+                            <label class="month-checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="sale_types"
+                                    value="{{ t }}"
+                                    {% if selected_type == t %}checked{% endif %}
+                                >
+                                <span>{{ t }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
         </div>
+                <div class="field" style="align-self:flex-end;">
+                    <button type="submit">Показать количество</button>
+                </div>
     </div>
 </form>
 
@@ -81,7 +115,9 @@
 
             <form method="post" action="/admin/imports/delete/confirm">
                 <input type="hidden" name="city" value="{{ selected_city }}">
-                <input type="hidden" name="sale_type" value="{{ selected_type }}">
+                {% for t in selected_types %}
+                    <input type="hidden" name="sale_types" value="{{ t }}">
+                {% endfor %}
 
                 {% for m in selected_months %}
                     <input type="hidden" name="months" value="{{ m }}">
@@ -98,53 +134,141 @@
 
 <script>
 (function() {
-  function initMultiSelect(id, emptyText) {
-    const ms = document.getElementById(id);
-    if (!ms) return;
+    const citySelect = document.getElementById("delete-import-city");
 
-    const display = ms.querySelector(".multiselect-display");
-    const textSpan = ms.querySelector(".multiselect-text");
-    const dropdown = ms.querySelector(".multiselect-dropdown");
-    const checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+    const monthsMs = document.getElementById("delete-months-multiselect");
+    const monthsList = document.getElementById("delete-import-months-list");
+    const monthsSelectAll = document.getElementById("months-select-all");
 
-    function updateText() {
-      const checked = Array.from(checkboxes)
-        .filter(cb => cb.checked)
-        .map(cb => cb.value);
+    const typesMs = document.getElementById("delete-types-multiselect");
+    const typesList = document.getElementById("delete-import-types-list");
+    const typesSelectAll = document.getElementById("types-select-all");
 
-      if (checked.length === 0) {
-        textSpan.textContent = emptyText;
-      } else if (checked.length <= 2) {
-        textSpan.textContent = checked.join(", ");
-      } else {
-        textSpan.textContent = checked.slice(0, 2).join(", ") + " +" + (checked.length - 2);
-      }
+    if (!citySelect || !monthsMs || !monthsList || !monthsSelectAll || !typesMs || !typesList || !typesSelectAll) return;
+
+    function initCheckboxMultiselect(ms, list, selectAll, inputName) {
+        const display = ms.querySelector(".multiselect-display");
+        const dropdown = ms.querySelector(".multiselect-dropdown");
+        const textSpan = ms.querySelector(".multiselect-text");
+
+        function getCheckboxes() {
+            return Array.from(list.querySelectorAll(`input[type="checkbox"][name="${inputName}"]`));
+        }
+
+        function updateText() {
+            const checked = getCheckboxes()
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            if (checked.length === 0) {
+                textSpan.textContent = "Не выбраны";
+            } else if (checked.length <= 2) {
+                textSpan.textContent = checked.join(", ");
+            } else {
+                textSpan.textContent = checked.slice(0, 2).join(", ") + " +" + (checked.length - 2);
+            }
+        }
+
+        function updateSelectAllState() {
+            const checkboxes = getCheckboxes();
+            const checked = checkboxes.filter(cb => cb.checked);
+
+            selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+            selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+        }
+
+        function render(values) {
+            list.innerHTML = "";
+
+            values.forEach(value => {
+                const label = document.createElement("label");
+                label.className = "month-checkbox";
+
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.name = inputName;
+                input.value = value;
+
+                const span = document.createElement("span");
+                span.textContent = value;
+
+                label.appendChild(input);
+                label.appendChild(span);
+                list.appendChild(label);
+            });
+
+            updateText();
+            updateSelectAllState();
+        }
+
+        display.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            ms.classList.toggle("open");
+        });
+
+        dropdown.addEventListener("click", function(e) {
+            e.stopPropagation();
+        });
+
+        list.addEventListener("change", function() {
+            updateText();
+            updateSelectAllState();
+        });
+
+        selectAll.addEventListener("change", function() {
+            getCheckboxes().forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+
+            updateText();
+            updateSelectAllState();
+        });
+
+        updateText();
+        updateSelectAllState();
+
+        return { render };
     }
 
-    display.addEventListener("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      ms.classList.toggle("open");
-    });
+    const monthsFilter = initCheckboxMultiselect(
+        monthsMs,
+        monthsList,
+        monthsSelectAll,
+        "months"
+    );
 
-    dropdown.addEventListener("click", function(e) {
-      e.stopPropagation();
-    });
-
-    checkboxes.forEach(cb => {
-      cb.addEventListener("change", function() {
-        updateText();
-      });
-    });
+    const typesFilter = initCheckboxMultiselect(
+        typesMs,
+        typesList,
+        typesSelectAll,
+        "sale_types"
+    );
 
     document.addEventListener("click", function() {
-      ms.classList.remove("open");
+        monthsMs.classList.remove("open");
+        typesMs.classList.remove("open");
     });
 
-    updateText();
-  }
+    async function loadOptionsForCity(city) {
+        monthsFilter.render([]);
+        typesFilter.render([]);
 
-  initMultiSelect("delete-months-multiselect", "Не выбраны");
+        if (!city) return;
+
+        const response = await fetch(`/api/imports/delete-options?city=${encodeURIComponent(city)}`);
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        monthsFilter.render(data.months || []);
+        typesFilter.render(data.types || []);
+    }
+
+    citySelect.addEventListener("change", function() {
+        loadOptionsForCity(citySelect.value);
+    });
 })();
 </script>
 

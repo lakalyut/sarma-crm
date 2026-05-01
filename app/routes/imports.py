@@ -2,6 +2,7 @@ import io
 
 import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ..auth_deps import require_admin
@@ -14,8 +15,23 @@ from ..product_parser import (
     match_product_by_flavor,
 )
 from ..render import render
+from ..services.sales_options_service import get_months, get_types
 
 router = APIRouter()
+
+
+@router.get("/api/imports/delete-options")
+def import_delete_options(
+    city: str,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    return JSONResponse(
+        {
+            "months": get_months(db, city=city, reverse=True),
+            "types": get_types(db, city=city),
+        }
+    )
 
 
 @router.get("/import-xlsx")
