@@ -214,7 +214,7 @@
                     class="amb-sku-details {% if not client.expanded %}is-hidden{% endif %}"
                 >
                     <div class="amb-sku-subtitle">Детализация по SKU (вес, кг)</div>
-
+                    <div class="amb-status-filter" data-status-filter></div>
                     <div class="sheet-wrapper">
                         <div class="sheet-scroller">
                             <table class="sheet-table">
@@ -244,6 +244,7 @@
                                     {% for sku_row in client.sku_details %}
                                         <tr
                                             class="amb-sku-row {% if sku_row.is_new %}amb-sku-row-new{% endif %}"
+                                            data-status="{% if sku_row.is_new %}new{% else %}existing{% endif %}"
                                             data-total="{{ sku_row.total }}"
                                             {% for value in sku_row.months_data %}
                                                 data-month-{{ loop.index0 }}="{{ value }}"
@@ -568,6 +569,55 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             updateHeaderState();
+        });
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".amb-card").forEach(card => {
+        const filterBox = card.querySelector("[data-status-filter]");
+        const rows = Array.from(card.querySelectorAll(".amb-sku-row"));
+
+        if (!filterBox || !rows.length) return;
+
+        const statuses = Array.from(new Set(rows.map(row => row.dataset.status).filter(Boolean)));
+
+        const statusLabels = {
+            all: "Все",
+            new: "Новые",
+            existing: "Были с начала"
+        };
+
+        const statusOrder = ["all", "new", "existing"];
+        const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
+
+        filterBox.innerHTML = availableStatuses.map(status => `
+            <button
+                type="button"
+                class="amb-status-filter-btn ${status === "all" ? "active" : ""}"
+                data-status="${status}"
+            >
+                ${statusLabels[status]}
+            </button>
+        `).join("");
+
+        const buttons = Array.from(filterBox.querySelectorAll(".amb-status-filter-btn"));
+
+        buttons.forEach(button => {
+            button.addEventListener("click", function () {
+                const selectedStatus = button.dataset.status;
+
+                buttons.forEach(btn => {
+                    btn.classList.toggle("active", btn === button);
+                });
+
+                rows.forEach(row => {
+                    const isVisible = selectedStatus === "all" || row.dataset.status === selectedStatus;
+                    row.style.display = isVisible ? "" : "none";
+                });
+            });
         });
     });
 });

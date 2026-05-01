@@ -134,3 +134,35 @@
     background: #dcfce7;
     font-weight: 600;
 }
+
+.amb-status-filter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0 0 10px;
+}
+
+.amb-status-filter-btn {
+    min-height: 30px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-main);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.amb-status-filter-btn:hover {
+    background: #eef2ff;
+    transform: none;
+    box-shadow: none;
+}
+
+.amb-status-filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
