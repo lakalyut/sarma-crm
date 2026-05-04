@@ -132,34 +132,49 @@
                 </div>
             </div>
 
-            <div class="field filter-field">
-                <label>Новый у клиента, мес.</label>
-                <input
-                    type="number"
-                    name="new_client_months"
-                    min="1"
-                    value="{{ status_settings.new_client_months }}"
-                >
+            <div class="amb-settings-row">
+                <button type="button" class="btn btn-secondary amb-settings-toggle" id="amb-settings-toggle">
+                    ⚙ Настройки статусов
+                    <span class="amb-settings-arrow">▾</span>
+                </button>
             </div>
 
-            <div class="field filter-field">
-                <label>Пропал после, мес.</label>
-                <input
-                    type="number"
-                    name="lost_months"
-                    min="1"
-                    value="{{ status_settings.lost_months }}"
-                >
-            </div>
+            <div class="amb-settings-panel" id="amb-settings-panel">
+                <div class="amb-settings-panel-title">
+                    Настройки классификации SKU
+                </div>
 
-            <div class="field filter-field">
-                <label>Нестабильный, пропусков</label>
-                <input
-                    type="number"
-                    name="unstable_gap_months"
-                    min="1"
-                    value="{{ status_settings.unstable_gap_months }}"
-                >
+                <div class="amb-settings-grid">
+                    <div class="field filter-field">
+                        <label>Новый у клиента, мес.</label>
+                        <input
+                            type="number"
+                            name="new_client_months"
+                            min="1"
+                            value="{{ status_settings.new_client_months }}"
+                        >
+                    </div>
+
+                    <div class="field filter-field">
+                        <label>Пропал после, мес.</label>
+                        <input
+                            type="number"
+                            name="lost_months"
+                            min="1"
+                            value="{{ status_settings.lost_months }}"
+                        >
+                    </div>
+
+                    <div class="field filter-field">
+                        <label>Нестаб., пропусков</label>
+                        <input
+                            type="number"
+                            name="unstable_gap_months"
+                            min="1"
+                            value="{{ status_settings.unstable_gap_months }}"
+                        >
+                    </div>
+                </div>
             </div>
 
             <div class="field filter-field filter-actions-row">
@@ -715,6 +730,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
             });
         });
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const toggle = document.getElementById("amb-settings-toggle");
+    const panel = document.getElementById("amb-settings-panel");
+
+    if (!toggle || !panel) return;
+
+    const arrow = toggle.querySelector(".amb-settings-arrow");
+
+    toggle.addEventListener("click", function () {
+        const isOpen = panel.classList.toggle("open");
+
+        if (arrow) {
+            arrow.textContent = isOpen ? "▴" : "▾";
+        }
     });
 });
 </script>

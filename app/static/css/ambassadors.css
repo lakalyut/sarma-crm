@@ -235,3 +235,49 @@
     color: var(--text-muted);
     background: #f1f5f9;
 }
+
+.amb-settings-field {
+    align-self: end;
+}
+
+.amb-settings-row {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 14px;
+}
+
+.amb-settings-toggle {
+    gap: 8px;
+    box-shadow: none;
+}
+
+.amb-settings-arrow {
+    font-size: 11px;
+    color: inherit;
+}
+
+.amb-settings-panel {
+    display: none;
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.amb-settings-panel.open {
+    display: block;
+}
+
+.amb-settings-panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.amb-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    gap: 14px;
+}
