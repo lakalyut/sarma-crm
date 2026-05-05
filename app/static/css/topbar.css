@@ -109,3 +109,25 @@
     box-shadow: none;
     transform: none;
 }
+.topbar-nav .topbar-logout-form {
+    display: flex;
+    align-items: center;
+}
+
+.topbar-nav .topbar-logout {
+    all: unset; /* ВАЖНО — убирает дефолт кнопки */
+
+    display: inline-flex;
+    align-items: center;
+
+    font: inherit;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    padding: 8px 12px; /* подгони под свои ссылки */
+    border-radius: 8px;
+}
+
+.topbar-nav .topbar-logout:hover {
+    color: var(--primary);
+}

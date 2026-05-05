@@ -15,11 +15,13 @@
 
     <div class="topbar-nav-wrap" id="topbar-nav-wrap">
         <nav class="topbar-nav">
-            <a href="/admin/users" class="{% if request.url.path == '/admin/users' %}active{% endif %}">Пользователи</a>
-            <a href="/admin/products" class="{% if request.url.path == '/admin/products' %}active{% endif %}">Номенклатуры</a>
-            <a href="/import-xlsx" class="{% if request.url.path == '/import-xlsx' %}active{% endif %}">Импорт XLSX</a>
-            <a href="/admin/unmatched" class="{% if request.url.path == '/admin/unmatched' %}active{% endif %}">Несопоставленные</a>
-            <a href="/admin/imports/delete" class="{% if request.url.path == '/admin/imports/delete' %}active{% endif %}">Удаление импорта</a>
+            {% if current_user and current_user.role == "admin" %}
+                <a href="/admin/users" class="{% if request.url.path == '/admin/users' %}active{% endif %}">Пользователи</a>
+                <a href="/admin/products" class="{% if request.url.path == '/admin/products' %}active{% endif %}">Номенклатуры</a>
+                <a href="/import-xlsx" class="{% if request.url.path == '/import-xlsx' %}active{% endif %}">Импорт XLSX</a>
+                <a href="/admin/unmatched" class="{% if request.url.path == '/admin/unmatched' %}active{% endif %}">Несопоставленные</a>
+                <a href="/admin/imports/delete" class="{% if request.url.path == '/admin/imports/delete' %}active{% endif %}">Удаление импорта</a>
+            {% endif %}
             <a href="/analytics/clients" class="{% if request.url.path == '/analytics/clients' %}active{% endif %}">Клиенты</a>
             <a href="/analytics/charts" class="{% if request.url.path == '/analytics/charts' %}active{% endif %}">Графики</a>
             <a href="/analytics/ambassadors" class="{% if request.url.path == '/analytics/ambassadors' %}active{% endif %}">Амбассадорские отчеты</a>
