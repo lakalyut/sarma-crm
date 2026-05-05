@@ -9,21 +9,21 @@
         box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
         position: relative;
         z-index: 50;
-    }
+}
 
-    .topbar-left {
+.topbar-left {
         display: flex;
         align-items: center;
         min-width: 0;
-    }
+}
 
-    .topbar-title {
+.topbar-title {
         font-weight: 600;
         font-size: 16px;
         white-space: nowrap;
-    }
+}
 
-    .topbar-burger {
+.topbar-burger {
         display: none;
         min-height: 40px;
         min-width: 40px;
@@ -35,27 +35,27 @@
         box-shadow: none;
         font-size: 20px;
         line-height: 1;
-    }
+}
 
-    .topbar-burger:hover {
+.topbar-burger:hover {
         background: #e0e7ff;
         transform: none;
         box-shadow: none;
-    }
+}
 
-    .topbar-nav-wrap {
+.topbar-nav-wrap {
         display: flex;
         align-items: center;
-    }
+}
 
-    .topbar-nav {
+.topbar-nav {
         display: flex;
         gap: 6px;
         flex-wrap: wrap;
         align-items: center;
-    }
+}
 
-    .topbar-nav a {
+.topbar-nav a {
         text-decoration: none;
         color: var(--text-muted);
         font-size: 13px;
@@ -64,26 +64,48 @@
         border: 1px solid transparent;
         transition: 0.15s;
         white-space: nowrap;
-    }
+}
 
-    .topbar-nav a:hover {
+.topbar-nav a:hover {
         background: #eef2ff;
         text-decoration: none;
-    }
+}
 
-    .topbar-nav a.active {
+.topbar-nav a.active {
         background: var(--primary);
         color: #ffffff;
         border-color: var(--primary);
         box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
-    }
+}
 
-    .topbar-nav .topbar-logout {
+.topbar-nav .topbar-logout {
         background: #e5e7eb;
         color: var(--text-main);
         box-shadow: none;
-    }
+}
 
-    .topbar-nav .topbar-logout:hover {
+.topbar-nav .topbar-logout:hover {
         background: #d4d4d8;
-    }
+}
+
+.topbar-logout-form {
+    margin: 0;
+}
+
+.topbar-logout {
+    border: none;
+    background: transparent;
+    padding: 0;
+    min-height: auto;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.topbar-logout:hover {
+    background: transparent;
+    color: var(--primary);
+    box-shadow: none;
+    transform: none;
+}

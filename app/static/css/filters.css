@@ -264,3 +264,18 @@
 .selected-city-text + .selected-city-text {
     margin-top: 4px;
 }
+
+.filters-summary {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.summary-item {
+    background: #f1f5f9;
+    padding: 6px 10px;
+    border-radius: 8px;
+}

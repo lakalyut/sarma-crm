@@ -1,100 +1,27 @@
 {% extends 'base.html' %}
+
 {% block content %}
 <h1>Амбассадорские отчеты</h1>
 {% include "includes/messages.html" %}
 
-<div class="filters-card">
+<div class="filters-card amb-bi-card">
     <form method="get" id="ambassadors-filters-form">
-        <div class="filters-grid ambassadors-filters-grid">
 
+        <div class="amb-bi-topbar">
             <div class="field filter-field filter-field-region-search">
-                <label for="amb-city-search">Поиск региона</label>
-
+                <label for="amb-city-search">Регион</label>
                 <input type="hidden" name="city" id="amb-city-hidden" value="{{ selected_city or '' }}">
-
-                <input
-                    id="amb-city-search"
-                    type="text"
-                    value=""
-                    placeholder="Начни вводить регион..."
-                    autocomplete="off"
-                >
+                <input id="amb-city-search" type="text" value="" placeholder="Начни вводить регион..." autocomplete="off">
 
                 <div id="amb-city-dropdown" class="search-dropdown" style="display:none;">
                     {% for c in cities %}
-                        <div class="search-dropdown-item" data-value="{{ c }}">
-                            {{ c }}
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="field filter-field filter-field-region-search">
-                <label for="amb-client-search">Клиенты</label>
-
-                <input
-                    id="amb-client-search"
-                    type="text"
-                    value=""
-                    placeholder="Начни вводить клиента..."
-                    autocomplete="off"
-                >
-
-                <div class="multiselect-tags" id="amb-clients-tags">
-                    {% if selected_clients %}
-                        {% for client in selected_clients %}
-                            <span class="filter-tag">
-                                <span>{{ client }}</span>
-                                <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
-                                <input type="hidden" name="clients" value="{{ client }}">
-                            </span>
-                        {% endfor %}
-                    {% endif %}
-                </div>
-
-                <div id="amb-client-dropdown" class="search-dropdown" style="display:none;">
-                    {% for client_name in all_clients %}
-                        <div class="search-dropdown-item" data-value="{{ client_name }}">
-                            {{ client_name }}
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="field filter-field filter-field-region-search">
-                <label for="amb-new-sku-search">SKU-новинки</label>
-
-                <input
-                    id="amb-new-sku-search"
-                    type="text"
-                    value=""
-                    placeholder="Начни вводить SKU..."
-                    autocomplete="off"
-                >
-
-                <div class="multiselect-tags" id="amb-new-skus-tags">
-                    {% if selected_new_skus %}
-                        {% for sku in selected_new_skus %}
-                            <span class="filter-tag">
-                                <span>{{ sku }}</span>
-                                <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
-                                <input type="hidden" name="new_skus" value="{{ sku }}">
-                            </span>
-                        {% endfor %}
-                    {% endif %}
-                </div>
-
-                <div id="amb-new-sku-dropdown" class="search-dropdown" style="display:none;">
-                    {% for sku in all_skus %}
-                        <div class="search-dropdown-item" data-value="{{ sku }}">
-                            {{ sku }}
-                        </div>
+                        <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
                     {% endfor %}
                 </div>
             </div>
 
             <div class="field filter-field">
-                <label>Месяцы</label>
+                <label>Период</label>
                 <div class="multiselect" id="amb-months-multiselect">
                     <div class="multiselect-display">
                         <span class="multiselect-text">
@@ -118,12 +45,7 @@
                         <div class="month-checkboxes">
                             {% for m in all_months %}
                                 <label class="month-checkbox">
-                                    <input
-                                        type="checkbox"
-                                        name="months"
-                                        value="{{ m }}"
-                                        {% if m in selected_months %}checked{% endif %}
-                                    >
+                                    <input type="checkbox" name="months" value="{{ m }}" {% if m in selected_months %}checked{% endif %}>
                                     <span>{{ m|format_month }}</span>
                                 </label>
                             {% endfor %}
@@ -132,102 +54,124 @@
                 </div>
             </div>
 
-            <div class="amb-settings-row">
-                <button type="button" class="btn btn-secondary amb-settings-toggle" id="amb-settings-toggle">
-                    ⚙ Настройки статусов
-                    <span class="amb-settings-arrow">▾</span>
-                </button>
-            </div>
+            <div class="field filter-field filter-field-region-search">
+                <label for="amb-client-search">Клиенты</label>
+                <input id="amb-client-search" type="text" value="" placeholder="Начни вводить клиента..." autocomplete="off">
 
-            <div class="amb-settings-panel" id="amb-settings-panel">
-                <div class="amb-settings-panel-title">
-                    Настройки классификации SKU
+                <div class="multiselect-tags" id="amb-clients-tags">
+                    {% if selected_clients %}
+                        {% for client in selected_clients %}
+                            <span class="filter-tag">
+                                <span>{{ client }}</span>
+                                <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                                <input type="hidden" name="clients" value="{{ client }}">
+                            </span>
+                        {% endfor %}
+                    {% endif %}
                 </div>
 
-                <div class="amb-settings-grid">
-                    <div class="field filter-field">
-                        <label>Новый у клиента, мес.</label>
-                        <input
-                            type="number"
-                            name="new_client_months"
-                            min="1"
-                            value="{{ status_settings.new_client_months }}"
-                        >
-                    </div>
-
-                    <div class="field filter-field">
-                        <label>Пропал после, мес.</label>
-                        <input
-                            type="number"
-                            name="lost_months"
-                            min="1"
-                            value="{{ status_settings.lost_months }}"
-                        >
-                    </div>
-
-                    <div class="field filter-field">
-                        <label>Нестаб., пропусков</label>
-                        <input
-                            type="number"
-                            name="unstable_gap_months"
-                            min="1"
-                            value="{{ status_settings.unstable_gap_months }}"
-                        >
-                    </div>
+                <div id="amb-client-dropdown" class="search-dropdown" style="display:none;">
+                    {% for client_name in all_clients %}
+                        <div class="search-dropdown-item" data-value="{{ client_name }}">{{ client_name }}</div>
+                    {% endfor %}
                 </div>
             </div>
 
-            <div class="field filter-field filter-actions-row">
-                <label>&nbsp;</label>
-                <div class="filters-actions">
-                    <button type="submit">Показать</button>
-                    <a href="/analytics/ambassadors" class="btn btn-secondary">Сбросить</a>
-                </div>
+            <div class="amb-bi-actions">
+                <button type="submit">Показать</button>
+                <a href="/analytics/ambassadors" class="btn btn-secondary">Сбросить</a>
             </div>
-
         </div>
+
+        <div class="amb-bi-summary-row">
+            <div class="filters-summary">
+                {% if selected_city %}
+                    <span class="summary-item">{{ selected_city }}</span>
+                {% endif %}
+
+                {% if selected_months %}
+                    <span class="summary-item">
+                        {% for m in selected_months %}
+                            {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </span>
+                {% endif %}
+
+                {% if selected_clients %}
+                    <span class="summary-item">Клиентов: {{ selected_clients|length }}</span>
+                {% endif %}
+
+                {% if selected_new_skus %}
+                    <span class="summary-item">NEW SKU: {{ selected_new_skus|length }}</span>
+                {% endif %}
+            </div>
+
+            <button type="button" class="btn btn-secondary amb-settings-toggle" id="amb-settings-toggle">
+                Настройки статусов
+                <span class="amb-settings-arrow">▾</span>
+            </button>
+        </div>
+
+        <div class="amb-settings-panel" id="amb-settings-panel">
+            <div class="amb-settings-panel-title">Настройки классификации SKU</div>
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="amb-new-sku-search">SKU-новинки</label>
+                <input id="amb-new-sku-search" type="text" value="" placeholder="Начни вводить SKU..." autocomplete="off">
+
+                <div class="multiselect-tags" id="amb-new-skus-tags">
+                    {% if selected_new_skus %}
+                        {% for sku in selected_new_skus %}
+                            <span class="filter-tag">
+                                <span>{{ sku }}</span>
+                                <button type="button" class="filter-tag-remove">×</button>
+                                <input type="hidden" name="new_skus" value="{{ sku }}">
+                            </span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div id="amb-new-sku-dropdown" class="search-dropdown" style="display:none;">
+                    {% for sku in all_skus %}
+                        <div class="search-dropdown-item" data-value="{{ sku }}">{{ sku }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="amb-settings-grid">
+                <div class="field filter-field">
+                    <label>Новый у клиента, мес.
+                        <span class="hint-icon" title="SKU считается новым, если появился в последние N месяцев">?</span>
+                    </label>
+                    <input type="number" name="new_client_months" min="1" value="{{ status_settings.new_client_months }}">
+                       <div class="field-hint">
+                            SKU считается новым, если появился в последние N месяцев
+                       </div>
+                </div>
+
+                <div class="field filter-field">
+                    <label>Пропал после, мес.
+                        <span class="hint-icon" title="SKU считается пропавшим, если не продавался N месяцев подряд">?</span>
+                    </label>
+                    <input type="number" name="lost_months" min="1" value="{{ status_settings.lost_months }}">
+                        <div class="field-hint">
+                            SKU считается пропавшим, если не продавался N месяцев подряд
+                       </div>
+                </div>
+
+                <div class="field filter-field">
+                    <label>Нестабильный, пропусков
+                        <span class="hint-icon" title="SKU нестабилен, если есть пропуски продаж в N месяцев">?</span>
+                    </label>
+                    <input type="number" name="unstable_gap_months" min="1" value="{{ status_settings.unstable_gap_months }}">
+                        <div class="field-hint">
+                            SKU нестабилен, если есть пропуски продаж в N месяцев
+                       </div>
+                </div>
+            </div>
+        </div>
+
     </form>
-
-    <div class="selected-city-text">
-        {% if selected_city %}
-            Выбранный регион:
-            <span class="selected-city-value" id="amb-selected-city-label">{{ selected_city }}</span>
-        {% else %}
-            <span id="amb-selected-city-empty">Регион не выбран</span>
-            <span class="selected-city-value" id="amb-selected-city-label" style="display:none;"></span>
-        {% endif %}
-    </div>
-
-    <div class="selected-city-text">
-        {% if selected_clients %}
-            Клиенты:
-            <span class="selected-city-value">{{ selected_clients|join(', ') }}</span>
-        {% else %}
-            <span>Клиенты не выбраны</span>
-        {% endif %}
-    </div>
-
-    <div class="selected-city-text">
-        {% if selected_new_skus %}
-            SKU-новинки:
-            <span class="selected-city-value">{{ selected_new_skus|join(', ') }}</span>
-        {% else %}
-            <span>SKU-новинки не выбраны</span>
-        {% endif %}
-    </div>
-
-    <div class="selected-city-text">
-        {% if selected_months %}
-            Месяцы:
-            <span class="selected-city-value">
-                {% for m in selected_months %}
-                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
-                {% endfor %}
-            </span>
-        {% else %}
-            <span>Все месяцы</span>
-        {% endif %}
-    </div>
 </div>
 
 {% if report and report.clients %}
@@ -753,4 +697,4 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-{% endblock %}
+{% endblock content %}

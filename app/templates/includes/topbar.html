@@ -23,7 +23,11 @@
             <a href="/analytics/clients" class="{% if request.url.path == '/analytics/clients' %}active{% endif %}">Клиенты</a>
             <a href="/analytics/charts" class="{% if request.url.path == '/analytics/charts' %}active{% endif %}">Графики</a>
             <a href="/analytics/ambassadors" class="{% if request.url.path == '/analytics/ambassadors' %}active{% endif %}">Амбассадорские отчеты</a>
-            <a href="/auth/logout" class="topbar-logout">Выйти</a>
+            <form method="post" action="/auth/logout" class="topbar-logout-form">
+                <button type="submit" class="topbar-logout">
+                    Выйти
+                </button>
+            </form>
         </nav>
     </div>
 </div>

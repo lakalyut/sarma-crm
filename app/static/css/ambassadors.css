@@ -1,4 +1,4 @@
-  .amb-report-list {
+.amb-report-list {
         display: flex;
         flex-direction: column;
         gap: 16px;
@@ -280,4 +280,216 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(160px, 1fr));
     gap: 14px;
+}
+
+.amb-settings-section {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+#amb-months-multiselect {
+    position: relative;
+}
+
+#amb-months-multiselect .multiselect-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    z-index: 50;
+
+    min-width: 260px;
+    max-height: 260px;
+    overflow-y: auto;
+
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.amb-filters-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.2fr) minmax(220px, 0.8fr) auto;
+    gap: 18px;
+    align-items: start;
+}
+
+.amb-wide-field {
+    grid-column: 1 / 3;
+}
+
+.amb-actions-field {
+    align-self: end;
+}
+
+.amb-actions-field .filters-actions {
+    justify-content: flex-start;
+}
+
+.amb-filters-grid,
+.amb-settings-section,
+.filters-card .filters-summary {
+    max-width: 1180px;
+}
+
+.amb-actions-field {
+    align-self: end;
+    grid-column: 3 / 4;
+}
+
+.amb-bi-card {
+    padding: 18px 20px;
+}
+
+.amb-bi-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.filters-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.summary-item {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.amb-bi-summary-row .amb-settings-toggle {
+    flex: 0 0 auto;
+}
+
+.amb-settings-panel {
+    max-width: 760px;
+}
+
+#amb-months-multiselect .multiselect-dropdown {
+    min-width: 280px;
+    right: 0;
+    left: auto;
+}
+
+#amb-months-multiselect .month-checkbox span {
+    white-space: nowrap;
+}
+.amb-settings-panel .field {
+    margin-bottom: 14px;
+}
+
+.amb-settings-panel .multiselect-tags {
+    margin-top: 6px;
+}
+
+.amb-bi-topbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+    gap: 16px 20px;
+    align-items: start;
+    max-width: 1120px;
+}
+
+.amb-bi-topbar > .field {
+    width: 100%;
+}
+
+.amb-bi-topbar .field,
+.amb-bi-topbar .multiselect,
+.amb-bi-topbar input[type="text"],
+.amb-bi-topbar .multiselect-display {
+    width: 100%;
+}
+
+.amb-bi-field-row {
+    margin-top: 0;
+    max-width: none;
+}
+
+.amb-bi-actions {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+    justify-content: flex-start;
+    padding-top: 22px;
+}
+
+.amb-bi-summary-row {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+}
+
+.filters-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.summary-item {
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #dbeafe;
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.summary-item:first-child {
+    background: #eef2ff;
+    color: var(--primary);
+}
+
+.summary-item:nth-child(2) {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+}
+
+.summary-item:nth-child(3),
+.summary-item:nth-child(4) {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.field-hint {
+    margin-top: 6px;
+
+    font-size: 12px;
+    line-height: 1.4;
+
+    color: var(--text-muted);
+    opacity: 0.75;
+
+    font-family: inherit;
+    font-weight: 400;
+}
+
+.hint-icon {
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: help;
+}
+
+.field filter-field label {
+    font-weight: 600;
 }
