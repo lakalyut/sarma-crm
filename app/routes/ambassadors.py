@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from ..auth_deps import require_user
+from ..auth_models import User
 from ..database import get_db
 from ..models import Sale
 from ..render import render
@@ -36,6 +38,7 @@ def get_int_param(request: Request, name: str, default: int, min_value: int = 1)
 def analytics_ambassadors(
     request: Request,
     db: Session = Depends(get_db),
+    _user: User = Depends(require_user),
 ):
     selected_city = (request.query_params.get("city") or "").strip()
     selected_months = request.query_params.getlist("months")
