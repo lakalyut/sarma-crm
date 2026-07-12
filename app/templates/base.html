@@ -11,12 +11,28 @@
 {% include "_styles.html" %}   
 </head>
 <body>
-{% include "includes/topbar.html" %}
-</div>
+<div class="app-layout">
+    {% include "includes/sidebar.html" %}
 
-<div class="app-shell">
-    <div class="card">
-        {% block content %}{% endblock %}
+    <div class="app-main">
+        <div class="mobile-topbar">
+            <button
+                type="button"
+                class="sidebar-burger"
+                id="sidebar-burger"
+                aria-label="Открыть меню"
+                aria-expanded="false"
+            >
+                ☰
+            </button>
+            <span class="mobile-topbar-title">Сарма CRM</span>
+        </div>
+
+        <div class="app-shell">
+            <div class="card">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
     </div>
 </div>
 <script src="/static/js/checkbox_multiselect.js"></script>

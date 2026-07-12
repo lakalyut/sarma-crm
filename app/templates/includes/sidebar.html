@@ -1,0 +1,74 @@
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="sidebar-logo"></div>
+        <span class="sidebar-brand-title">Сарма CRM</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="sidebar-nav-group">
+            <div class="sidebar-nav-label">Аналитика</div>
+            <a href="/analytics/clients" class="sidebar-nav-link {% if request.url.path == '/analytics/clients' %}active{% endif %}">Клиенты</a>
+            <a href="/analytics/charts" class="sidebar-nav-link {% if request.url.path == '/analytics/charts' %}active{% endif %}">Графики</a>
+            <a href="/analytics/ambassadors" class="sidebar-nav-link {% if request.url.path == '/analytics/ambassadors' %}active{% endif %}">Амбассадорские отчеты</a>
+        </div>
+
+        {% if current_user and current_user.role == "admin" %}
+            <div class="sidebar-nav-group">
+                <div class="sidebar-nav-label">Админ</div>
+                <a href="/admin/products" class="sidebar-nav-link {% if request.url.path == '/admin/products' %}active{% endif %}">Номенклатуры</a>
+                <a href="/admin/abc" class="sidebar-nav-link {% if request.url.path == '/admin/abc' %}active{% endif %}">ABC-рейтинг</a>
+                <a href="/import-xlsx" class="sidebar-nav-link {% if request.url.path == '/import-xlsx' %}active{% endif %}">Импорт XLSX</a>
+                <a href="/admin/unmatched" class="sidebar-nav-link {% if request.url.path == '/admin/unmatched' %}active{% endif %}">Несопоставленные</a>
+                <a href="/admin/imports/delete" class="sidebar-nav-link {% if request.url.path == '/admin/imports/delete' %}active{% endif %}">Удаление импорта</a>
+                <a href="/admin/users" class="sidebar-nav-link {% if request.url.path == '/admin/users' %}active{% endif %}">Пользователи</a>
+            </div>
+        {% endif %}
+    </nav>
+
+    <div class="sidebar-footer">
+        {% if current_user %}
+            <div class="sidebar-user-email">{{ current_user.email }}</div>
+        {% endif %}
+        <form method="post" action="/auth/logout" class="sidebar-logout-form">
+            <button type="submit" class="sidebar-logout">Выйти</button>
+        </form>
+    </div>
+</aside>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const burger = document.getElementById("sidebar-burger");
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+
+    if (!burger || !sidebar || !overlay) return;
+
+    function closeSidebar() {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("open");
+        burger.setAttribute("aria-expanded", "false");
+    }
+
+    function openSidebar() {
+        sidebar.classList.add("open");
+        overlay.classList.add("open");
+        burger.setAttribute("aria-expanded", "true");
+    }
+
+    burger.addEventListener("click", function () {
+        if (sidebar.classList.contains("open")) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    });
+
+    overlay.addEventListener("click", closeSidebar);
+
+    sidebar.querySelectorAll("a").forEach(function (link) {
+        link.addEventListener("click", closeSidebar);
+    });
+});
+</script>

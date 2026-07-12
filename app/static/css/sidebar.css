@@ -1,0 +1,133 @@
+.app-layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+.app-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+.sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        background: #ffffff;
+        border-right: 1px solid var(--border);
+        padding: 16px 12px;
+        display: flex;
+        flex-direction: column;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+    }
+
+.sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        margin-bottom: 20px;
+    }
+
+.sidebar-logo {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: var(--primary);
+        flex-shrink: 0;
+    }
+
+.sidebar-brand-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text-main);
+    }
+
+.sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+.sidebar-nav-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+.sidebar-nav-label {
+        font-size: 11px;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0 10px;
+        margin-bottom: 6px;
+    }
+
+.sidebar-nav-link {
+        display: block;
+        padding: 9px 10px;
+        border-radius: 10px;
+        font-size: 13px;
+        color: var(--text-muted);
+        text-decoration: none;
+        margin-bottom: 2px;
+        transition: background 0.15s, color 0.15s;
+    }
+
+.sidebar-nav-link:hover {
+        background: #eef2ff;
+        text-decoration: none;
+    }
+
+.sidebar-nav-link.active {
+        background: var(--primary);
+        color: #ffffff;
+    }
+
+.sidebar-footer {
+        margin-top: auto;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+    }
+
+.sidebar-user-email {
+        font-size: 12px;
+        color: var(--text-muted);
+        padding: 0 10px;
+        margin-bottom: 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+.sidebar-logout-form {
+        margin: 0;
+    }
+
+.sidebar-logout {
+        all: unset;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 9px 10px;
+        border-radius: 10px;
+        font-size: 13px;
+        color: var(--text-muted);
+        cursor: pointer;
+    }
+
+.sidebar-logout:hover {
+        background: #eef2ff;
+        color: var(--primary);
+    }
+
+.sidebar-overlay {
+        display: none;
+    }
+
+.mobile-topbar {
+        display: none;
+    }
