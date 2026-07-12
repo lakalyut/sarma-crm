@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models import Sale
+from ..utils.dates import month_sort_key
 
 
 def get_clients_summary_data(
@@ -76,6 +77,53 @@ def get_clients_summary_data(
         "summary": summary,
         "type_cards": type_cards,
     }
+
+
+def get_clients_monthly_breakdown(
+    db: Session,
+    filters: list,
+) -> list[dict]:
+    sums_q = db.query(
+        Sale.month.label("month"),
+        func.sum(Sale.qty).label("qty"),
+        func.sum(Sale.weight).label("weight"),
+    )
+
+    sku_q = db.query(
+        Sale.month.label("month"),
+        Sale.type.label("type"),
+        Sale.client.label("client"),
+        func.count(func.distinct(Sale.sku)).label("sku_count"),
+    )
+
+    if filters:
+        sums_q = sums_q.filter(*filters)
+        sku_q = sku_q.filter(*filters)
+
+    sums_rows = sums_q.group_by(Sale.month).all()
+    sku_rows = sku_q.group_by(Sale.month, Sale.type, Sale.client).all()
+
+    total_sku_by_month = defaultdict(int)
+    for row in sku_rows:
+        if row.month:
+            total_sku_by_month[row.month] += row.sku_count or 0
+
+    months = sorted(
+        {row.month for row in sums_rows if row.month},
+        key=month_sort_key,
+    )
+
+    data_by_month = {row.month: row for row in sums_rows if row.month}
+
+    return [
+        {
+            "month": month,
+            "qty": float(data_by_month[month].qty or 0),
+            "weight": float(data_by_month[month].weight or 0),
+            "total_sku": total_sku_by_month.get(month, 0),
+        }
+        for month in months
+    ]
 
 
 def get_client_detail_data(

@@ -10,6 +10,7 @@ from ..render import render
 from ..services.charts_service import get_charts_metrics_data
 from ..services.clients_service import (
     get_client_detail_data,
+    get_clients_monthly_breakdown,
     get_clients_summary_data,
 )
 from ..services.sale_filters import build_sale_filters
@@ -60,6 +61,7 @@ def analytics_clients(
                     "sku_per_client": 0,
                 },
                 "type_cards": [],
+                "monthly": [],
                 "message": "Выберите нужный город",
             },
         )
@@ -90,6 +92,7 @@ def analytics_clients(
     rows = clients_data["rows"]
     summary = clients_data["summary"]
     type_cards = clients_data["type_cards"]
+    monthly = get_clients_monthly_breakdown(db=db, filters=filters)
 
     matched_flag = None
     if matched == "1":
@@ -111,6 +114,7 @@ def analytics_clients(
             "matched": matched_flag,
             "summary": summary,
             "type_cards": type_cards,
+            "monthly": monthly,
         },
     )
 

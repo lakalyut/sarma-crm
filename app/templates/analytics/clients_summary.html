@@ -214,6 +214,36 @@
                     {% endfor %}
                 {% endif %}
             </div>
+
+            {% if monthly and monthly|length > 1 %}
+                <div class="summary-monthly">
+                    <div class="summary-monthly-title">По месяцам</div>
+                    <div class="sheet-wrapper">
+                        <div class="sheet-scroller">
+                            <table class="sheet-table">
+                                <thead>
+                                <tr>
+                                    <th>Месяц</th>
+                                    <th>Количество, шт</th>
+                                    <th>Вес, кг</th>
+                                    <th>Всего SKU, шт</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in monthly %}
+                                        <tr>
+                                            <td>{{ m.month|format_month }}</td>
+                                            <td>{{ "%.2f"|format(m.qty) }}</td>
+                                            <td>{{ "%.2f"|format(m.weight) }}</td>
+                                            <td>{{ m.total_sku }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 {% endif %}
