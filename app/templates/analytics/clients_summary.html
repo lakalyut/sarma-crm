@@ -280,8 +280,11 @@
                             <th data-sort="sku" class="sortable">
                                 SKU <span class="sort-icon">↕</span>
                             </th>
+                            <th>Динамика</th>
+                            <th data-sort="delta" class="sortable">
+                                Δ период <span class="sort-icon">↕</span>
+                            </th>
                             <th>Подробности</th>
-                            <th class="client-row-toggle-th"></th>
                         </tr>
                         </thead>
                         <tbody>
@@ -295,59 +298,31 @@
                                     data-qty="{{ r.qty }}"
                                     data-weight="{{ r.weight }}"
                                     data-sku="{{ r.sku_count }}"
+                                    data-delta="0"
+                                    data-monthly="{{ client_monthly|tojson }}"
                                 >
                                     <td>{{ r.type }}</td>
                                     <td class="client-name-cell">{{ r.client }}</td>
                                     <td>{{ "%.2f"|format(r.qty) }}</td>
                                     <td>{{ "%.2f"|format(r.weight) }}</td>
                                     <td>{{ r.sku_count }}</td>
-                                    <td>
-                                        <a
-                                            class="btn"
-                                            href="/analytics/client?city={{ selected_city }}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}"
-                                        >
-                                            Детали
-                                        </a>
-
-                                        <a
-                                            class="btn"
-                                            href="/analytics/charts?city={{ selected_city }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% for sale_type in selected_types %}&sale_types={{ sale_type }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}"
-                                        >
-                                            График
-                                        </a>
+                                    <td class="spark-cell">
+                                        <svg class="spark-svg" viewBox="0 0 64 22" width="64" height="22"></svg>
                                     </td>
-                                    <td class="client-row-toggle-cell">
-                                        {% if client_monthly|length > 1 %}
-                                            <button type="button" class="client-row-toggle" aria-expanded="false" title="По месяцам">▸</button>
-                                        {% endif %}
+                                    <td class="delta-cell"><span class="delta-value">—</span></td>
+                                    <td class="actions-cell">
+                                        <a
+                                            class="icon-btn"
+                                            title="Детали"
+                                            href="/analytics/client?city={{ selected_city }}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}"
+                                        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg></a>
+                                        <a
+                                            class="icon-btn"
+                                            title="График"
+                                            href="/analytics/charts?city={{ selected_city }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% for sale_type in selected_types %}&sale_types={{ sale_type }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}"
+                                        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg></a>
                                     </td>
                                 </tr>
-                                {% if client_monthly|length > 1 %}
-                                    <tr class="client-detail-row" style="display:none;">
-                                        <td colspan="7">
-                                            <table class="client-monthly-table">
-                                                <thead>
-                                                <tr>
-                                                    <th>Месяц</th>
-                                                    <th>Количество</th>
-                                                    <th>Вес</th>
-                                                    <th>SKU</th>
-                                                </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {% for m in client_monthly %}
-                                                        <tr>
-                                                            <td>{{ m.month|format_month }}</td>
-                                                            <td>{{ "%.2f"|format(m.qty) }}</td>
-                                                            <td>{{ "%.2f"|format(m.weight) }}</td>
-                                                            <td>{{ m.sku_count }}</td>
-                                                        </tr>
-                                                    {% endfor %}
-                                                </tbody>
-                                            </table>
-                                        </td>
-                                    </tr>
-                                {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -572,9 +547,99 @@ document.addEventListener("DOMContentLoaded", function () {
         field: null,
         direction: null, // "asc" | "desc" | null
     };
+    let activeMetric = "qty";
+
+    const METRIC_FIELD = { qty: "qty", weight: "weight", sku: "sku_count" };
 
     function getAllRows() {
         return Array.from(tbody.querySelectorAll(".client-row"));
+    }
+
+    function computeHalvesAvg(values) {
+        const n = values.length;
+        if (n < 2) return null;
+
+        const mid = Math.floor(n / 2);
+        const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
+
+        return {
+            firstAvg: avg(values.slice(0, mid)),
+            secondAvg: avg(values.slice(mid)),
+        };
+    }
+
+    function computeDeltaPct(values) {
+        const halves = computeHalvesAvg(values);
+        if (!halves) return null;
+
+        if (halves.firstAvg === 0) {
+            return halves.secondAvg === 0 ? 0 : null;
+        }
+
+        return ((halves.secondAvg - halves.firstAvg) / halves.firstAvg) * 100;
+    }
+
+    function buildSparkPoints(values) {
+        const w = 64, h = 22, pad = 2;
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min || 1;
+        const step = (w - pad * 2) / (values.length - 1);
+
+        return values
+            .map((v, i) => {
+                const x = pad + i * step;
+                const y = h - pad - ((v - min) / range) * (h - pad * 2);
+                return x.toFixed(1) + "," + y.toFixed(1);
+            })
+            .join(" ");
+    }
+
+    function renderMetrics() {
+        const field = METRIC_FIELD[activeMetric];
+
+        getAllRows().forEach(row => {
+            let monthly = [];
+            try {
+                monthly = JSON.parse(row.dataset.monthly || "[]");
+            } catch (e) {
+                monthly = [];
+            }
+
+            const values = monthly.map(m => Number(m[field]) || 0);
+            const svg = row.querySelector(".spark-svg");
+            const deltaSpan = row.querySelector(".delta-value");
+            const delta = computeDeltaPct(values);
+
+            if (svg) {
+                svg.innerHTML = "";
+                if (values.length >= 2) {
+                    let color = "var(--text-muted)";
+                    if (delta !== null) {
+                        if (delta > 1) color = "#3B6D11";
+                        else if (delta < -1) color = "#A32D2D";
+                    }
+                    const points = buildSparkPoints(values);
+                    svg.innerHTML =
+                        '<polyline points="' + points + '" fill="none" stroke="' + color +
+                        '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+                }
+            }
+
+            if (deltaSpan) {
+                if (delta === null) {
+                    deltaSpan.textContent = values.length >= 2 ? "новое" : "—";
+                    deltaSpan.className = "delta-value";
+                } else {
+                    const sign = delta > 0 ? "+" : "";
+                    deltaSpan.textContent = sign + Math.round(delta) + "%";
+                    deltaSpan.className =
+                        "delta-value" + (delta > 1 ? " delta-up" : delta < -1 ? " delta-down" : "");
+                }
+            }
+
+            row.dataset.delta = delta === null ? "0" : String(delta);
+        });
     }
 
     function getVisibleBySearch(rows) {
@@ -603,19 +668,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    function collapseAllDetails() {
-        tbody.querySelectorAll(".client-detail-row").forEach(dr => {
-            dr.style.display = "none";
-        });
-        tbody.querySelectorAll(".client-row-toggle").forEach(btn => {
-            btn.textContent = "▸";
-            btn.setAttribute("aria-expanded", "false");
-        });
-    }
-
     function renderRows() {
-        collapseAllDetails();
-
         const allRows = getAllRows();
 
         allRows.forEach(row => {
@@ -631,17 +684,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         rows.forEach(row => {
-            const sibling = row.nextElementSibling;
-            const detail = sibling && sibling.classList.contains("client-detail-row")
-                ? sibling
-                : null;
-
             row.style.display = "";
             tbody.appendChild(row);
-
-            if (detail) {
-                tbody.appendChild(detail);
-            }
         });
 
         updateHeaderState();
@@ -678,6 +722,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (th.dataset.sort) {
             th.addEventListener("click", function () {
                 const field = th.dataset.sort;
+
+                if (METRIC_FIELD[field] && activeMetric !== field) {
+                    activeMetric = field;
+                    renderMetrics();
+                }
 
                 if (sortState.field !== field) {
                     sortState.field = field;
@@ -737,20 +786,7 @@ document.addEventListener("DOMContentLoaded", function () {
         searchInput.addEventListener("input", renderRows);
     }
 
-    tbody.addEventListener("click", function (e) {
-        const btn = e.target.closest(".client-row-toggle");
-        if (!btn) return;
-
-        const row = btn.closest(".client-row");
-        const detail = row && row.nextElementSibling;
-        if (!detail || !detail.classList.contains("client-detail-row")) return;
-
-        const expanded = detail.style.display !== "none";
-        detail.style.display = expanded ? "none" : "table-row";
-        btn.textContent = expanded ? "▸" : "▾";
-        btn.setAttribute("aria-expanded", String(!expanded));
-    });
-
+    renderMetrics();
     renderRows();
 });
 </script>

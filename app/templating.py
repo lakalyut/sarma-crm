@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 
@@ -31,4 +32,9 @@ def format_month(value: str):
     return f"{month_name} {dt.year}"
 
 
+def tojson_filter(value):
+    return json.dumps(value)
+
+
 templates.env.filters["format_month"] = format_month
+templates.env.filters["tojson"] = tojson_filter
