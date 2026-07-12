@@ -11,6 +11,15 @@
 {% include "_styles.html" %}   
 </head>
 <body>
+<script>
+(function () {
+    try {
+        if (localStorage.getItem("sidebarCollapsed") === "1") {
+            document.documentElement.classList.add("sidebar-collapsed");
+        }
+    } catch (e) {}
+})();
+</script>
 <div class="app-layout">
     {% include "includes/sidebar.html" %}
 

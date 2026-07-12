@@ -87,6 +87,31 @@
         pointer-events: auto;
     }
 
+    .sidebar-collapse-toggle {
+        display: none;
+    }
+
+    html.sidebar-collapsed .sidebar {
+        width: min(260px, 82vw);
+    }
+
+    html.sidebar-collapsed .sidebar-brand {
+        justify-content: flex-start;
+        padding: 0 8px;
+    }
+
+    html.sidebar-collapsed .sidebar-brand-title,
+    html.sidebar-collapsed .sidebar-nav-label,
+    html.sidebar-collapsed .sidebar-nav-text,
+    html.sidebar-collapsed .sidebar-user-email {
+        display: revert;
+    }
+
+    html.sidebar-collapsed .sidebar-nav-link,
+    html.sidebar-collapsed .sidebar-logout {
+        justify-content: flex-start;
+    }
+
     .ambassadors-filters-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }

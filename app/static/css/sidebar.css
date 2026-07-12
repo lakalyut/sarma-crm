@@ -22,6 +22,8 @@
         top: 0;
         height: 100vh;
         overflow-y: auto;
+        overflow-x: hidden;
+        transition: width 0.15s ease;
     }
 
 .sidebar-brand {
@@ -44,6 +46,32 @@
         font-weight: 700;
         font-size: 14px;
         color: var(--text-main);
+        white-space: nowrap;
+    }
+
+.sidebar-collapse-toggle {
+        all: unset;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        color: var(--text-muted);
+        cursor: pointer;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+.sidebar-collapse-toggle:hover {
+        background: #eef2ff;
+        color: var(--primary);
+    }
+
+.sidebar-collapse-toggle svg {
+        width: 16px;
+        height: 16px;
+        transition: transform 0.15s ease;
     }
 
 .sidebar-nav {
@@ -64,10 +92,13 @@
         letter-spacing: 0.04em;
         padding: 0 10px;
         margin-bottom: 6px;
+        white-space: nowrap;
     }
 
 .sidebar-nav-link {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         padding: 9px 10px;
         border-radius: 10px;
         font-size: 13px;
@@ -85,6 +116,18 @@
 .sidebar-nav-link.active {
         background: var(--primary);
         color: #ffffff;
+    }
+
+.sidebar-nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+.sidebar-nav-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
 .sidebar-footer {
@@ -109,7 +152,9 @@
 
 .sidebar-logout {
         all: unset;
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         width: 100%;
         box-sizing: border-box;
         padding: 9px 10px;
@@ -130,4 +175,33 @@
 
 .mobile-topbar {
         display: none;
+    }
+
+html.sidebar-collapsed .sidebar {
+        width: 68px;
+    }
+
+html.sidebar-collapsed .sidebar-brand {
+        justify-content: center;
+        padding: 0;
+    }
+
+html.sidebar-collapsed .sidebar-brand-title,
+html.sidebar-collapsed .sidebar-nav-label,
+html.sidebar-collapsed .sidebar-nav-text,
+html.sidebar-collapsed .sidebar-user-email {
+        display: none;
+    }
+
+html.sidebar-collapsed .sidebar-collapse-toggle {
+        margin-left: 0;
+    }
+
+html.sidebar-collapsed .sidebar-collapse-toggle svg {
+        transform: rotate(180deg);
+    }
+
+html.sidebar-collapsed .sidebar-nav-link,
+html.sidebar-collapsed .sidebar-logout {
+        justify-content: center;
     }
