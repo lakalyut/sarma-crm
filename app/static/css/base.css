@@ -22,6 +22,25 @@
         --danger-border: #f97373;
         --danger-bg: #fee2e2;
 
+        --status-new-row-bg: #f0fdf4;
+        --status-new-row-bg-hover: #dcfce7;
+        --status-new-badge-bg: #dcfce7;
+        --status-new-text: #15803d;
+
+        --status-lost-row-bg: #fff1f2;
+        --status-lost-badge-bg: #ffe4e6;
+        --status-lost-text: #be123c;
+
+        --status-unstable-row-bg: #fefce8;
+        --status-unstable-badge-bg: #fef3c7;
+        --status-unstable-text: #a16207;
+
+        --status-existing-badge-bg: #f1f5f9;
+        --status-existing-text: var(--text-muted);
+
+        --status-assortment-new-badge-bg: #ede9fe;
+        --status-assortment-new-text: #6d28d9;
+
         --radius-lg: 16px;
         --radius-md: 12px;
         --radius-sm: 8px;
