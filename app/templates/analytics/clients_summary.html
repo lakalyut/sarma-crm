@@ -280,9 +280,9 @@
                             <th data-sort="sku" class="sortable">
                                 SKU <span class="sort-icon">↕</span>
                             </th>
-                            <th>Динамика</th>
+                            <th>Динамика <span class="metric-label" id="dynamics-metric-label">(Кол-во)</span></th>
                             <th data-sort="delta" class="sortable">
-                                Δ период <span class="sort-icon">↕</span>
+                                Δ период <span class="metric-label" id="delta-metric-label">(Кол-во)</span> <span class="sort-icon">↕</span>
                             </th>
                             <th>Подробности</th>
                         </tr>
@@ -550,6 +550,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let activeMetric = "qty";
 
     const METRIC_FIELD = { qty: "qty", weight: "weight", sku: "sku_count" };
+    const METRIC_LABEL = { qty: "Кол-во", weight: "Вес", sku: "SKU" };
+    const dynamicsMetricLabel = document.getElementById("dynamics-metric-label");
+    const deltaMetricLabel = document.getElementById("delta-metric-label");
 
     function getAllRows() {
         return Array.from(tbody.querySelectorAll(".client-row"));
@@ -597,6 +600,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function renderMetrics() {
         const field = METRIC_FIELD[activeMetric];
+        const label = "(" + METRIC_LABEL[activeMetric] + ")";
+
+        if (dynamicsMetricLabel) dynamicsMetricLabel.textContent = label;
+        if (deltaMetricLabel) deltaMetricLabel.textContent = label;
 
         getAllRows().forEach(row => {
             let monthly = [];

@@ -180,44 +180,44 @@ table.sheet-table tbody tr:hover td {
 
 #clients-table th:nth-child(3),
 #clients-table td:nth-child(3) {
-        width: 68px;
-        min-width: 68px;
-        max-width: 68px;
+        width: 92px;
+        min-width: 92px;
+        max-width: 92px;
     }
 
 #clients-table th:nth-child(4),
 #clients-table td:nth-child(4) {
-        width: 64px;
-        min-width: 64px;
-        max-width: 64px;
+        width: 70px;
+        min-width: 70px;
+        max-width: 70px;
     }
 
 #clients-table th:nth-child(5),
 #clients-table td:nth-child(5) {
-        width: 50px;
-        min-width: 50px;
-        max-width: 50px;
+        width: 56px;
+        min-width: 56px;
+        max-width: 56px;
     }
 
 #clients-table th:nth-child(6),
 #clients-table td:nth-child(6) {
-        width: 84px;
-        min-width: 84px;
-        max-width: 84px;
+        width: 120px;
+        min-width: 120px;
+        max-width: 120px;
     }
 
 #clients-table th:nth-child(7),
 #clients-table td:nth-child(7) {
-        width: 64px;
-        min-width: 64px;
-        max-width: 64px;
+        width: 128px;
+        min-width: 128px;
+        max-width: 128px;
     }
 
 #clients-table th:nth-child(8),
 #clients-table td:nth-child(8) {
-        width: 64px;
-        min-width: 64px;
-        max-width: 64px;
+        width: 96px;
+        min-width: 96px;
+        max-width: 96px;
         white-space: nowrap;
     }
 
@@ -268,4 +268,10 @@ table.sheet-table tbody tr:hover td {
 .icon-btn svg {
         width: 13px;
         height: 13px;
+    }
+
+.metric-label {
+        font-weight: 400;
+        color: var(--primary);
+        text-transform: none;
     }
