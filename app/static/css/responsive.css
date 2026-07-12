@@ -117,6 +117,22 @@
         font-size: 12px;
         letter-spacing: 0.02em;
     }
+
+    .sheet-wrapper {
+        position: relative;
+    }
+
+    .sheet-wrapper::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 24px;
+        pointer-events: none;
+        z-index: 7;
+        background: linear-gradient(to right, rgba(15, 23, 42, 0), rgba(15, 23, 42, 0.1));
+    }
 }
 
 @media (max-width: 520px) {

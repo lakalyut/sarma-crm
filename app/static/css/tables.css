@@ -10,6 +10,7 @@
 .sheet-scroller {
         max-height: 70vh;
         overflow: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
 table.sheet-table {
