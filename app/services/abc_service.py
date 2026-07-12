@@ -102,31 +102,38 @@ def get_client_abc_overview(
     rating_by_product = {r.product_id: r.category for r in ratings}
 
     owned_by_category: dict[str, int] = {c: 0 for c in ABC_CATEGORIES}
-    for product_id in owned_product_ids:
-        category = rating_by_product.get(product_id)
-        if category in owned_by_category:
+    total_by_category: dict[str, int] = {c: 0 for c in ABC_CATEGORIES}
+    missing_ids_by_category: dict[str, list[int]] = {c: [] for c in ABC_CATEGORIES}
+
+    for product_id, category in rating_by_product.items():
+        if category not in ABC_CATEGORIES:
+            continue
+
+        total_by_category[category] += 1
+
+        if product_id in owned_product_ids:
             owned_by_category[category] += 1
+        else:
+            missing_ids_by_category[category].append(product_id)
 
-    missing_a_ids = [
-        product_id
-        for product_id, category in rating_by_product.items()
-        if category == "A" and product_id not in owned_product_ids
-    ]
+    all_missing_ids = [pid for ids in missing_ids_by_category.values() for pid in ids]
 
-    missing_a_products = []
-    if missing_a_ids:
-        missing_a_products = (
+    missing_by_category: dict[str, list] = {c: [] for c in ABC_CATEGORIES}
+    if all_missing_ids:
+        products = (
             db.query(Product)
-            .filter(Product.id.in_(missing_a_ids), Product.is_active.is_(True))
+            .filter(Product.id.in_(all_missing_ids), Product.is_active.is_(True))
             .order_by(Product.brand, Product.flavor)
             .all()
         )
-
-    total_a = sum(1 for category in rating_by_product.values() if category == "A")
+        for product in products:
+            category = rating_by_product.get(product.id)
+            if category in missing_by_category:
+                missing_by_category[category].append(product)
 
     return {
         "owned_by_category": owned_by_category,
-        "missing_a_products": missing_a_products,
-        "total_a": total_a,
+        "total_by_category": total_by_category,
+        "missing_by_category": missing_by_category,
         "rating_by_product": rating_by_product,
     }

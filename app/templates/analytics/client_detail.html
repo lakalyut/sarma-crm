@@ -59,34 +59,35 @@
     <div class="summary-cards">
         <div class="summary-card sku">
             <div class="summary-card-title">Категория A в ассортименте</div>
-            <div class="summary-card-value">{{ abc_overview.owned_by_category.A }} из {{ abc_overview.total_a }}</div>
+            <div class="summary-card-value">{{ abc_overview.owned_by_category.A }} из {{ abc_overview.total_by_category.A }}</div>
         </div>
         <div class="summary-card qty">
             <div class="summary-card-title">Категория B в ассортименте</div>
-            <div class="summary-card-value">{{ abc_overview.owned_by_category.B }}</div>
+            <div class="summary-card-value">{{ abc_overview.owned_by_category.B }} из {{ abc_overview.total_by_category.B }}</div>
         </div>
         <div class="summary-card weight">
             <div class="summary-card-title">Категория C в ассортименте</div>
-            <div class="summary-card-value">{{ abc_overview.owned_by_category.C }}</div>
+            <div class="summary-card-value">{{ abc_overview.owned_by_category.C }} из {{ abc_overview.total_by_category.C }}</div>
         </div>
     </div>
 
-    {% if abc_overview.missing_a_products %}
-        <div style="margin-top: 12px; padding: 14px 16px; background: var(--pastel-red); border-radius: var(--radius-lg); border: 1px solid var(--danger-border);">
-            <div style="font-weight: 600; margin-bottom: 8px;">
-                Не покупает из категории A ({{ abc_overview.missing_a_products|length }}) — за всё время
+    {% for cat in ["A", "B", "C"] %}
+        {% set missing = abc_overview.missing_by_category[cat] %}
+        {% if missing %}
+            <details class="abc-missing-block abc-missing-{{ cat|lower }}" {% if cat == "A" %}open{% endif %}>
+                <summary>Не покупает из категории {{ cat }} ({{ missing|length }}) — за всё время</summary>
+                <div class="multiselect-tags" style="margin-top: 8px;">
+                    {% for p in missing %}
+                        <span class="filter-tag">{{ p.brand }} — {{ p.flavor }}</span>
+                    {% endfor %}
+                </div>
+            </details>
+        {% elif abc_overview.total_by_category[cat] %}
+            <div class="abc-missing-block" style="background: var(--success-bg); border-color: var(--success-border);">
+                Категория {{ cat }}: клиент закупает весь ассортимент по сегменту «{{ selected_segment.name }}».
             </div>
-            <div class="multiselect-tags" style="margin-top: 0;">
-                {% for p in abc_overview.missing_a_products %}
-                    <span class="filter-tag">{{ p.brand }} — {{ p.flavor }}</span>
-                {% endfor %}
-            </div>
-        </div>
-    {% elif abc_overview.total_a %}
-        <div style="margin-top: 12px; padding: 14px 16px; background: var(--success-bg); border-radius: var(--radius-lg); border: 1px solid var(--success-border);">
-            Клиент закупает весь ассортимент категории A по сегменту «{{ selected_segment.name }}».
-        </div>
-    {% endif %}
+        {% endif %}
+    {% endfor %}
 {% endif %}
 
 {% if summary %}
@@ -144,20 +145,27 @@
     <h2 style="font-size: 15px; margin-top: 20px; margin-bottom: 8px;">Номенклатуры</h2>
     <div class="sheet-wrapper">
         <div class="sheet-scroller">
-            <table class="sheet-table">
+            <table class="sheet-table" id="nomenclatures-table">
                 <thead>
                 <tr>
                     <th>Номенклатура</th>
                     <th>SKU</th>
-                    <th>Кол-во</th>
-                    <th>Вес</th>
-                    <th>ABC</th>
+                    <th data-sort="qty" class="sortable">
+                        Кол-во <span class="sort-icon">↕</span>
+                    </th>
+                    <th data-sort="weight" class="sortable">
+                        Вес <span class="sort-icon">↕</span>
+                    </th>
+                    <th data-sort="abc" class="sortable">
+                        ABC <span class="sort-icon">↕</span>
+                    </th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for r in rows %}
                     {% set cat = rating_by_product.get(r.product_id) %}
-                    <tr>
+                    {% set abc_weight = {"A": 1, "B": 2, "C": 3}.get(cat, 4) %}
+                    <tr data-qty="{{ r.qty }}" data-weight="{{ r.weight }}" data-abc="{{ abc_weight }}">
                         <td>{{ r.name }}</td>
                         <td>{{ r.sku }}</td>
                         <td>{{ "%.2f"|format(r.qty) }}</td>
@@ -175,5 +183,73 @@
             </table>
         </div>
     </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const table = document.getElementById("nomenclatures-table");
+        if (!table) return;
+
+        const tbody = table.querySelector("tbody");
+        const headers = table.querySelectorAll("thead th");
+
+        let sortState = { field: null, direction: null };
+
+        function updateHeaderState() {
+            headers.forEach(th => {
+                const icon = th.querySelector(".sort-icon");
+                th.classList.remove("sort-active");
+                if (th.dataset.sort && icon) icon.textContent = "↕";
+            });
+
+            headers.forEach(th => {
+                if (th.dataset.sort && th.dataset.sort === sortState.field) {
+                    th.classList.add("sort-active");
+                    const icon = th.querySelector(".sort-icon");
+                    if (icon) icon.textContent = sortState.direction === "asc" ? "↑" : "↓";
+                }
+            });
+        }
+
+        function renderSort() {
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+            if (!sortState.field || !sortState.direction) {
+                updateHeaderState();
+                return;
+            }
+
+            const factor = sortState.direction === "asc" ? 1 : -1;
+            rows.sort((a, b) => {
+                const av = parseFloat(a.dataset[sortState.field] || "0");
+                const bv = parseFloat(b.dataset[sortState.field] || "0");
+                return (av - bv) * factor;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+            updateHeaderState();
+        }
+
+        headers.forEach(th => {
+            if (!th.dataset.sort) return;
+
+            th.addEventListener("click", function () {
+                const field = th.dataset.sort;
+
+                if (sortState.field !== field) {
+                    sortState.field = field;
+                    sortState.direction = field === "abc" ? "asc" : "desc";
+                } else if (sortState.direction === "desc") {
+                    sortState.direction = "asc";
+                } else if (sortState.direction === "asc") {
+                    sortState.field = null;
+                    sortState.direction = null;
+                } else {
+                    sortState.direction = "desc";
+                }
+
+                renderSort();
+            });
+        });
+    });
+    </script>
 {% endif %}
 {% endblock %}

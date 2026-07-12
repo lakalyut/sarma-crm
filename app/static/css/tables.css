@@ -337,3 +337,43 @@ table.sheet-table tbody tr:hover td {
         background: #f1f5f9;
         color: var(--text-muted);
     }
+
+.abc-missing-block {
+        margin-top: 10px;
+        padding: 12px 16px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border);
+        background: #f8fafc;
+        font-size: 13px;
+    }
+
+.abc-missing-block summary {
+        cursor: pointer;
+        font-weight: 600;
+        list-style: none;
+    }
+
+.abc-missing-block summary::-webkit-details-marker {
+        display: none;
+    }
+
+.abc-missing-block summary::before {
+        content: "▸ ";
+    }
+
+.abc-missing-block[open] summary::before {
+        content: "▾ ";
+    }
+
+.abc-missing-a {
+        background: var(--pastel-red);
+        border-color: var(--danger-border);
+    }
+
+.abc-missing-b {
+        background: var(--pastel-blue);
+    }
+
+.abc-missing-c {
+        background: var(--pastel-yellow);
+    }
