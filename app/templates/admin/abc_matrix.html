@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>ABC-рейтинг номенклатур</h1>
+<p style="color: var(--text-muted); font-size: 13px; margin-top: -8px;">
+    Категория присваивается номенклатуре отдельно для каждого сегмента.
+</p>
+
+<div class="filters-card" style="padding: 14px 18px;">
+    <form method="post" action="/admin/abc/segments/new" class="flex-row" style="gap: 10px; align-items: flex-end;">
+        <div class="field" style="margin-bottom: 0; min-width: 240px;">
+            <label for="segment-name">Добавить сегмент</label>
+            <input id="segment-name" name="name" type="text" placeholder="Например, ОПТ" required>
+        </div>
+        <button type="submit" class="btn-secondary">Добавить</button>
+    </form>
+</div>
+
+{% if not segments %}
+    <div class="message">Сначала добавьте хотя бы один сегмент.</div>
+{% else %}
+    <form method="post" action="/admin/abc">
+        <div class="sheet-wrapper" style="margin-top: 12px;">
+            <div class="sheet-scroller">
+                <table class="sheet-table abc-matrix-table">
+                    <thead>
+                    <tr>
+                        <th>Номенклатура</th>
+                        {% for segment in segments %}
+                            <th>{{ segment.name }}</th>
+                        {% endfor %}
+                        <th>Новинка</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        {% for line_label, products in grouped_products.items() %}
+                            <tr class="abc-matrix-group-row">
+                                <td colspan="{{ segments|length + 2 }}">{{ line_label }}</td>
+                            </tr>
+                            {% for product in products %}
+                                <tr>
+                                    <td>{{ product.brand }} — {{ product.flavor }}</td>
+                                    {% for segment in segments %}
+                                        {% set current = rating_map.get((product.id, segment.id)) %}
+                                        <td>
+                                            <select name="category_{{ product.id }}_{{ segment.id }}">
+                                                <option value="" {% if not current %}selected{% endif %}>—</option>
+                                                {% for cat in categories %}
+                                                    <option value="{{ cat }}" {% if current == cat %}selected{% endif %}>{{ cat }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                    {% endfor %}
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            name="is_new_{{ product.id }}"
+                                            {% if product.is_new %}checked{% endif %}
+                                        >
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex-row" style="margin-top: 14px;">
+            <button type="submit">Сохранить</button>
+        </div>
+    </form>
+{% endif %}
+{% endblock %}

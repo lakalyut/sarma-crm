@@ -130,6 +130,7 @@ def get_client_detail_data(
     q = db.query(
         Sale.name.label("name"),
         Sale.sku.label("sku"),
+        func.max(Sale.product_id).label("product_id"),
         func.sum(Sale.qty).label("qty"),
         func.sum(Sale.weight).label("weight"),
     ).filter(

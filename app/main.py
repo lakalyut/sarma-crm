@@ -11,6 +11,7 @@ from starlette.status import HTTP_302_FOUND
 from .auth_deps import get_current_user
 from .auth_routes import router as auth_router
 from .database import Base, SessionLocal, engine
+from .routes.admin_abc import router as admin_abc_router
 from .routes.admin_imports import router as admin_imports_router
 from .routes.admin_users import router as admin_users_router
 from .routes.ambassadors import router as ambassadors_router
@@ -48,6 +49,7 @@ app.include_router(imports_router)
 app.include_router(analytics_router)
 app.include_router(admin_imports_router)
 app.include_router(ambassadors_router)
+app.include_router(admin_abc_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 

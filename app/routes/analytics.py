@@ -5,8 +5,13 @@ from sqlalchemy.orm import Session
 from ..auth_deps import require_admin, require_user
 from ..auth_models import User
 from ..database import get_db
-from ..models import Sale
+from ..models import AbcSegment, Sale
 from ..render import render
+from ..services.abc_service import (
+    ensure_default_segments,
+    get_client_abc_overview,
+    guess_default_segment,
+)
 from ..services.charts_service import get_charts_metrics_data
 from ..services.clients_service import (
     get_client_detail_data,
@@ -243,6 +248,7 @@ def analytics_client_detail(
     sale_type: str,
     months: list[str] = Query(default=None),
     matched: str | None = None,
+    abc_segment: int | None = None,
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
@@ -262,6 +268,27 @@ def analytics_client_detail(
     summary = detail_data["summary"]
     monthly = detail_data["monthly"]
 
+    ensure_default_segments(db)
+    segments = db.query(AbcSegment).order_by(AbcSegment.sort_order, AbcSegment.id).all()
+
+    selected_segment = None
+    if abc_segment:
+        selected_segment = next((s for s in segments if s.id == abc_segment), None)
+    if not selected_segment:
+        selected_segment = guess_default_segment(segments, sale_type)
+
+    abc_overview = None
+    rating_by_product: dict[int, str] = {}
+    if selected_segment:
+        abc_overview = get_client_abc_overview(
+            db=db,
+            city=city,
+            client=client,
+            sale_type=sale_type,
+            segment_id=selected_segment.id,
+        )
+        rating_by_product = abc_overview["rating_by_product"]
+
     return render(
         request,
         "analytics/client_detail.html",
@@ -273,6 +300,11 @@ def analytics_client_detail(
             "months": months or [],
             "summary": summary,
             "monthly": monthly,
+            "segments": segments,
+            "selected_segment": selected_segment,
+            "abc_overview": abc_overview,
+            "rating_by_product": rating_by_product,
+            "matched": matched,
         },
     )
 

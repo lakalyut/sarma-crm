@@ -276,3 +276,64 @@ table.sheet-table tbody tr:hover td {
         color: var(--primary);
         text-transform: none;
     }
+
+.abc-matrix-table th:first-child,
+.abc-matrix-table td:first-child {
+        width: auto;
+        min-width: 280px;
+    }
+
+.abc-matrix-table th:not(:first-child),
+.abc-matrix-table td:not(:first-child) {
+        width: 120px;
+        min-width: 120px;
+        text-align: center;
+    }
+
+.abc-matrix-table select {
+        min-height: 32px;
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+.abc-matrix-table input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        min-height: 0;
+    }
+
+.abc-matrix-group-row td {
+        background: var(--pastel-yellow) !important;
+        font-weight: 600;
+        color: var(--text-main);
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.03em;
+    }
+
+.abc-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+.abc-badge-a {
+        background: var(--pastel-green);
+        color: var(--success);
+    }
+
+.abc-badge-b {
+        background: var(--pastel-blue);
+        color: var(--primary);
+    }
+
+.abc-badge-c {
+        background: #f1f5f9;
+        color: var(--text-muted);
+    }

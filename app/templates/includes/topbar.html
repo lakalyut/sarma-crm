@@ -18,6 +18,7 @@
             {% if current_user and current_user.role == "admin" %}
                 <a href="/admin/users" class="{% if request.url.path == '/admin/users' %}active{% endif %}">Пользователи</a>
                 <a href="/admin/products" class="{% if request.url.path == '/admin/products' %}active{% endif %}">Номенклатуры</a>
+                <a href="/admin/abc" class="{% if request.url.path == '/admin/abc' %}active{% endif %}">ABC-рейтинг</a>
                 <a href="/import-xlsx" class="{% if request.url.path == '/import-xlsx' %}active{% endif %}">Импорт XLSX</a>
                 <a href="/admin/unmatched" class="{% if request.url.path == '/admin/unmatched' %}active{% endif %}">Несопоставленные</a>
                 <a href="/admin/imports/delete" class="{% if request.url.path == '/admin/imports/delete' %}active{% endif %}">Удаление импорта</a>

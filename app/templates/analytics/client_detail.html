@@ -22,6 +22,73 @@
     ← Назад к списку клиентов
 </a>
 
+{% if segments %}
+    <div class="filters-card" style="margin-top: 12px; padding: 14px 18px;">
+        <form method="get" action="/analytics/client" class="flex-row" style="gap: 10px; align-items: flex-end;">
+            <input type="hidden" name="city" value="{{ city }}">
+            <input type="hidden" name="client" value="{{ client }}">
+            <input type="hidden" name="sale_type" value="{{ sale_type }}">
+            {% for m in months %}
+                <input type="hidden" name="months" value="{{ m }}">
+            {% endfor %}
+            {% if matched is not none %}
+                <input type="hidden" name="matched" value="{{ matched }}">
+            {% endif %}
+
+            <div class="field" style="margin-bottom: 0; min-width: 200px;">
+                <label for="abc-segment-select">ABC-рейтинг по сегменту</label>
+                <select id="abc-segment-select" name="abc_segment">
+                    {% for segment in segments %}
+                        <option
+                            value="{{ segment.id }}"
+                            {% if selected_segment and selected_segment.id == segment.id %}selected{% endif %}
+                        >{{ segment.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-secondary">Показать</button>
+        </form>
+    </div>
+{% endif %}
+
+{% if abc_overview %}
+    <h2 style="font-size: 15px; margin-top: 20px; margin-bottom: 8px;">
+        Ассортимент по ABC ({{ selected_segment.name }})
+    </h2>
+
+    <div class="summary-cards">
+        <div class="summary-card sku">
+            <div class="summary-card-title">Категория A в ассортименте</div>
+            <div class="summary-card-value">{{ abc_overview.owned_by_category.A }} из {{ abc_overview.total_a }}</div>
+        </div>
+        <div class="summary-card qty">
+            <div class="summary-card-title">Категория B в ассортименте</div>
+            <div class="summary-card-value">{{ abc_overview.owned_by_category.B }}</div>
+        </div>
+        <div class="summary-card weight">
+            <div class="summary-card-title">Категория C в ассортименте</div>
+            <div class="summary-card-value">{{ abc_overview.owned_by_category.C }}</div>
+        </div>
+    </div>
+
+    {% if abc_overview.missing_a_products %}
+        <div style="margin-top: 12px; padding: 14px 16px; background: var(--pastel-red); border-radius: var(--radius-lg); border: 1px solid var(--danger-border);">
+            <div style="font-weight: 600; margin-bottom: 8px;">
+                Не покупает из категории A ({{ abc_overview.missing_a_products|length }}) — за всё время
+            </div>
+            <div class="multiselect-tags" style="margin-top: 0;">
+                {% for p in abc_overview.missing_a_products %}
+                    <span class="filter-tag">{{ p.brand }} — {{ p.flavor }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    {% elif abc_overview.total_a %}
+        <div style="margin-top: 12px; padding: 14px 16px; background: var(--success-bg); border-radius: var(--radius-lg); border: 1px solid var(--success-border);">
+            Клиент закупает весь ассортимент категории A по сегменту «{{ selected_segment.name }}».
+        </div>
+    {% endif %}
+{% endif %}
+
 {% if summary %}
     <div class="summary-cards" style="margin-top: 10px;">
         <div class="summary-card">
@@ -84,15 +151,24 @@
                     <th>SKU</th>
                     <th>Кол-во</th>
                     <th>Вес</th>
+                    <th>ABC</th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for r in rows %}
+                    {% set cat = rating_by_product.get(r.product_id) %}
                     <tr>
                         <td>{{ r.name }}</td>
                         <td>{{ r.sku }}</td>
                         <td>{{ "%.2f"|format(r.qty) }}</td>
                         <td>{{ "%.2f"|format(r.weight) }}</td>
+                        <td>
+                            {% if cat %}
+                                <span class="abc-badge abc-badge-{{ cat|lower }}">{{ cat }}</span>
+                            {% else %}
+                                <span style="color: var(--text-muted);">—</span>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>
