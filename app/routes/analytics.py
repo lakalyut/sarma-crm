@@ -260,6 +260,7 @@ def analytics_client_detail(
 
     rows = detail_data["rows"]
     summary = detail_data["summary"]
+    monthly = detail_data["monthly"]
 
     return render(
         request,
@@ -271,6 +272,7 @@ def analytics_client_detail(
             "sale_type": sale_type,
             "months": months or [],
             "summary": summary,
+            "monthly": monthly,
         },
     )
 

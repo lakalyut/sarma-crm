@@ -43,12 +43,39 @@
     </div>
 {% endif %}
 
-
+{% if monthly and monthly|length > 1 %}
+    <h2 style="font-size: 15px; margin-top: 20px; margin-bottom: 8px;">Динамика по месяцам</h2>
+    <div class="sheet-wrapper">
+        <div class="sheet-scroller">
+            <table class="sheet-table">
+                <thead>
+                <tr>
+                    <th>Месяц</th>
+                    <th>Количество</th>
+                    <th>Вес</th>
+                    <th>SKU</th>
+                </tr>
+                </thead>
+                <tbody>
+                    {% for m in monthly %}
+                        <tr>
+                            <td>{{ m.month|format_month }}</td>
+                            <td>{{ "%.2f"|format(m.qty) }}</td>
+                            <td>{{ "%.2f"|format(m.weight) }}</td>
+                            <td>{{ m.sku_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
 
 {% if not rows %}
     <div class="message">Нет данных по этому клиенту под выбранные фильтры.</div>
 {% else %}
-    <div class="sheet-wrapper" style="margin-top:12px;">
+    <h2 style="font-size: 15px; margin-top: 20px; margin-bottom: 8px;">Номенклатуры</h2>
+    <div class="sheet-wrapper">
         <div class="sheet-scroller">
             <table class="sheet-table">
                 <thead>

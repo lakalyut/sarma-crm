@@ -159,7 +159,44 @@ def get_client_detail_data(
             "total_weight": float(sum(row.weight or 0 for row in rows)),
         }
 
+    monthly_q = db.query(
+        Sale.month.label("month"),
+        func.sum(Sale.qty).label("qty"),
+        func.sum(Sale.weight).label("weight"),
+        func.count(func.distinct(Sale.sku)).label("sku_count"),
+    ).filter(
+        Sale.city == city,
+        Sale.client == client,
+        Sale.type == sale_type,
+    )
+
+    if months:
+        monthly_q = monthly_q.filter(Sale.month.in_(months))
+
+    if matched == "1":
+        monthly_q = monthly_q.filter(Sale.matched.is_(True))
+    elif matched == "0":
+        monthly_q = monthly_q.filter(Sale.matched.is_(False))
+
+    monthly_q = monthly_q.group_by(Sale.month)
+    monthly_rows = monthly_q.all()
+
+    monthly = sorted(
+        (
+            {
+                "month": row.month,
+                "qty": float(row.qty or 0),
+                "weight": float(row.weight or 0),
+                "sku_count": int(row.sku_count or 0),
+            }
+            for row in monthly_rows
+            if row.month
+        ),
+        key=lambda m: month_sort_key(m["month"]),
+    )
+
     return {
         "rows": rows,
         "summary": summary,
+        "monthly": monthly,
     }
