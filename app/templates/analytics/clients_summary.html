@@ -623,8 +623,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (values.length >= 2) {
                     let color = "var(--text-muted)";
                     if (delta !== null) {
-                        if (delta > 1) color = "#3B6D11";
-                        else if (delta < -1) color = "#A32D2D";
+                        if (delta > 1) color = "var(--success)";
+                        else if (delta < -1) color = "var(--danger)";
                     }
                     const points = buildSparkPoints(values);
                     svg.innerHTML =

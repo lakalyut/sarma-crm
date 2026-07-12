@@ -236,12 +236,12 @@ table.sheet-table tbody tr:hover td {
     }
 
 .delta-value.delta-up {
-        color: #3b6d11;
+        color: var(--success);
         font-weight: 600;
     }
 
 .delta-value.delta-down {
-        color: #a32d2d;
+        color: var(--danger);
         font-weight: 600;
     }
 

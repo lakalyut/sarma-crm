@@ -15,6 +15,13 @@
         --pastel-purple: #f2e9ff;
         --pastel-green:  #e8ffe8;
 
+        --success: #16a34a;
+        --success-border: #81c995;
+        --success-bg: #e6f4ea;
+        --danger: #dc2626;
+        --danger-border: #f97373;
+        --danger-bg: #fee2e2;
+
         --radius-lg: 16px;
         --radius-md: 12px;
         --radius-sm: 8px;
@@ -55,13 +62,13 @@
     }
 
     .message.ok {
-        border: 1px solid #81c995;
-        background: #e6f4ea;
+        border: 1px solid var(--success-border);
+        background: var(--success-bg);
     }
 
     .message.error {
-        border: 1px solid #f97373;
-        background: #fee2e2;
+        border: 1px solid var(--danger-border);
+        background: var(--danger-bg);
     }
 
     .is-hidden {
