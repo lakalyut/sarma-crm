@@ -72,58 +72,51 @@ def get_clients_summary_data(
         ),
     }
 
+    monthly_by_client = _get_monthly_by_client(db=db, filters=filters)
+
     return {
         "rows": rows,
         "summary": summary,
         "type_cards": type_cards,
+        "monthly_by_client": monthly_by_client,
     }
 
 
-def get_clients_monthly_breakdown(
-    db: Session,
-    filters: list,
-) -> list[dict]:
-    sums_q = db.query(
+def _get_monthly_by_client(db: Session, filters: list) -> dict:
+    q = db.query(
+        Sale.type.label("type"),
+        Sale.client.label("client"),
         Sale.month.label("month"),
         func.sum(Sale.qty).label("qty"),
         func.sum(Sale.weight).label("weight"),
-    )
-
-    sku_q = db.query(
-        Sale.month.label("month"),
-        Sale.type.label("type"),
-        Sale.client.label("client"),
         func.count(func.distinct(Sale.sku)).label("sku_count"),
     )
 
     if filters:
-        sums_q = sums_q.filter(*filters)
-        sku_q = sku_q.filter(*filters)
+        q = q.filter(*filters)
 
-    sums_rows = sums_q.group_by(Sale.month).all()
-    sku_rows = sku_q.group_by(Sale.month, Sale.type, Sale.client).all()
+    q = q.group_by(Sale.type, Sale.client, Sale.month)
+    rows = q.all()
 
-    total_sku_by_month = defaultdict(int)
-    for row in sku_rows:
-        if row.month:
-            total_sku_by_month[row.month] += row.sku_count or 0
+    monthly_by_client = defaultdict(list)
+    for row in rows:
+        if not row.month:
+            continue
 
-    months = sorted(
-        {row.month for row in sums_rows if row.month},
-        key=month_sort_key,
-    )
+        key = f"{row.type}|{row.client}"
+        monthly_by_client[key].append(
+            {
+                "month": row.month,
+                "qty": float(row.qty or 0),
+                "weight": float(row.weight or 0),
+                "sku_count": int(row.sku_count or 0),
+            }
+        )
 
-    data_by_month = {row.month: row for row in sums_rows if row.month}
+    for months in monthly_by_client.values():
+        months.sort(key=lambda m: month_sort_key(m["month"]))
 
-    return [
-        {
-            "month": month,
-            "qty": float(data_by_month[month].qty or 0),
-            "weight": float(data_by_month[month].weight or 0),
-            "total_sku": total_sku_by_month.get(month, 0),
-        }
-        for month in months
-    ]
+    return dict(monthly_by_client)
 
 
 def get_client_detail_data(

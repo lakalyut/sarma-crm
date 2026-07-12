@@ -214,36 +214,6 @@
                     {% endfor %}
                 {% endif %}
             </div>
-
-            {% if monthly and monthly|length > 1 %}
-                <div class="summary-monthly">
-                    <div class="summary-monthly-title">По месяцам</div>
-                    <div class="sheet-wrapper">
-                        <div class="sheet-scroller">
-                            <table class="sheet-table">
-                                <thead>
-                                <tr>
-                                    <th>Месяц</th>
-                                    <th>Количество, шт</th>
-                                    <th>Вес, кг</th>
-                                    <th>Всего SKU, шт</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                    {% for m in monthly %}
-                                        <tr>
-                                            <td>{{ m.month|format_month }}</td>
-                                            <td>{{ "%.2f"|format(m.qty) }}</td>
-                                            <td>{{ "%.2f"|format(m.weight) }}</td>
-                                            <td>{{ m.total_sku }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
         </div>
     </div>
 {% endif %}
@@ -311,10 +281,13 @@
                                 SKU <span class="sort-icon">↕</span>
                             </th>
                             <th>Подробности</th>
+                            <th class="client-row-toggle-th"></th>
                         </tr>
                         </thead>
                         <tbody>
                             {% for r in rows %}
+                                {% set client_key = r.type ~ '|' ~ r.client %}
+                                {% set client_monthly = monthly_by_client.get(client_key, []) %}
                                 <tr
                                     class="client-row"
                                     data-type="{{ r.type }}"
@@ -343,7 +316,38 @@
                                             График
                                         </a>
                                     </td>
+                                    <td class="client-row-toggle-cell">
+                                        {% if client_monthly|length > 1 %}
+                                            <button type="button" class="client-row-toggle" aria-expanded="false" title="По месяцам">▸</button>
+                                        {% endif %}
+                                    </td>
                                 </tr>
+                                {% if client_monthly|length > 1 %}
+                                    <tr class="client-detail-row" style="display:none;">
+                                        <td colspan="7">
+                                            <table class="client-monthly-table">
+                                                <thead>
+                                                <tr>
+                                                    <th>Месяц</th>
+                                                    <th>Количество</th>
+                                                    <th>Вес</th>
+                                                    <th>SKU</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for m in client_monthly %}
+                                                        <tr>
+                                                            <td>{{ m.month|format_month }}</td>
+                                                            <td>{{ "%.2f"|format(m.qty) }}</td>
+                                                            <td>{{ "%.2f"|format(m.weight) }}</td>
+                                                            <td>{{ m.sku_count }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -599,7 +603,19 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function collapseAllDetails() {
+        tbody.querySelectorAll(".client-detail-row").forEach(dr => {
+            dr.style.display = "none";
+        });
+        tbody.querySelectorAll(".client-row-toggle").forEach(btn => {
+            btn.textContent = "▸";
+            btn.setAttribute("aria-expanded", "false");
+        });
+    }
+
     function renderRows() {
+        collapseAllDetails();
+
         const allRows = getAllRows();
 
         allRows.forEach(row => {
@@ -615,8 +631,17 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         rows.forEach(row => {
+            const sibling = row.nextElementSibling;
+            const detail = sibling && sibling.classList.contains("client-detail-row")
+                ? sibling
+                : null;
+
             row.style.display = "";
             tbody.appendChild(row);
+
+            if (detail) {
+                tbody.appendChild(detail);
+            }
         });
 
         updateHeaderState();
@@ -711,6 +736,20 @@ document.addEventListener("DOMContentLoaded", function () {
     if (searchInput) {
         searchInput.addEventListener("input", renderRows);
     }
+
+    tbody.addEventListener("click", function (e) {
+        const btn = e.target.closest(".client-row-toggle");
+        if (!btn) return;
+
+        const row = btn.closest(".client-row");
+        const detail = row && row.nextElementSibling;
+        if (!detail || !detail.classList.contains("client-detail-row")) return;
+
+        const expanded = detail.style.display !== "none";
+        detail.style.display = expanded ? "none" : "table-row";
+        btn.textContent = expanded ? "▸" : "▾";
+        btn.setAttribute("aria-expanded", String(!expanded));
+    });
 
     renderRows();
 });
