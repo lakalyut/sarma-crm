@@ -13,7 +13,7 @@
 .sidebar {
         width: 220px;
         flex-shrink: 0;
-        background: #ffffff;
+        background: var(--surface-alt);
         border-right: 1px solid var(--border);
         padding: 16px 12px;
         display: flex;
@@ -37,7 +37,7 @@
 .sidebar-logo {
         width: 26px;
         height: 26px;
-        border-radius: 8px;
+        border-radius: var(--radius-xs);
         background: var(--primary);
         flex-shrink: 0;
         display: flex;
@@ -64,7 +64,7 @@
         justify-content: center;
         width: 24px;
         height: 24px;
-        border-radius: 6px;
+        border-radius: var(--radius-xs);
         color: var(--text-muted);
         cursor: pointer;
         margin-left: auto;
@@ -72,7 +72,7 @@
     }
 
 .sidebar-collapse-toggle:hover {
-        background: #eef2ff;
+        background: var(--border);
         color: var(--primary);
     }
 
@@ -95,7 +95,7 @@
 
 .sidebar-nav-label {
         font-size: 11px;
-        color: #94a3b8;
+        color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.04em;
         padding: 0 10px;
@@ -108,7 +108,7 @@
         align-items: center;
         gap: 10px;
         padding: 9px 10px;
-        border-radius: 10px;
+        border-radius: var(--radius-sm);
         font-size: 13px;
         color: var(--text-muted);
         text-decoration: none;
@@ -117,7 +117,7 @@
     }
 
 .sidebar-nav-link:hover {
-        background: #eef2ff;
+        background: var(--border);
         text-decoration: none;
     }
 
@@ -166,14 +166,14 @@
         width: 100%;
         box-sizing: border-box;
         padding: 9px 10px;
-        border-radius: 10px;
+        border-radius: var(--radius-sm);
         font-size: 13px;
         color: var(--text-muted);
         cursor: pointer;
     }
 
 .sidebar-logout:hover {
-        background: #eef2ff;
+        background: var(--border);
         color: var(--primary);
     }
 
