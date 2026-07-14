@@ -19,11 +19,10 @@
 
 .summary-panel {
         margin-top: 8px;
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-sm);
         border: 1px solid var(--border);
-        background: #f8fafc;
+        background: var(--bg-page);
         padding: 8px 12px 10px;
-        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
     }
 
 .summary-panel-header {
@@ -41,18 +40,18 @@
 
 .summary-toggle {
         border: none;
-        border-radius: 999px;
+        border-radius: var(--radius-md);
         padding: 4px 10px;
         font-size: 12px;
         cursor: pointer;
-        background: #e5edff;
-        color: #1d4ed8;
+        background: var(--surface);
+        color: var(--text-main);
         box-shadow: none;
         min-height: auto;
     }
 
 .summary-toggle:hover {
-        background: #dbeafe;
+        background: var(--border);
     }
 
 .summary-panel-body.summary-collapsed {
@@ -69,29 +68,34 @@
 .summary-card {
         min-height: 96px;
         padding: 14px 16px;
-        border-radius: 14px;
-        box-shadow: var(--shadow-soft);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--border);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
     }
 
-.summary-card.clients    { background: var(--pastel-blue); }
-.summary-card.qty        { background: var(--pastel-cyan); }
-.summary-card.weight     { background: var(--pastel-yellow); }
-.summary-card.sku        { background: var(--pastel-red); }
-.summary-card.sku-total  { background: var(--pastel-purple); }
-.summary-card.sku-avg    { background: #efe7ff; }
-.summary-card.type       { background: #ece9ff; }
+.summary-card.clients    { border-left-color: var(--primary); }
+.summary-card.qty        { border-left-color: #0ea5e9; }
+.summary-card.weight     { border-left-color: #f59e0b; }
+.summary-card.sku        { border-left-color: #ec4899; }
+.summary-card.sku-total  { border-left-color: #8b5cf6; }
+.summary-card.sku-avg    { border-left-color: #14b8a6; }
+.summary-card.type       { border-left-color: #64748b; }
 
 .summary-card-title {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--text-muted);
         margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
 
 .summary-card-value {
-        font-size: 20px;
+        font-size: 22px;
         font-weight: 600;
         color: var(--text-main);
+        letter-spacing: -0.02em;
     }
