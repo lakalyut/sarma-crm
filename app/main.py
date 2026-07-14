@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Sarma CRM", lifespan=lifespan)
+app = FastAPI(title="Пульс", lifespan=lifespan)
 
 app.include_router(auth_router)
 app.include_router(admin_users_router)

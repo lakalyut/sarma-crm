@@ -40,6 +40,14 @@
         border-radius: 8px;
         background: var(--primary);
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+.sidebar-logo svg {
+        width: 16px;
+        height: 16px;
     }
 
 .sidebar-brand-title {
