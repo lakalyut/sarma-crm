@@ -316,4 +316,4 @@ def unmatched_list(
     _admin: User = Depends(require_admin),
 ):
     rows = db.query(Sale).filter(Sale.matched.is_(False)).order_by(Sale.id.desc()).all()
-    return render(request, "analytics/unmatched.html", {"rows": rows})
+    return render(request, "analytics/unmatched.html", {"items": rows})
