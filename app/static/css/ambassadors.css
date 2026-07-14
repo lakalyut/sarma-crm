@@ -25,8 +25,8 @@
     margin-top: 18px;
     padding: 12px 14px;
     border: 1px solid var(--border);
-    border-radius: 14px;
-    background: #f8fafc;
+    border-radius: var(--radius-sm);
+    background: var(--bg-page);
 }
 
 .filters-summary {
@@ -40,13 +40,12 @@
     align-items: center;
     min-height: 34px;
     padding: 7px 12px;
-    border-radius: 999px;
-    background: #ffffff;
-    border: 1px solid #dbeafe;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
     color: var(--text-main);
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
 }
 
 .summary-item:first-child {
@@ -104,8 +103,8 @@
     margin-top: 12px;
     padding: 14px;
     border: 1px solid var(--border);
-    border-radius: 14px;
-    background: #f8fafc;
+    border-radius: var(--radius-sm);
+    background: var(--bg-page);
 }
 
 .amb-settings-panel.open {
@@ -174,9 +173,9 @@
 }
 
 .amb-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px 16px 16px;
     box-shadow: var(--shadow-soft);
 }
@@ -210,7 +209,7 @@
     display: inline-flex;
     align-items: center;
     padding: 8px 12px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     font-size: 13px;
     font-weight: 600;
 }
@@ -326,9 +325,9 @@
 .amb-status-filter-btn {
     min-height: 30px;
     padding: 5px 12px;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border);
-    background: #fff;
+    background: var(--surface);
     color: var(--text-main);
     font-size: 12px;
     font-weight: 600;
@@ -337,7 +336,7 @@
 }
 
 .amb-status-filter-btn:hover {
-    background: #eef2ff;
+    background: var(--bg-page);
     transform: none;
     box-shadow: none;
 }
@@ -357,7 +356,7 @@
     align-items: center;
     min-height: 24px;
     padding: 3px 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     font-size: 12px;
     color: var(--text-muted);
     background: var(--status-existing-badge-bg);

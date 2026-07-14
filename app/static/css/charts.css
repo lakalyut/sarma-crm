@@ -16,17 +16,17 @@
     }
 
 .chart-tab {
-        border-radius: 999px;
+        border-radius: var(--radius-md);
         padding: 7px 14px;
         font-size: 13px;
-        background: #eef2ff;
+        background: var(--bg-page);
         color: var(--text-main);
         box-shadow: none;
         min-height: 36px;
     }
 
 .chart-tab:hover {
-        background: #e0e7ff;
+        background: var(--border);
         transform: none;
         box-shadow: none;
     }
@@ -45,9 +45,9 @@
 
 .metric-card {
     min-height: 128px;
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     padding: 12px 14px;
     box-shadow: var(--shadow-soft);
 }
@@ -132,7 +132,7 @@
 
 #chart-data-table th {
     line-height: 1.2;
-    background: var(--pastel-blue);
+    background: var(--bg-page);
     font-weight: 600;
     color: var(--text-muted);
     text-align: left;
@@ -157,13 +157,13 @@
     vertical-align: top;
     padding-top: 12px;
     font-weight: 700;
-    background: #f8fbff;
+    background: var(--bg-page);
 }
 
 #chart-data-table .table-total-row td {
     font-weight: 700;
-    background: #eef4ff;
-    border-top: 2px solid #dbeafe;
+    background: var(--bg-page);
+    border-top: 2px solid var(--border);
 }
 
 #chart-data-table .table-type-total {
@@ -175,7 +175,7 @@
 }
 
 #chart-data-table tbody tr:has(.table-period-cell) td {
-    border-top: 2px solid #dbeafe;
+    border-top: 2px solid var(--border);
 }
 
 #chart-data-table tbody tr:hover td {
@@ -183,7 +183,7 @@
 }
 
 #chart-data-table tbody tr.table-total-row:hover td {
-    background: #e8f1ff;
+    background: var(--border);
 }
 
 .table-view-tabs {
@@ -201,18 +201,18 @@
     min-height: 38px;
     padding: 0 18px;
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     font-size: 13px;
     font-weight: 600;
     line-height: 1;
-    background: #fff;
+    background: var(--surface);
     color: var(--text-main);
     cursor: pointer;
     box-shadow: none;
 }
 
 .table-view-tab:hover {
-    background: #eef2ff;
+    background: var(--bg-page);
     transform: none;
 }
 
@@ -220,7 +220,7 @@
     background: var(--primary);
     color: #fff;
     border-color: var(--primary);
-    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22);
+    box-shadow: none;
 }
 
 .table-metric-name {
@@ -230,7 +230,7 @@
 
 #chart-data-table .table-total-cell {
     font-weight: 700;
-    background: #eef4ff;
+    background: var(--bg-page);
     text-align: right;
 }
 
