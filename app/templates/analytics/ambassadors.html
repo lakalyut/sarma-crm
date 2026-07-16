@@ -4,10 +4,10 @@
 <h1>Амбассадорские отчеты</h1>
 {% include "includes/messages.html" %}
 
-<div class="filters-card amb-bi-card">
+<div class="filters-card">
     <form method="get" id="ambassadors-filters-form">
 
-        <div class="amb-bi-topbar">
+        <div class="filters-grid ambassadors-filters-grid">
             <div class="field filter-field filter-field-region-search">
                 <label for="amb-city-search">Регион</label>
                 <input type="hidden" name="city" id="amb-city-hidden" value="{{ selected_city or '' }}">
@@ -58,58 +58,77 @@
                 <label for="amb-client-search">Клиенты</label>
                 <input id="amb-client-search" type="text" value="" placeholder="Начни вводить клиента..." autocomplete="off">
 
-                <div class="multiselect-tags" id="amb-clients-tags">
-                    {% if selected_clients %}
-                        {% for client in selected_clients %}
-                            <span class="filter-tag">
-                                <span>{{ client }}</span>
-                                <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
-                                <input type="hidden" name="clients" value="{{ client }}">
-                            </span>
-                        {% endfor %}
-                    {% endif %}
-                </div>
-
                 <div id="amb-client-dropdown" class="search-dropdown" style="display:none;">
                     {% for client_name in all_clients %}
                         <div class="search-dropdown-item" data-value="{{ client_name }}">{{ client_name }}</div>
                     {% endfor %}
                 </div>
             </div>
+
+            <div class="field filter-field filter-actions-row">
+                <label>&nbsp;</label>
+                <div class="filters-actions">
+                    <button type="submit">Показать</button>
+                    <a href="/analytics/ambassadors" class="btn btn-secondary">Сбросить</a>
+                </div>
+            </div>
         </div>
 
-        <div class="amb-bi-summary-row">
-            <div class="filters-summary">
-                {% if selected_city %}
-                    <span class="summary-item">{{ selected_city }}</span>
-                {% endif %}
-
-                {% if selected_months %}
-                    <span class="summary-item">
-                        {% for m in selected_months %}
-                            {{ m|format_month }}{% if not loop.last %}, {% endif %}
-                        {% endfor %}
+        <div class="multiselect-tags amb-tags-row" id="amb-clients-tags">
+            {% if selected_clients %}
+                {% for client in selected_clients %}
+                    <span class="filter-tag">
+                        <span>{{ client }}</span>
+                        <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                        <input type="hidden" name="clients" value="{{ client }}">
                     </span>
-                {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
 
-                {% if selected_clients %}
-                    <span class="summary-item">Клиентов: {{ selected_clients|length }}</span>
-                {% endif %}
+        <div class="selected-city-text">
+            {% if selected_city %}
+                Регион:
+                <span class="selected-city-value" id="amb-selected-city-label">{{ selected_city }}</span>
+            {% else %}
+                <span id="amb-selected-city-empty">Регион не выбран</span>
+                <span class="selected-city-value" id="amb-selected-city-label" style="display:none;"></span>
+            {% endif %}
+        </div>
 
-                {% if selected_new_skus %}
-                    <span class="summary-item">NEW SKU: {{ selected_new_skus|length }}</span>
-                {% endif %}
-            </div>
+        <div class="selected-city-text">
+            {% if selected_months %}
+                Месяцы:
+                <span class="selected-city-value">
+                    {% for m in selected_months %}
+                        {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </span>
+            {% else %}
+                <span>Все месяцы</span>
+            {% endif %}
+        </div>
 
-            <button type="button" class="btn btn-secondary amb-settings-toggle" id="amb-settings-toggle">
-                Настройки статусов
+        {% if selected_clients %}
+        <div class="selected-city-text">
+            Клиентов: <span class="selected-city-value">{{ selected_clients|length }}</span>
+        </div>
+        {% endif %}
+
+        {% if selected_new_skus %}
+        <div class="selected-city-text">
+            NEW SKU: <span class="selected-city-value">{{ selected_new_skus|length }}</span>
+        </div>
+        {% endif %}
+
+        <div class="amb-settings-toggle-line">
+            <button type="button" class="amb-link-toggle" id="amb-settings-toggle">
+                Настройки классификации SKU
                 <span class="amb-settings-arrow">▾</span>
             </button>
         </div>
 
         <div class="amb-settings-panel" id="amb-settings-panel">
-            <div class="amb-settings-panel-title">Настройки классификации SKU</div>
-
             <div class="field filter-field filter-field-region-search">
                 <label for="amb-new-sku-search">SKU-новинки</label>
                 <input id="amb-new-sku-search" type="text" value="" placeholder="Начни вводить SKU..." autocomplete="off">
@@ -132,6 +151,8 @@
                     {% endfor %}
                 </div>
             </div>
+
+            <div class="amb-settings-divider"></div>
 
             <div class="amb-settings-grid">
                 <div class="field filter-field">
@@ -164,11 +185,6 @@
                        </div>
                 </div>
             </div>
-        </div>
-
-        <div class="amb-form-actions-sticky">
-            <button type="submit" class="btn btn-primary">Показать</button>
-            <a href="/analytics/ambassadors" class="btn btn-secondary">Сбросить</a>
         </div>
 
     </form>
@@ -338,9 +354,41 @@ function initTagSearch(config) {
     if (!input || !dropdown || !tags) return;
 
     const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+    const maxVisible = config.maxVisible || null;
+    let expanded = false;
+    let moreBtn = null;
 
     function existingValues() {
         return Array.from(tags.querySelectorAll(`input[name="${config.inputName}"]`)).map(i => i.value);
+    }
+
+    function updateCollapse() {
+        if (!maxVisible) return;
+
+        const tagEls = Array.from(tags.querySelectorAll(".filter-tag"));
+
+        if (moreBtn) {
+            moreBtn.remove();
+            moreBtn = null;
+        }
+
+        if (tagEls.length <= maxVisible) {
+            tagEls.forEach(t => t.classList.remove("is-hidden"));
+            return;
+        }
+
+        tagEls.forEach((t, i) => {
+            t.classList.toggle("is-hidden", !expanded && i >= maxVisible);
+        });
+
+        moreBtn = document.createElement("span");
+        moreBtn.className = "filter-tag-more";
+        moreBtn.textContent = expanded ? "Свернуть" : `+${tagEls.length - maxVisible} ещё`;
+        moreBtn.addEventListener("click", function () {
+            expanded = !expanded;
+            updateCollapse();
+        });
+        tags.appendChild(moreBtn);
     }
 
     function attachRemoveHandler(tag) {
@@ -350,6 +398,7 @@ function initTagSearch(config) {
         btn.addEventListener("click", function () {
             tag.remove();
             filterItems();
+            updateCollapse();
         });
     }
 
@@ -394,10 +443,16 @@ function initTagSearch(config) {
         tag.appendChild(hidden);
 
         attachRemoveHandler(tag);
-        tags.appendChild(tag);
+
+        if (moreBtn) {
+            tags.insertBefore(tag, moreBtn);
+        } else {
+            tags.appendChild(tag);
+        }
     }
 
     Array.from(tags.querySelectorAll(".filter-tag")).forEach(attachRemoveHandler);
+    updateCollapse();
 
     input.addEventListener("focus", filterItems);
     input.addEventListener("input", filterItems);
@@ -408,6 +463,7 @@ function initTagSearch(config) {
 
             if (!existingValues().includes(value)) {
                 renderTag(value);
+                updateCollapse();
             }
 
             input.value = "";
@@ -496,7 +552,8 @@ document.addEventListener("DOMContentLoaded", function () {
         inputId: "amb-client-search",
         dropdownId: "amb-client-dropdown",
         tagsId: "amb-clients-tags",
-        inputName: "clients"
+        inputName: "clients",
+        maxVisible: 3
     });
 
     initTagSearch({

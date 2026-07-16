@@ -23,8 +23,8 @@
 </a>
 
 {% if segments %}
-    <div class="filters-card" style="margin-top: 12px; padding: 14px 18px;">
-        <form method="get" action="/analytics/client" class="flex-row" style="gap: 10px; align-items: flex-end;">
+    <div class="filters-card filters-card-compact" style="margin-top: 12px;">
+        <form method="get" action="/analytics/client" class="flex-row filter-row-inline">
             <input type="hidden" name="city" value="{{ city }}">
             <input type="hidden" name="client" value="{{ client }}">
             <input type="hidden" name="sale_type" value="{{ sale_type }}">
@@ -35,7 +35,7 @@
                 <input type="hidden" name="matched" value="{{ matched }}">
             {% endif %}
 
-            <div class="field" style="margin-bottom: 0; min-width: 200px;">
+            <div class="field field-tight filter-field" style="min-width: 200px;">
                 <label for="abc-segment-select">ABC-рейтинг по сегменту</label>
                 <select id="abc-segment-select" name="abc_segment">
                     {% for segment in segments %}
@@ -52,7 +52,7 @@
 {% endif %}
 
 {% if abc_overview %}
-    <h2 style="font-size: 15px; margin-top: 20px; margin-bottom: 8px;">
+    <h2 class="text-subheading">
         Ассортимент по ABC ({{ selected_segment.name }})
     </h2>
 
@@ -112,7 +112,7 @@
 {% endif %}
 
 {% if monthly and monthly|length > 1 %}
-    <h2 style="font-size: 15px; margin-top: 20px; margin-bottom: 8px;">Динамика по месяцам</h2>
+    <h2 class="text-subheading">Динамика по месяцам</h2>
     <div class="sheet-wrapper">
         <div class="sheet-scroller">
             <table class="sheet-table">
@@ -142,7 +142,7 @@
 {% if not rows %}
     <div class="message">Нет данных по этому клиенту под выбранные фильтры.</div>
 {% else %}
-    <h2 style="font-size: 15px; margin-top: 20px; margin-bottom: 8px;">Номенклатуры</h2>
+    <h2 class="text-subheading">Номенклатуры</h2>
     <div class="sheet-wrapper">
         <div class="sheet-scroller">
             <table class="sheet-table" id="nomenclatures-table">

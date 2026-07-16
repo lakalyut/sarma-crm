@@ -10,12 +10,12 @@
         --primary: #6d5ef8;
         --primary-hover: #5a4dd6;
 
-        --pastel-blue:   #e8f3ff;
-        --pastel-cyan:   #e6fcff;
-        --pastel-yellow: #fff7c7;
-        --pastel-red:    #ffe5eb;
-        --pastel-purple: #f2e9ff;
-        --pastel-green:  #e8ffe8;
+        --badge-blue-bg: #e8f3ff;
+        --badge-green-bg: #e8ffe8;
+
+        --input-border: #d1d5db;
+        --primary-tint: #eef2ff;
+        --primary-tint-border: #dbeafe;
 
         --success: #16a34a;
         --success-border: #81c995;
@@ -47,6 +47,7 @@
         --radius-md: 18px;
         --radius-sm: 10px;
         --radius-xs: 6px;
+        --radius-full: 999px;
         --shadow-soft: 0 0 0 1px rgba(23, 23, 23, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
     }
 
@@ -79,6 +80,17 @@
         font-weight: 600;
         margin: 0 0 4px;
     }
+    /* Типографическая шкала: подзаголовок страницы под h1 и подзаголовок секции (замена инлайновых h2). */
+    .page-subtitle {
+        color: var(--text-muted);
+        font-size: 13px;
+    }
+
+    .text-subheading {
+        font-size: 15px;
+        margin: 20px 0 8px;
+    }
+
     .message {
         margin-top: 12px;
         padding: 8px 10px;

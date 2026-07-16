@@ -160,6 +160,17 @@ table.sheet-table tbody tr:hover td {
         justify-content: flex-end;
     }
     
+/* Колонки по содержимому: селект роли и кнопки действий шире,
+   чем даёт равное распределение table-layout: fixed. */
+#users-table {
+        table-layout: auto;
+    }
+
+#users-table td {
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
 #clients-table td {
         height: 52px;
     }
@@ -324,12 +335,12 @@ table.sheet-table tbody tr:hover td {
     }
 
 .abc-badge-a {
-        background: var(--pastel-green);
+        background: var(--badge-green-bg);
         color: var(--success);
     }
 
 .abc-badge-b {
-        background: var(--pastel-blue);
+        background: var(--badge-blue-bg);
         color: var(--primary);
     }
 

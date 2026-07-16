@@ -5,7 +5,7 @@
 {% include "includes/messages.html" %}
 
 <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
-  <div style="color: var(--text-muted); font-size: 12px;">
+  <div class="page-subtitle">
     Управление доступами пользователей CRM
   </div>
   <a class="btn" href="/admin/users/new">+ Новый пользователь</a>
@@ -13,7 +13,7 @@
 
 <div class="sheet-wrapper">
   <div class="sheet-scroller">
-    <table class="sheet-table">
+    <table class="sheet-table" id="users-table">
       <thead>
         <tr>
           <th>ID</th>
@@ -45,7 +45,7 @@
               <span class="message error" style="display:inline-block; margin:0; padding:4px 8px;">disabled</span>
             {% endif %}
           </td>
-          <td>{{ u.created_at }}</td>
+          <td>{{ u.created_at.strftime("%d.%m.%Y %H:%M") }}</td>
           <td style="white-space: nowrap;">
             <form method="post" action="/admin/users/{{u.id}}/reset-link" style="display:inline;">
               <button type="submit" class="btn-secondary" style="padding:6px 12px;">Новая ссылка</button>

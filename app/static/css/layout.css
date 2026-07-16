@@ -17,6 +17,90 @@
         align-items: center;
     }
 
+/* Модификаторы .flex-row для повторяющихся строк действий (форма → назад/сохранить). */
+.actions-end {
+        justify-content: flex-end;
+        margin-top: 12px;
+    }
+
+.actions-split {
+        justify-content: space-between;
+        margin-top: 12px;
+    }
+
+.actions-center {
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+/* Узкие/средние центрированные контейнеры для форм и информационных страниц. */
+.card-narrow {
+        max-width: 520px;
+        margin: 0 auto;
+    }
+
+.card-medium {
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+.error-panel {
+        max-width: 720px;
+        margin: 0 auto;
+        text-align: center;
+        padding: 24px 0;
+    }
+
+.error-hint {
+        margin-top: 12px;
+        color: var(--text-muted);
+        font-size: 13px;
+    }
+
+/* Логотип + название в шапке экранов входа/установки пароля. */
+.brand-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin: 4px 0 18px;
+    }
+
+.brand-header-title {
+        font-weight: 700;
+        font-size: 30px;
+        letter-spacing: -0.02em;
+        color: var(--text-main);
+    }
+
+.auth-shell {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+.auth-card {
+        max-width: 420px;
+        width: 100%;
+        padding: 22px 22px 18px;
+    }
+
+.field-tight {
+        margin-bottom: 0;
+    }
+
+.field-align-end {
+        align-self: flex-end;
+    }
+
+.form-grid-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px 18px;
+        align-items: end;
+    }
+
 .summary-panel {
         margin-top: 8px;
         border-radius: var(--radius-sm);

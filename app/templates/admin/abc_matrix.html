@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>ABC-рейтинг номенклатур</h1>
-<p style="color: var(--text-muted); font-size: 13px; margin-top: -8px;">
+<p class="page-subtitle" style="margin-top: -8px;">
     Категория присваивается номенклатуре отдельно для каждого сегмента.
 </p>
 
-<div class="filters-card" style="padding: 14px 18px;">
-    <form method="post" action="/admin/abc/segments/new" class="flex-row" style="gap: 10px; align-items: flex-end;">
-        <div class="field" style="margin-bottom: 0; min-width: 240px;">
+<div class="filters-card filters-card-compact">
+    <form method="post" action="/admin/abc/segments/new" class="flex-row filter-row-inline">
+        <div class="field field-tight" style="min-width: 240px;">
             <label for="segment-name">Добавить сегмент</label>
             <input id="segment-name" name="name" type="text" placeholder="Например, ОПТ" required>
         </div>

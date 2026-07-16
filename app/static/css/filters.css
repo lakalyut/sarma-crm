@@ -1,10 +1,20 @@
 .filters-card {
-        background: #fff;
+        background: var(--surface);
         border-radius: 16px;
         padding: 18px;
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
         margin-bottom: 16px;
         border: 1px solid var(--border);
+    }
+
+/* Компактный вариант .filters-card для небольших инлайн-форм (добавить сегмент, ABC-фильтр). */
+.filters-card-compact {
+        padding: 14px 18px;
+    }
+
+.filter-row-inline {
+        gap: 10px;
+        align-items: flex-end;
     }
 
 .filters-grid {
@@ -43,6 +53,28 @@
         margin-bottom: 6px;
     }
 
+/* Единый вид для всех контролов строки фильтров: поиск, нативный select
+   и .multiselect-display должны выглядеть как одна семья контролов. */
+.filter-field-region-search input[type="text"],
+.filter-field select {
+        border: 1px solid var(--input-border);
+        border-radius: 10px;
+        background-color: var(--surface);
+        padding: 8px 12px;
+        min-height: 42px;
+    }
+
+.filter-field select {
+        padding-right: 34px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23737373' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+    }
+
 .filter-field .multiselect,
 .filter-field input[type="text"],
 .filter-field input[type="email"],
@@ -62,9 +94,9 @@
 
 .multiselect-display {
     font-weight: 500;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--input-border);
     border-radius: 10px;
-    background: #fff;
+    background: var(--surface);
     padding: 8px 12px;
     min-height: 42px;
     display: flex;
@@ -95,7 +127,7 @@
     right: 0;
     border: 1px solid var(--border);
     border-radius: 12px;
-    background: #fff;
+    background: var(--surface);
     box-shadow: var(--shadow-soft);
     padding: 10px 12px;
     max-height: 260px;
@@ -129,7 +161,7 @@
 }
 
 .month-checkbox:hover {
-    background: #eef2ff;
+    background: var(--primary-tint);
 }
 
 .month-checkbox input[type="checkbox"] {
@@ -181,7 +213,7 @@
         top: calc(100% + 6px);
         left: 0;
         right: 0;
-        background: #ffffff;
+        background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 12px;
         box-shadow: var(--shadow-soft);
@@ -201,7 +233,7 @@
     }
 
 .search-dropdown-item:hover {
-        background: #eef2ff;
+        background: var(--primary-tint);
     }
 
 .search-dropdown-item.hidden {
@@ -232,16 +264,42 @@
         margin-top: 8px;
     }
 
+/* Полноширинная строка тегов вне узкой колонки фильтра — чтобы длинные
+   названия клиентов переносились по несколько в строке, а не по одному. */
+.amb-tags-row {
+        margin-top: 14px;
+    }
+
+.filter-tag-more {
+        display: inline-flex;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--primary);
+        cursor: pointer;
+        padding: 4px 2px;
+    }
+
+.filter-tag-more:hover {
+        text-decoration: underline;
+    }
+
 .filter-tag {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: #eef2ff;
+        background: var(--primary-tint);
         color: var(--text-main);
-        border: 1px solid #dbeafe;
-        border-radius: 999px;
+        border: 1px solid var(--primary-tint-border);
+        border-radius: var(--radius-full);
         padding: 4px 10px;
         font-size: 12px;
+    }
+
+/* .is-hidden (base.css) и .filter-tag имеют одинаковую специфичность, а filters.css
+   подключается позже — без этого правила display:inline-flex перебивал бы display:none. */
+.filter-tag.is-hidden {
+        display: none;
     }
 
 .filter-tag-remove {

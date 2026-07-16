@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="max-width:720px;margin:0 auto;text-align:center;padding:24px 0;">
+<div class="error-panel">
 
 <h1>Страница не найдена</h1>
 
@@ -9,11 +9,11 @@
 Такой страницы не существует.
 </div>
 
-<div style="margin-top:12px;color:var(--text-muted);font-size:13px;">
+<div class="error-hint">
 Возможно ссылка устарела или введён неверный адрес.
 </div>
 
-<div class="flex-row" style="justify-content:center;margin-top:20px;">
+<div class="flex-row actions-center">
 
 {% if current_user and current_user.role == 'admin' %}
 <a class="btn" href="/admin/products">Вернуться в админку</a>

@@ -1,11 +1,11 @@
 {% extends "base_auth.html" %}
 
 {% block content %}
-<div style="max-width: 520px; margin: 0 auto;">
+<div class="card-narrow">
 
-<div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 4px 0 18px;">
+<div class="brand-header">
     <svg viewBox="0 0 48 48" width="40" height="40"><rect x="8" y="26" width="5" height="12" fill="#a3a3a3"></rect><rect x="16" y="16" width="5" height="22" fill="#a3a3a3"></rect><rect x="24" y="21" width="5" height="17" fill="#a3a3a3"></rect><rect x="32" y="10" width="5" height="28" fill="#a3a3a3"></rect><polyline points="8,32 16,20 24,25 32,10" fill="none" stroke="var(--primary)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"></polyline><circle cx="32" cy="10" r="2.8" fill="var(--primary)"></circle></svg>
-    <span style="font-weight: 700; font-size: 30px; letter-spacing: -0.02em; color: var(--text-main);">Пульс</span>
+    <span class="brand-header-title">Пульс</span>
 </div>
 
 <h1>Вход</h1>
@@ -23,7 +23,7 @@
     <input id="password" name="password" type="password" required autocomplete="current-password">
   </div>
 
-  <div class="flex-row" style="justify-content: flex-end; margin-top: 12px;">
+  <div class="flex-row actions-end">
     <button type="submit">Войти</button>
   </div>
 </form>
