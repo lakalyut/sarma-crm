@@ -37,6 +37,14 @@ venv\Scripts\alembic.exe revision --autogenerate -m "описание"          
 docker-compose/prod-контейнер), через Browser-preview инструмент (`preview_start` с
 `name: "sarma-web"`), а не через Bash напрямую.
 
+**`--reload` не всегда подхватывает правки `.py`-файлов в этом окружении** —
+поймано многократно: меняешь `app/services/*.py` или `app/routes/*.py`, а
+сервер продолжает отвечать по старому коду (в логах ни одного "Reloading").
+Шаблоны (`.html`, Jinja auto-reload) и статика (`.css`/`.js`, читаются с диска
+на каждый запрос) подхватываются нормально — проблема именно с Python-модулями.
+После правки `.py`-файла — `preview_stop` + `preview_start` заново, не
+надеяться на `--reload`.
+
 ## Local setup
 
 - Реальная БД разработки — SQLite (`main.db` в корне, в `.gitignore`), схема накатывается
@@ -89,12 +97,33 @@ template, ctx)`, который сам достаёт `current_user` по cookie
 это `GROUP BY` по `Sale` с общим набором SQLAlchemy-фильтров из
 [app/services/sale_filters.py](app/services/sale_filters.py) (`build_sale_filters`), который
 собирают роуты `analytics.py`/`ambassadors.py`/`admin_abc.py` по параметрам `city`/`months`/
-`sale_types`/`client`/`matched`.
+`sale_types`/`client`/`matched`. Есть и списочные варианты `cities`/`clients` (в дополнение
+к одиночным `city`/`client`, не вместо) — под дашборд, который умеет фильтровать сразу по
+нескольким регионам/клиентам.
 
 **ABC-рейтинг** — не автоматический: категория (A/B/C) проставляется вручную per-товар
 per-сегмент через `/admin/abc` в таблицу `product_abc_ratings`; сегменты (`AbcSegment`,
 напр. HoReCa/Розница) создаются там же. Автоматический расчёт по правилу 80/15/5 — в
 горизонте 3 роадмапа, ещё не сделан.
+
+**Дашборд** (`/dashboard`, [app/routes/dashboard.py](app/routes/dashboard.py) +
+[app/services/dashboard_service.py](app/services/dashboard_service.py)) — кастомный
+конструктор виджетов, доступен всем ролям (`require_user`). Несколько именованных
+дашбордов на пользователя (`Dashboard`/`DashboardWidget` в `app/models.py`), каждый —
+свой набор регионов/клиентов/периода/режима сравнения (`aggregate` — суммарно,
+`split` — по регионам отдельно) и виджетов (`metric_card` / `chart`). `METRIC_CATALOG`
+в `dashboard_service.py` — единственное место, где перечислены доступные метрики;
+расчёт переиспользует `clients_service`/`charts_service`, новой SQL-агрегации под
+дашборд не заводили. Раскладка — GridStack.js (CDN), drag/resize, позиции шлются на
+`POST /dashboard/{id}/layout`. Карточки-цифры — тренд-формат (значение + дельты к
+прошлому месяцу/среднему/началу периода), переиспользует `.metric-value`/
+`.metric-delta-*` из `charts.css` (те же классы, что и карточки на `/analytics/charts`).
+Экспорт «Скачать PDF» — **не** `window.print()`: кнопка гоняет DOM-область с
+виджетами через `html2canvas` → `jsPDF` (тоже CDN) и режет канвас на срезы по
+странице вручную (наивный рецепт «одна картинка на каждую страницу» раздувает файл
+кратно числу страниц — проверено на практике, 20+ МБ на 2 страницы). Подробности и
+что осознанно не сделано (ABC как тип виджета, per-widget фильтры) — в ROADMAP.md,
+раздел «Дашборд».
 
 **Шаблоны и статика без фронтенд-сборки** — чистый Jinja2 + ванильный CSS/JS, никакого
 бандлера. [app/templates/_styles.html](app/templates/_styles.html) — единый список
