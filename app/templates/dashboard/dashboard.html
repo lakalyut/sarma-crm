@@ -1,0 +1,626 @@
+{% extends 'base.html' %}
+
+{% macro render_metric_trend(data, digits, unit) %}
+    <div class="metric-value">{{ data.value|format_ru_number(digits) }}{% if unit %} {{ unit }}{% endif %}</div>
+    {% if data.period %}
+        <div class="metric-period">за {{ data.period }}</div>
+    {% else %}
+        <div class="metric-period">нет данных за период</div>
+    {% endif %}
+    {% if data.deltas %}
+        <div class="metric-delta-wrap">
+            {% for d in data.deltas %}
+                <div class="metric-delta-row">
+                    {% if d.value is none %}
+                        <span class="metric-delta muted">нет сравнения</span>
+                    {% else %}
+                        <span class="metric-delta {% if d.value > 0 %}delta-up{% elif d.value < 0 %}delta-down{% else %}delta-neutral{% endif %}">{% if d.value > 0 %}+{% endif %}{{ d.value|round(0)|int }}%</span>
+                    {% endif %}
+                    <span class="metric-delta-label">{{ d.text }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.1.2/dist/gridstack.min.css">
+<h1>Дашборд</h1>
+{% include "includes/messages.html" %}
+
+<div class="filters-card">
+    <div class="dash-switcher">
+        <select id="dash-switch-select">
+            {% for d in dashboards %}
+                <option value="{{ d.id }}" {% if d.id == active.id %}selected{% endif %}>
+                    {{ d.name }}{% if d.is_default %} ★{% endif %}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="button" class="btn-secondary btn-small" id="dash-new-toggle">+ Новый дашборд</button>
+        <button type="button" class="btn-secondary btn-small" id="dash-rename-toggle">Переименовать</button>
+
+        {% if not active.is_default %}
+        <form method="post" action="/dashboard/{{ active.id }}/set-default">
+            <button type="submit" class="btn-secondary btn-small">Сделать основным</button>
+        </form>
+        {% endif %}
+
+        {% if dashboards|length > 1 %}
+        <form method="post" action="/dashboard/{{ active.id }}/delete">
+            <button type="submit" class="btn-secondary btn-small">Удалить дашборд</button>
+        </form>
+        {% endif %}
+
+        <button type="button" class="btn-secondary btn-small" id="dash-export-pdf">Скачать PDF</button>
+    </div>
+
+    <form method="post" action="/dashboard/new" class="flex-row dash-inline-form is-hidden" id="dash-new-form">
+        <input type="text" name="name" placeholder="Название дашборда" required autocomplete="off">
+        <button type="submit">Создать</button>
+    </form>
+
+    <form method="post" action="/dashboard/{{ active.id }}/rename" class="flex-row dash-inline-form is-hidden" id="dash-rename-form">
+        <input type="text" name="name" value="{{ active.name }}" required autocomplete="off">
+        <button type="submit">Сохранить</button>
+    </form>
+
+    <form method="post" action="/dashboard/{{ active.id }}/filters" id="dashboard-filters-form">
+        <div class="filters-grid dashboard-filters-grid">
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="dash-city-search">Регион</label>
+                <input id="dash-city-search" type="text" placeholder="Начни вводить регион..." autocomplete="off">
+
+                <div id="dash-city-dropdown" class="search-dropdown" style="display:none;">
+                    {% for c in cities %}
+                        <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="dash-client-search">Клиенты</label>
+                <input id="dash-client-search" type="text" placeholder="Начни вводить клиента..." autocomplete="off">
+
+                <div id="dash-client-dropdown" class="search-dropdown" style="display:none;">
+                    {% for c in all_clients %}
+                        <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label>Период</label>
+                <div class="multiselect" id="dash-months-multiselect">
+                    <div class="multiselect-display">
+                        <span class="multiselect-text">
+                            {% if active.months %}
+                                {% for m in active.months %}
+                                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Все месяцы
+                            {% endif %}
+                        </span>
+                        <span class="multiselect-arrow">▾</span>
+                    </div>
+
+                    <div class="multiselect-dropdown">
+                        <label class="month-checkbox month-checkbox-all">
+                            <input type="checkbox" class="multiselect-select-all-checkbox">
+                            <span>Выбрать все</span>
+                        </label>
+
+                        <div class="month-checkboxes">
+                            {% for m in all_months %}
+                                <label class="month-checkbox">
+                                    <input type="checkbox" name="months" value="{{ m }}" {% if m in active.months %}checked{% endif %}>
+                                    <span>{{ m|format_month }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label>Режим</label>
+                <input type="hidden" name="compare_mode" id="dash-compare-mode" value="{{ active.compare_mode }}">
+                <div class="dash-mode-toggle">
+                    <button type="button" class="chart-tab {% if active.compare_mode != 'split' %}active{% endif %}" data-mode="aggregate">Суммарно</button>
+                    <button type="button" class="chart-tab {% if active.compare_mode == 'split' %}active{% endif %}" data-mode="split">По отдельности</button>
+                </div>
+            </div>
+
+            <div class="field filter-field filter-actions-row">
+                <label>&nbsp;</label>
+                <div class="filters-actions">
+                    <button type="submit">Показать</button>
+                    <button type="button" class="btn btn-secondary" id="dash-filters-reset">Сбросить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="multiselect-tags dash-tags-row" id="dash-cities-tags">
+            {% for c in active.cities %}
+                <span class="filter-tag">
+                    <span>{{ c }}</span>
+                    <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                    <input type="hidden" name="cities" value="{{ c }}">
+                </span>
+            {% endfor %}
+        </div>
+
+        <div class="multiselect-tags dash-tags-row" id="dash-clients-tags">
+            {% for c in active.clients %}
+                <span class="filter-tag">
+                    <span>{{ c }}</span>
+                    <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                    <input type="hidden" name="clients" value="{{ c }}">
+                </span>
+            {% endfor %}
+        </div>
+    </form>
+
+    <form method="post" action="/dashboard/{{ active.id }}/widgets" class="flex-row dash-add-widget-form">
+        <div class="field filter-field" style="min-width:220px;">
+            <label>Метрика</label>
+            <select name="metric">
+                {% for m in metric_catalog %}
+                    <option value="{{ m.key }}">{{ m.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field filter-field" style="min-width:160px;">
+            <label>Вид</label>
+            <select name="widget_type" id="dash-add-widget-type">
+                <option value="metric_card">Карточка</option>
+                <option value="chart">График</option>
+            </select>
+        </div>
+
+        <div class="field filter-field is-hidden" id="dash-add-chart-kind-field" style="min-width:160px;">
+            <label>Тип графика</label>
+            <select name="chart_kind">
+                <option value="line">Линия</option>
+                <option value="bar">Гистограмма</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn-secondary">+ Добавить виджет</button>
+    </form>
+</div>
+
+<div id="dashboard-export-area">
+    <div class="dash-print-header">
+        <div class="dash-print-title">{{ active.name }}</div>
+        <div class="dash-print-meta">
+            Регион: {% if active.cities %}{{ active.cities|join(', ') }}{% else %}все{% endif %}
+            {% if active.clients %} &middot; Клиенты: {{ active.clients|join(', ') }}{% endif %}
+            &middot; Период: {% if active.months %}{% for m in active.months %}{{ m|format_month }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}все месяцы{% endif %}
+            &middot; Режим: {% if active.compare_mode == 'split' %}по отдельности{% else %}суммарно{% endif %}
+        </div>
+        <div class="dash-print-generated">Сформировано <span data-print-date></span></div>
+    </div>
+
+    {% if widgets %}
+    <div class="grid-stack" id="dashboard-grid" data-dashboard-id="{{ active.id }}">
+        {% for entry in widgets %}
+            {% set widget = entry.widget %}
+            <div class="grid-stack-item {% if widget.widget_type == 'chart' %}dash-print-chart{% else %}dash-print-metric{% endif %}" gs-x="{{ widget.grid_x }}" gs-y="{{ widget.grid_y }}" gs-w="{{ widget.grid_w }}" gs-h="{{ widget.grid_h }}" gs-id="{{ widget.id }}">
+                <div class="grid-stack-item-content dash-widget">
+                    <div class="dash-widget-header widget-drag-handle">
+                        <span class="dash-widget-title">{{ entry.metric_label }}</span>
+                        <form method="post" action="/dashboard/{{ active.id }}/widgets/{{ widget.id }}/delete">
+                            <button type="submit" class="dash-widget-remove" title="Удалить виджет" aria-label="Удалить виджет">×</button>
+                        </form>
+                    </div>
+
+                    <div class="dash-widget-body">
+                        {% if widget.widget_type == "metric_card" %}
+                            {% set digits = 0 if entry.data.metric_kind == "int" else 2 %}
+                            {% if entry.data.mode == "split" %}
+                                <div class="dash-metric-split-trend">
+                                    {% for g in entry.data.groups %}
+                                        <div class="dash-metric-split-trend-item">
+                                            <div class="dash-metric-split-label">{{ g.label }}</div>
+                                            {{ render_metric_trend(g, digits, entry.data.unit) }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ render_metric_trend(entry.data, digits, entry.data.unit) }}
+                            {% endif %}
+                        {% else %}
+                            <canvas class="dash-chart-canvas" data-widget-id="{{ widget.id }}"></canvas>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="message">Пока нет виджетов — добавь первый через форму выше.</div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gridstack@10.1.2/dist/gridstack-all.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initCheckboxMultiselect({
+        id: "dash-months-multiselect",
+        inputName: "months",
+        emptyText: "Все месяцы"
+    });
+});
+</script>
+
+<script>
+function initDashTagSearch(config) {
+    const input = document.getElementById(config.inputId);
+    const dropdown = document.getElementById(config.dropdownId);
+    const tags = document.getElementById(config.tagsId);
+
+    if (!input || !dropdown || !tags) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+    const maxVisible = config.maxVisible || null;
+    let expanded = false;
+    let moreBtn = null;
+
+    function existingValues() {
+        return Array.from(tags.querySelectorAll(`input[name="${config.inputName}"]`)).map(i => i.value);
+    }
+
+    function updateCollapse() {
+        if (!maxVisible) return;
+
+        const tagEls = Array.from(tags.querySelectorAll(".filter-tag"));
+
+        if (moreBtn) {
+            moreBtn.remove();
+            moreBtn = null;
+        }
+
+        if (tagEls.length <= maxVisible) {
+            tagEls.forEach(t => t.classList.remove("is-hidden"));
+            return;
+        }
+
+        tagEls.forEach((t, i) => {
+            t.classList.toggle("is-hidden", !expanded && i >= maxVisible);
+        });
+
+        moreBtn = document.createElement("span");
+        moreBtn.className = "filter-tag-more";
+        moreBtn.textContent = expanded ? "Свернуть" : `+${tagEls.length - maxVisible} ещё`;
+        moreBtn.addEventListener("click", function () {
+            expanded = !expanded;
+            updateCollapse();
+        });
+        tags.appendChild(moreBtn);
+    }
+
+    function attachRemoveHandler(tag) {
+        const btn = tag.querySelector(".filter-tag-remove");
+        if (!btn) return;
+
+        btn.addEventListener("click", function () {
+            tag.remove();
+            filterItems();
+            updateCollapse();
+        });
+    }
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        const selected = existingValues();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const alreadySelected = selected.includes(item.dataset.value);
+            const visible = !alreadySelected && (!value || text.includes(value));
+
+            item.classList.toggle("hidden", !visible);
+
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    function renderTag(value) {
+        const tag = document.createElement("span");
+        tag.className = "filter-tag";
+
+        const text = document.createElement("span");
+        text.textContent = value;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "filter-tag-remove";
+        button.setAttribute("aria-label", "Удалить");
+        button.textContent = "×";
+
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = config.inputName;
+        hidden.value = value;
+
+        tag.appendChild(text);
+        tag.appendChild(button);
+        tag.appendChild(hidden);
+
+        attachRemoveHandler(tag);
+
+        if (moreBtn) {
+            tags.insertBefore(tag, moreBtn);
+        } else {
+            tags.appendChild(tag);
+        }
+    }
+
+    Array.from(tags.querySelectorAll(".filter-tag")).forEach(attachRemoveHandler);
+    updateCollapse();
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const value = item.dataset.value;
+
+            if (!existingValues().includes(value)) {
+                renderTag(value);
+                updateCollapse();
+            }
+
+            input.value = "";
+            dropdown.style.display = "none";
+            filterItems();
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    initDashTagSearch({
+        inputId: "dash-city-search",
+        dropdownId: "dash-city-dropdown",
+        tagsId: "dash-cities-tags",
+        inputName: "cities",
+        maxVisible: 4
+    });
+
+    initDashTagSearch({
+        inputId: "dash-client-search",
+        dropdownId: "dash-client-dropdown",
+        tagsId: "dash-clients-tags",
+        inputName: "clients",
+        maxVisible: 3
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const printDate = document.querySelector("[data-print-date]");
+    if (printDate) {
+        printDate.textContent = new Date().toLocaleString("ru-RU", {
+            day: "2-digit", month: "2-digit", year: "numeric",
+            hour: "2-digit", minute: "2-digit"
+        });
+    }
+
+    const select = document.getElementById("dash-switch-select");
+    if (select) {
+        select.addEventListener("change", function () {
+            window.location.href = "/dashboard?id=" + select.value;
+        });
+    }
+
+    document.getElementById("dash-new-toggle")?.addEventListener("click", function () {
+        document.getElementById("dash-new-form")?.classList.toggle("is-hidden");
+    });
+
+    document.getElementById("dash-rename-toggle")?.addEventListener("click", function () {
+        document.getElementById("dash-rename-form")?.classList.toggle("is-hidden");
+    });
+
+    const widgetTypeSelect = document.getElementById("dash-add-widget-type");
+    const chartKindField = document.getElementById("dash-add-chart-kind-field");
+    function syncChartKindVisibility() {
+        if (!widgetTypeSelect || !chartKindField) return;
+        chartKindField.classList.toggle("is-hidden", widgetTypeSelect.value !== "chart");
+    }
+    widgetTypeSelect?.addEventListener("change", syncChartKindVisibility);
+    syncChartKindVisibility();
+
+    const modeInput = document.getElementById("dash-compare-mode");
+    document.querySelectorAll(".dash-mode-toggle .chart-tab").forEach(btn => {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll(".dash-mode-toggle .chart-tab").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            if (modeInput) modeInput.value = btn.dataset.mode;
+        });
+    });
+
+    document.getElementById("dash-filters-reset")?.addEventListener("click", function () {
+        document.querySelectorAll("#dash-cities-tags .filter-tag, #dash-clients-tags .filter-tag").forEach(t => t.remove());
+        document.querySelectorAll('#dashboard-filters-form input[name="months"]').forEach(cb => cb.checked = false);
+        if (modeInput) modeInput.value = "aggregate";
+        document.querySelectorAll(".dash-mode-toggle .chart-tab").forEach(b => b.classList.remove("active"));
+        document.querySelector('.dash-mode-toggle .chart-tab[data-mode="aggregate"]')?.classList.add("active");
+        document.getElementById("dashboard-filters-form")?.submit();
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const gridEl = document.getElementById("dashboard-grid");
+    if (!gridEl || typeof GridStack === "undefined") return;
+
+    const dashboardId = gridEl.dataset.dashboardId;
+
+    const grid = GridStack.init({
+        cellHeight: 70,
+        margin: 8,
+        handle: ".widget-drag-handle",
+        float: true
+    });
+
+    grid.on("change", function () {
+        const positions = grid.save(false).map(function (item) {
+            return { id: item.id, x: item.x, y: item.y, w: item.w, h: item.h };
+        });
+
+        fetch(`/dashboard/${dashboardId}/layout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ positions: positions })
+        });
+    });
+
+    const chartPromises = Array.from(document.querySelectorAll(".dash-chart-canvas")).map(function (canvas) {
+        const widgetId = canvas.dataset.widgetId;
+
+        return fetch(`/dashboard/${dashboardId}/widgets/${widgetId}/data`)
+            .then(res => res.json())
+            .then(function (data) {
+                const isBar = data.chart_kind === "bar";
+
+                if (data.mode === "split") {
+                    const palette = ["#6d5ef8", "#0ea5e9", "#f59e0b", "#22c55e", "#ec4899", "#14b8a6"];
+                    const sharedLabels = (data.groups[0] && data.groups[0].labels) || [];
+
+                    new Chart(canvas, {
+                        type: isBar ? "bar" : "line",
+                        data: {
+                            labels: sharedLabels,
+                            datasets: data.groups.map(function (g, i) {
+                                const color = palette[i % palette.length];
+                                return {
+                                    label: g.label,
+                                    data: g.values,
+                                    borderColor: color,
+                                    backgroundColor: isBar ? color : color,
+                                    tension: isBar ? undefined : 0.25
+                                };
+                            })
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                    return;
+                }
+
+                new Chart(canvas, {
+                    type: isBar ? "bar" : "line",
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: data.metric_label,
+                            data: data.values,
+                            borderColor: "#6d5ef8",
+                            backgroundColor: isBar ? "#6d5ef8" : "rgba(109, 94, 248, 0.12)",
+                            fill: isBar ? undefined : true,
+                            tension: isBar ? undefined : 0.25
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            })
+            .catch(function () {});
+    });
+
+    window.__dashChartsReady = Promise.all(chartPromises).then(function () {
+        return new Promise(function (resolve) { setTimeout(resolve, 150); });
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("dash-export-pdf");
+    const area = document.getElementById("dashboard-export-area");
+    if (!btn || !area) return;
+
+    btn.addEventListener("click", async function () {
+        if (typeof html2canvas === "undefined" || typeof jspdf === "undefined") return;
+
+        const originalText = btn.textContent;
+        btn.textContent = "Готовим PDF...";
+        btn.disabled = true;
+
+        try {
+            await (window.__dashChartsReady || Promise.resolve());
+
+            area.classList.add("dash-capturing");
+            const canvas = await html2canvas(area, {
+                backgroundColor: "#f5f5f5",
+                scale: 1.5,
+                useCORS: true
+            });
+            area.classList.remove("dash-capturing");
+
+            const pdf = new jspdf.jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            // Режем исходный канвас на срезы по высоте страницы и добавляем
+            // каждый срез отдельной картинкой — иначе jsPDF вставляет одно и то
+            // же полноразмерное изображение на каждую страницу (просто сдвигая
+            // его), и файл распухает в разы от числа страниц.
+            const pxPerPt = canvas.width / pageWidth;
+            const pageHeightPx = Math.floor(pageHeight * pxPerPt);
+
+            let renderedHeight = 0;
+            let first = true;
+
+            while (renderedHeight < canvas.height) {
+                const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeight);
+
+                const sliceCanvas = document.createElement("canvas");
+                sliceCanvas.width = canvas.width;
+                sliceCanvas.height = sliceHeightPx;
+                sliceCanvas
+                    .getContext("2d")
+                    .drawImage(canvas, 0, renderedHeight, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+                const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.92);
+                const sliceHeightPt = sliceHeightPx / pxPerPt;
+
+                if (!first) pdf.addPage();
+                first = false;
+
+                pdf.addImage(sliceData, "JPEG", 0, 0, pageWidth, sliceHeightPt);
+                renderedHeight += sliceHeightPx;
+            }
+
+            const fileName = (area.querySelector(".dash-print-title")?.textContent || "Дашборд").trim();
+            pdf.save(fileName + ".pdf");
+        } catch (e) {
+            area.classList.remove("dash-capturing");
+            console.error("PDF export failed:", e);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+});
+</script>
+
+{% endblock %}

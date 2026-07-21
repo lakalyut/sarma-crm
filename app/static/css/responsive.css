@@ -146,7 +146,8 @@
     .charts-filters-grid,
     .ambassadors-filters-grid,
     .form-grid-2col,
-    .amb-settings-grid {
+    .amb-settings-grid,
+    .dashboard-filters-grid {
         grid-template-columns: 1fr;
     }
 

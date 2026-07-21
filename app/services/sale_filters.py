@@ -3,9 +3,11 @@ from ..models import Sale
 
 def build_sale_filters(
     city: str | None = None,
+    cities: list[str] | None = None,
     months: list[str] | None = None,
     sale_types: list[str] | None = None,
     client: str | None = None,
+    clients: list[str] | None = None,
     sale_type: str | None = None,
     matched: str | None = None,
 ):
@@ -13,12 +15,16 @@ def build_sale_filters(
 
     if city:
         filters.append(Sale.city == city)
+    elif cities:
+        filters.append(Sale.city.in_(cities))
 
     if months:
         filters.append(Sale.month.in_(months))
 
     if client:
         filters.append(Sale.client == client)
+    elif clients:
+        filters.append(Sale.client.in_(clients))
 
     if sale_type:
         filters.append(Sale.type == sale_type)

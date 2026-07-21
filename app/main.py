@@ -16,6 +16,7 @@ from .routes.admin_imports import router as admin_imports_router
 from .routes.admin_users import router as admin_users_router
 from .routes.ambassadors import router as ambassadors_router
 from .routes.analytics import router as analytics_router
+from .routes.dashboard import router as dashboard_router
 from .routes.imports import router as imports_router
 from .routes.misc import router as misc_router
 from .routes.products import router as products_router
@@ -47,6 +48,7 @@ app.include_router(misc_router)
 app.include_router(products_router)
 app.include_router(imports_router)
 app.include_router(analytics_router)
+app.include_router(dashboard_router)
 app.include_router(admin_imports_router)
 app.include_router(ambassadors_router)
 app.include_router(admin_abc_router)

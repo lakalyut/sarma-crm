@@ -36,5 +36,13 @@ def tojson_filter(value):
     return json.dumps(value)
 
 
+def format_ru_number(value, digits: int = 0) -> str:
+    """Число в формате ru-RU: пробел — разделитель тысяч, запятая — дробная часть."""
+    value = float(value or 0)
+    formatted = f"{value:,.{digits}f}"
+    return formatted.replace(",", "\x00").replace(".", ",").replace("\x00", " ")
+
+
 templates.env.filters["format_month"] = format_month
 templates.env.filters["tojson"] = tojson_filter
+templates.env.filters["format_ru_number"] = format_ru_number
