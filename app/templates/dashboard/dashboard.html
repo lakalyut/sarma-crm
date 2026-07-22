@@ -546,7 +546,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (prevDelta && prevDelta.value !== null && prevDelta.value !== undefined) {
             const cls = prevDelta.value > 0 ? "delta-up" : (prevDelta.value < 0 ? "delta-down" : "delta-neutral");
             const sign = prevDelta.value > 0 ? "+" : "";
-            deltaHtml = `<span class="metric-delta ${cls}">${sign}${Math.round(prevDelta.value)}%</span>`;
+            const title = escapeHtml(prevDelta.text || "к прошлому месяцу");
+            deltaHtml = `<span class="metric-delta ${cls}" title="${title}">${sign}${Math.round(prevDelta.value)}%</span><span class="metric-delta-label">к пред. мес.</span>`;
         }
 
         const dot = label ? `<span class="dash-chart-summary-dot" style="background:${color}"></span>` : "";
