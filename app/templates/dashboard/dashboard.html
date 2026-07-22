@@ -244,10 +244,10 @@
                                 {{ render_metric_trend(entry.data, digits, entry.data.unit) }}
                             {% endif %}
                         {% else %}
-                            <div class="dash-chart-summary" data-widget-id="{{ widget.id }}"></div>
                             <div class="dash-chart-wrap">
                                 <canvas class="dash-chart-canvas" data-widget-id="{{ widget.id }}"></canvas>
                             </div>
+                            <div class="dash-chart-summary" data-widget-id="{{ widget.id }}"></div>
                         {% endif %}
                     </div>
                 </div>
