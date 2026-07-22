@@ -297,14 +297,16 @@ def _compute_widget(
     data = get_charts_metrics_data(db, filters, group="total")
     series = data["series"][0] if data["series"] else {}
     values = series.get(meta["series_key"], [])
+    trend = _build_metric_trend(values, data["labels"], label)
 
     if widget_type == "metric_card":
-        return _build_metric_trend(values, data["labels"], label)
+        return trend
 
     return {
         "label": label,
         "labels": data["labels"],
         "values": values,
+        "trend": trend,
     }
 
 

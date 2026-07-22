@@ -145,6 +145,45 @@
     margin-bottom: 4px;
 }
 
+.dash-chart-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.dash-chart-summary-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.dash-chart-summary-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.dash-chart-summary-label {
+    color: var(--text-muted);
+}
+
+.dash-chart-summary-value {
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.dash-chart-wrap {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+}
+
 .dash-chart-canvas {
     width: 100% !important;
     height: 100% !important;

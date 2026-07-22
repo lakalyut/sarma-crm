@@ -244,7 +244,10 @@
                                 {{ render_metric_trend(entry.data, digits, entry.data.unit) }}
                             {% endif %}
                         {% else %}
-                            <canvas class="dash-chart-canvas" data-widget-id="{{ widget.id }}"></canvas>
+                            <div class="dash-chart-summary" data-widget-id="{{ widget.id }}"></div>
+                            <div class="dash-chart-wrap">
+                                <canvas class="dash-chart-canvas" data-widget-id="{{ widget.id }}"></canvas>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
@@ -519,16 +522,56 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    const chartPalette = ["#6d5ef8", "#0ea5e9", "#f59e0b", "#22c55e", "#ec4899", "#14b8a6"];
+
+    function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text == null ? "" : String(text);
+        return div.innerHTML;
+    }
+
+    function formatChartNumber(value, digits) {
+        return Number(value || 0).toLocaleString("ru-RU", {
+            minimumFractionDigits: digits,
+            maximumFractionDigits: digits
+        });
+    }
+
+    function renderChartSummaryItem(trend, unit, digits, color, label) {
+        if (!trend) return "";
+
+        const prevDelta = trend.deltas && trend.deltas[0];
+        let deltaHtml = "";
+
+        if (prevDelta && prevDelta.value !== null && prevDelta.value !== undefined) {
+            const cls = prevDelta.value > 0 ? "delta-up" : (prevDelta.value < 0 ? "delta-down" : "delta-neutral");
+            const sign = prevDelta.value > 0 ? "+" : "";
+            deltaHtml = `<span class="metric-delta ${cls}">${sign}${Math.round(prevDelta.value)}%</span>`;
+        }
+
+        const dot = label ? `<span class="dash-chart-summary-dot" style="background:${color}"></span>` : "";
+        const labelHtml = label ? `<span class="dash-chart-summary-label">${escapeHtml(label)}</span>` : "";
+
+        return `
+            <span class="dash-chart-summary-item">
+                ${dot}${labelHtml}
+                <span class="dash-chart-summary-value">${formatChartNumber(trend.value, digits)}${unit ? " " + unit : ""}</span>
+                ${deltaHtml}
+            </span>
+        `;
+    }
+
     const chartPromises = Array.from(document.querySelectorAll(".dash-chart-canvas")).map(function (canvas) {
         const widgetId = canvas.dataset.widgetId;
+        const summaryEl = document.querySelector(`.dash-chart-summary[data-widget-id="${widgetId}"]`);
 
         return fetch(`/dashboard/${dashboardId}/widgets/${widgetId}/data`)
             .then(res => res.json())
             .then(function (data) {
                 const isBar = data.chart_kind === "bar";
+                const digits = data.metric_kind === "int" ? 0 : 2;
 
                 if (data.mode === "split") {
-                    const palette = ["#6d5ef8", "#0ea5e9", "#f59e0b", "#22c55e", "#ec4899", "#14b8a6"];
                     const sharedLabels = (data.groups[0] && data.groups[0].labels) || [];
 
                     new Chart(canvas, {
@@ -536,7 +579,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         data: {
                             labels: sharedLabels,
                             datasets: data.groups.map(function (g, i) {
-                                const color = palette[i % palette.length];
+                                const color = chartPalette[i % chartPalette.length];
                                 return {
                                     label: g.label,
                                     data: g.values,
@@ -548,6 +591,12 @@ document.addEventListener("DOMContentLoaded", function () {
                         },
                         options: { responsive: true, maintainAspectRatio: false }
                     });
+
+                    if (summaryEl) {
+                        summaryEl.innerHTML = data.groups.map(function (g, i) {
+                            return renderChartSummaryItem(g.trend, data.unit, digits, chartPalette[i % chartPalette.length], g.label);
+                        }).join("");
+                    }
                     return;
                 }
 
@@ -566,6 +615,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
+
+                if (summaryEl) {
+                    summaryEl.innerHTML = renderChartSummaryItem(data.trend, data.unit, digits, "#6d5ef8", null);
+                }
             })
             .catch(function () {});
     });
