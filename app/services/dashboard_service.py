@@ -265,7 +265,13 @@ def _build_metric_trend(values: list, labels: list, label: str) -> dict:
     current = float(values[last_index] or 0)
     prev = float(values[last_index - 1] or 0) if last_index >= 1 else None
     first = float(values[0] or 0)
-    average = sum(float(v or 0) for v in values) / len(values)
+
+    prior_values = values[:last_index]
+    average = (
+        sum(float(v or 0) for v in prior_values) / len(prior_values)
+        if prior_values
+        else None
+    )
 
     deltas = [
         {

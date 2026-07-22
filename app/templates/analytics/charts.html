@@ -548,7 +548,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const current = Number(valueArr?.[lastIndex] ?? 0);
             const prev = prevIndex >= 0 ? Number(valueArr?.[prevIndex] ?? 0) : null;
             const first = Number(valueArr?.[0] ?? 0);
-            const average = calcAverage(valueArr);
+            const average = calcAverage((valueArr || []).slice(0, lastIndex));
 
             const prevDelta = calcDelta(current, prev);
             const avgDelta = calcDelta(current, average);
