@@ -558,28 +558,18 @@ document.addEventListener("DOMContentLoaded", function () {
         return Array.from(tbody.querySelectorAll(".client-row"));
     }
 
-    function computeHalvesAvg(values) {
-        const n = values.length;
-        if (n < 2) return null;
-
-        const mid = Math.floor(n / 2);
-        const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
-
-        return {
-            firstAvg: avg(values.slice(0, mid)),
-            secondAvg: avg(values.slice(mid)),
-        };
-    }
-
     function computeDeltaPct(values) {
-        const halves = computeHalvesAvg(values);
-        if (!halves) return null;
+        if (values.length < 2) return null;
 
-        if (halves.firstAvg === 0) {
-            return halves.secondAvg === 0 ? 0 : null;
+        const current = values[values.length - 1];
+        const prior = values.slice(0, -1);
+        const priorAvg = prior.reduce((s, v) => s + v, 0) / prior.length;
+
+        if (priorAvg === 0) {
+            return current === 0 ? 0 : null;
         }
 
-        return ((halves.secondAvg - halves.firstAvg) / halves.firstAvg) * 100;
+        return ((current - priorAvg) / priorAvg) * 100;
     }
 
     function buildSparkPoints(values) {
