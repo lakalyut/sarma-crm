@@ -100,6 +100,7 @@ class Dashboard(Base):
     clients = Column(JSON, nullable=False, default=list)
     months = Column(JSON, nullable=False, default=list)
     compare_mode = Column(String, nullable=False, default="aggregate")
+    split_by = Column(String, nullable=False, default="city")
 
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
