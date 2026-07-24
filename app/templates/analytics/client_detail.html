@@ -90,6 +90,106 @@
     {% endfor %}
 {% endif %}
 
+{% if sku_status and sku_status.sku_details %}
+    <h2 class="text-subheading">SKU-статусы</h2>
+
+    <div class="amb-card">
+        <div class="amb-card-header">
+            <div class="amb-card-badges">
+                <span class="amb-badge amb-badge-blue">Всего SKU: {{ sku_status.sku_total }}</span>
+                <span class="amb-badge amb-badge-blue">Уникальных SKU: {{ sku_status.unique_sku_total }}</span>
+                <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(sku_status.weight_total) }} кг</span>
+            </div>
+        </div>
+
+        <div class="amb-status-filter" data-status-filter></div>
+
+        <div class="sheet-wrapper">
+            <div class="sheet-scroller">
+                <table class="sheet-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Статус</th>
+                            {% for month in sku_status.months %}
+                                <th>{{ month|format_month }}</th>
+                            {% endfor %}
+                            <th>Итого вес, кг</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sku_row in sku_status.sku_details %}
+                            <tr class="amb-sku-row amb-sku-row-{{ sku_row.status }}" data-status="{{ sku_row.status }}">
+                                <td>{{ sku_row.sku }}</td>
+                                <td>
+                                    <span class="amb-sku-status amb-sku-status-{{ sku_row.status }}">
+                                        {{ sku_row.status_label }}
+                                    </span>
+                                </td>
+                                {% for value in sku_row.months_data %}
+                                    <td>{{ "%.2f"|format(value) }}</td>
+                                {% endfor %}
+                                <td>{{ "%.2f"|format(sku_row.total) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".amb-card").forEach(card => {
+            const filterBox = card.querySelector("[data-status-filter]");
+            const rows = Array.from(card.querySelectorAll(".amb-sku-row"));
+
+            if (!filterBox || !rows.length) return;
+
+            const statuses = Array.from(new Set(rows.map(row => row.dataset.status).filter(Boolean)));
+
+            const statusLabels = {
+                all: "Все",
+                new: "Новые у клиента",
+                lost: "Пропали",
+                unstable: "Нестабильные",
+                existing: "Были с начала"
+            };
+
+            const statusOrder = ["new", "lost", "unstable", "existing"];
+            const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
+
+            filterBox.innerHTML = availableStatuses.map(status => `
+                <button
+                    type="button"
+                    class="amb-status-filter-btn ${status === "all" ? "active" : ""}"
+                    data-status="${status}"
+                >
+                    ${statusLabels[status]}
+                </button>
+            `).join("");
+
+            const buttons = Array.from(filterBox.querySelectorAll(".amb-status-filter-btn"));
+
+            buttons.forEach(button => {
+                button.addEventListener("click", function () {
+                    const selectedStatus = button.dataset.status;
+
+                    buttons.forEach(btn => {
+                        btn.classList.toggle("active", btn === button);
+                    });
+
+                    rows.forEach(row => {
+                        const isVisible = selectedStatus === "all" || row.dataset.status === selectedStatus;
+                        row.style.display = isVisible ? "" : "none";
+                    });
+                });
+            });
+        });
+    });
+    </script>
+{% endif %}
+
 {% if summary %}
     <div class="summary-cards" style="margin-top: 10px;">
         <div class="summary-card">
@@ -137,6 +237,50 @@
             </table>
         </div>
     </div>
+
+    <div class="sheet-wrapper chart-block">
+        <div class="chart-wrap">
+            <canvas
+                id="client-monthly-chart"
+                data-labels="{{ monthly|map(attribute='month')|map('format_month')|list|tojson }}"
+                data-qty="{{ monthly|map(attribute='qty')|list|tojson }}"
+                data-weight="{{ monthly|map(attribute='weight')|list|tojson }}"
+            ></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const canvas = document.getElementById("client-monthly-chart");
+        if (!canvas || typeof Chart === "undefined") return;
+
+        const labels = JSON.parse(canvas.dataset.labels);
+        const qty = JSON.parse(canvas.dataset.qty);
+        const weight = JSON.parse(canvas.dataset.weight);
+
+        new Chart(canvas, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [
+                    { label: "Количество", data: qty, yAxisID: "y", tension: 0.25, fill: false },
+                    { label: "Вес", data: weight, yAxisID: "y1", tension: 0.25, fill: false },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: "index", intersect: false },
+                plugins: { legend: { position: "top" } },
+                scales: {
+                    y: { beginAtZero: true, position: "left", title: { display: true, text: "Количество" } },
+                    y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Вес" } },
+                },
+            },
+        });
+    });
+    </script>
 {% endif %}
 
 {% if not rows %}

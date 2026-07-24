@@ -105,26 +105,6 @@
                 </div>
             </div>
 
-            <div class="field filter-field filter-field-region-search">
-                <label for="client-search">Клиент (опционально)</label>
-                <input
-                    id="client-search"
-                    type="text"
-                    name="client"
-                    value="{{ selected_client or '' }}"
-                    placeholder="Начни вводить название клиента..."
-                    autocomplete="off"
-                >
-
-                <div id="client-dropdown" class="search-dropdown" style="display:none;">
-                    {% for client_name in all_clients %}
-                        <div class="search-dropdown-item" data-value="{{ client_name }}">
-                            {{ client_name }}
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-
             {% if current_user and current_user.role == "admin" %}
             <div class="field filter-field">
                 <label>Только сопоставленные</label>
@@ -270,9 +250,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const months = Array.from(form.querySelectorAll('input[name="months"]:checked')).map(i => i.value);
         const types = Array.from(form.querySelectorAll('input[name="sale_types"]:checked')).map(i => i.value);
         const matched = (form.querySelector('select[name="matched"]') || {}).value || "";
-        const client = (form.querySelector('input[name="client"]') || {}).value || "";
 
-        const state = { months, types, matched, client };
+        const state = { months, types, matched };
 
         try {
             localStorage.setItem(storageKey, JSON.stringify(state));
@@ -332,10 +311,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (saved.matched !== undefined && saved.matched !== null && saved.matched !== "") {
                     url.searchParams.set("matched", saved.matched);
                 }
-
-                if (saved.client) {
-                    url.searchParams.set("client", saved.client);
-                }
             }
         } catch (e) {
             console.warn("Не удалось восстановить фильтры графиков:", cityValue, e);
@@ -377,47 +352,6 @@ document.addEventListener("DOMContentLoaded", function () {
             input.value = "";
             dropdown.style.display = "none";
         }, 150);
-    });
-
-    document.addEventListener("click", function (e) {
-        if (!dropdown.contains(e.target) && e.target !== input) {
-            dropdown.style.display = "none";
-        }
-    });
-});
-</script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const input = document.getElementById("client-search");
-    const dropdown = document.getElementById("client-dropdown");
-
-    if (!input || !dropdown) return;
-
-    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
-
-    function filterItems() {
-        const value = input.value.trim().toLowerCase();
-        let visibleCount = 0;
-
-        items.forEach(item => {
-            const text = item.dataset.value.toLowerCase();
-            const visible = !value || text.includes(value);
-            item.classList.toggle("hidden", !visible);
-            if (visible) visibleCount++;
-        });
-
-        dropdown.style.display = visibleCount > 0 ? "block" : "none";
-    }
-
-    input.addEventListener("focus", filterItems);
-    input.addEventListener("input", filterItems);
-
-    items.forEach(item => {
-        item.addEventListener("click", function () {
-            input.value = item.dataset.value;
-            dropdown.style.display = "none";
-        });
     });
 
     document.addEventListener("click", function (e) {

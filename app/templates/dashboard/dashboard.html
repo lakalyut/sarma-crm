@@ -134,15 +134,6 @@
                 </div>
             </div>
 
-            <div class="field filter-field {% if active.compare_mode != 'split' %}is-hidden{% endif %}" id="dash-split-axis-field">
-                <label>Ось сравнения</label>
-                <input type="hidden" name="split_by" id="dash-split-by" value="{{ active.split_by }}">
-                <div class="dash-mode-toggle">
-                    <button type="button" class="chart-tab {% if active.split_by != 'client' %}active{% endif %}" data-split="city">По регионам</button>
-                    <button type="button" class="chart-tab {% if active.split_by == 'client' %}active{% endif %}" data-split="client">По клиентам</button>
-                </div>
-            </div>
-
             <div class="field filter-field filter-actions-row">
                 <label>&nbsp;</label>
                 <div class="filters-actions">
@@ -210,7 +201,7 @@
             Регион: {% if active.cities %}{{ active.cities|join(', ') }}{% else %}все{% endif %}
             {% if active.clients %} &middot; Клиенты: {{ active.clients|join(', ') }}{% endif %}
             &middot; Период: {% if active.months %}{% for m in active.months %}{{ m|format_month }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}все месяцы{% endif %}
-            &middot; Режим: {% if active.compare_mode == 'split' %}по отдельности ({% if active.split_by == 'client' %}по клиентам{% else %}по регионам{% endif %}){% else %}суммарно{% endif %}
+            &middot; Режим: {% if active.compare_mode == 'split' %}по отдельности (по регионам){% else %}суммарно{% endif %}
         </div>
         <div class="dash-print-generated">Сформировано <span data-print-date></span></div>
     </div>
@@ -462,22 +453,11 @@ document.addEventListener("DOMContentLoaded", function () {
     syncChartKindVisibility();
 
     const modeInput = document.getElementById("dash-compare-mode");
-    const splitAxisField = document.getElementById("dash-split-axis-field");
     document.querySelectorAll('.dash-mode-toggle .chart-tab[data-mode]').forEach(btn => {
         btn.addEventListener("click", function () {
             document.querySelectorAll('.dash-mode-toggle .chart-tab[data-mode]').forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
             if (modeInput) modeInput.value = btn.dataset.mode;
-            splitAxisField?.classList.toggle("is-hidden", btn.dataset.mode !== "split");
-        });
-    });
-
-    const splitByInput = document.getElementById("dash-split-by");
-    document.querySelectorAll('.dash-mode-toggle .chart-tab[data-split]').forEach(btn => {
-        btn.addEventListener("click", function () {
-            document.querySelectorAll('.dash-mode-toggle .chart-tab[data-split]').forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            if (splitByInput) splitByInput.value = btn.dataset.split;
         });
     });
 
@@ -487,10 +467,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (modeInput) modeInput.value = "aggregate";
         document.querySelectorAll('.dash-mode-toggle .chart-tab[data-mode]').forEach(b => b.classList.remove("active"));
         document.querySelector('.dash-mode-toggle .chart-tab[data-mode="aggregate"]')?.classList.add("active");
-        splitAxisField?.classList.add("is-hidden");
-        if (splitByInput) splitByInput.value = "city";
-        document.querySelectorAll('.dash-mode-toggle .chart-tab[data-split]').forEach(b => b.classList.remove("active"));
-        document.querySelector('.dash-mode-toggle .chart-tab[data-split="city"]')?.classList.add("active");
         document.getElementById("dashboard-filters-form")?.submit();
     });
 });

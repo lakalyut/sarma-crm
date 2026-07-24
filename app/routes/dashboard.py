@@ -134,7 +134,6 @@ async def dashboard_filters(
             clients=form.getlist("clients"),
             months=form.getlist("months"),
             compare_mode=form.get("compare_mode") or "aggregate",
-            split_by=form.get("split_by") or "city",
         )
     return RedirectResponse(f"/dashboard?id={dashboard_id}", status_code=HTTP_302_FOUND)
 

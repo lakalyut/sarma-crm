@@ -74,6 +74,109 @@ def detect_sku_status(
     return "existing", "Был с начала"
 
 
+def build_client_sku_status(
+    db: Session,
+    city: str,
+    client: str,
+    sale_type: str,
+    selected_months: list[str],
+    status_settings: dict | None = None,
+) -> dict:
+    status_settings = status_settings or {
+        "new_client_months": 2,
+        "lost_months": 2,
+        "unstable_gap_months": 1,
+    }
+
+    empty: dict = {
+        "months": selected_months,
+        "sku_total": 0,
+        "unique_sku_total": 0,
+        "weight_total": 0.0,
+        "sku_details": [],
+        "status_counts": {"new": 0, "lost": 0, "unstable": 0, "existing": 0},
+    }
+
+    if not city or not client or not sale_type or not selected_months:
+        return empty
+
+    sales_rows = (
+        db.query(
+            Sale.month,
+            Sale.weight,
+            sku_expr().label("sku_key"),
+        )
+        .filter(
+            Sale.city == city,
+            Sale.client == client,
+            Sale.type == sale_type,
+            Sale.month.in_(selected_months),
+        )
+        .all()
+    )
+
+    weight_by_sku_month = defaultdict(lambda: defaultdict(float))
+    unique_sku_total: set[str] = set()
+    weight_total = 0.0
+
+    for row in sales_rows:
+        month = row.month or ""
+        weight = float(row.weight or 0)
+        sku_key_value = (row.sku_key or "").strip()
+
+        weight_total += weight
+
+        if sku_key_value:
+            weight_by_sku_month[sku_key_value][month] += weight
+            unique_sku_total.add(sku_key_value)
+
+    sku_details = []
+    status_counts = {"new": 0, "lost": 0, "unstable": 0, "existing": 0}
+
+    for sku_name in sorted(weight_by_sku_month.keys()):
+        months_data = []
+        total = 0.0
+        first_month = None
+
+        for month in selected_months:
+            value = round(weight_by_sku_month[sku_name].get(month, 0.0), 2)
+
+            if value > 0 and first_month is None:
+                first_month = month
+
+            months_data.append(value)
+            total += value
+
+        status, status_label = detect_sku_status(
+            months_data=months_data,
+            selected_months=selected_months,
+            status_settings=status_settings,
+        )
+
+        if status in status_counts:
+            status_counts[status] += 1
+
+        sku_details.append(
+            {
+                "sku": sku_name,
+                "months_data": months_data,
+                "total": round(total, 2),
+                "first_month": first_month,
+                "status": status,
+                "status_label": status_label,
+            }
+        )
+
+    return {
+        "months": selected_months,
+        "sku_total": len(sku_details),
+        "unique_sku_total": len(unique_sku_total),
+        "weight_total": round(weight_total, 2),
+        "sku_details": sku_details,
+        "status_counts": status_counts,
+    }
+
+
 def build_ambassadors_report(
     db: Session,
     selected_city: str,

@@ -160,13 +160,11 @@ def update_filters(
     clients: list[str],
     months: list[str],
     compare_mode: str,
-    split_by: str = "city",
 ) -> None:
     dashboard.cities = cities
     dashboard.clients = clients
     dashboard.months = months
     dashboard.compare_mode = compare_mode if compare_mode == "split" else "aggregate"
-    dashboard.split_by = split_by if split_by == "client" else "city"
     db.commit()
 
 
@@ -194,8 +192,7 @@ def add_widget(
     w, h = WIDGET_DEFAULT_SIZE[widget_type]
 
     if widget_type == "metric_card" and dashboard.compare_mode == "split":
-        axis = dashboard.clients if dashboard.split_by == "client" else dashboard.cities
-        axis_count = len(axis or [])
+        axis_count = len(dashboard.cities or [])
         if axis_count > 1:
             h = 2 + axis_count * 3
 
@@ -332,29 +329,8 @@ def get_widget_data(db: Session, dashboard: Dashboard, widget: DashboardWidget) 
     cities = dashboard.cities or []
     clients = dashboard.clients or []
     months = dashboard.months or []
-    split_by = dashboard.split_by or "city"
 
-    if dashboard.compare_mode == "split" and split_by == "client" and len(clients) > 1:
-        groups = [
-            _compute_widget(
-                db,
-                build_sale_filters(cities=cities, client=client, months=months),
-                widget.widget_type,
-                meta,
-                label=client,
-            )
-            for client in clients
-        ]
-        return {
-            "mode": "split",
-            "metric_label": meta["label"],
-            "metric_kind": meta["kind"],
-            "unit": meta.get("unit", ""),
-            "chart_kind": widget.chart_kind or "line",
-            "groups": groups,
-        }
-
-    if dashboard.compare_mode == "split" and split_by != "client" and len(cities) > 1:
+    if dashboard.compare_mode == "split" and len(cities) > 1:
         groups = [
             _compute_widget(
                 db,

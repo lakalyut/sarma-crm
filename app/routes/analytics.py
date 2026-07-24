@@ -12,18 +12,17 @@ from ..services.abc_service import (
     get_client_abc_overview,
     guess_default_segment,
 )
+from ..services.ambassadors_service import (
+    build_client_sku_status,
+    normalize_selected_months,
+)
 from ..services.charts_service import get_charts_metrics_data
 from ..services.clients_service import (
     get_client_detail_data,
     get_clients_summary_data,
 )
 from ..services.sale_filters import build_sale_filters
-from ..services.sales_options_service import (
-    get_cities,
-    get_clients,
-    get_months,
-    get_types,
-)
+from ..services.sales_options_service import get_cities, get_months, get_types
 
 router = APIRouter()
 
@@ -152,8 +151,6 @@ def analytics_charts(
                 "selected_types": [],
                 "matched": None,
                 "group": group,
-                "all_clients": [],
-                "selected_client": "",
                 "message": "Выберите нужный город",
             },
         )
@@ -168,15 +165,6 @@ def analytics_charts(
     selected_types = sale_types or []
     if all_types:
         selected_types = [t for t in selected_types if t in all_types]
-
-    client_filters = build_sale_filters(
-        city=city,
-        months=selected_months,
-        sale_types=selected_types,
-        matched=matched,
-    )
-
-    all_clients = get_clients(db, filters=client_filters)
 
     matched_flag = None
     if matched == "1":
@@ -196,8 +184,6 @@ def analytics_charts(
             "selected_types": selected_types,
             "matched": matched_flag,
             "group": group,
-            "all_clients": all_clients,
-            "selected_client": request.query_params.get("client") or "",
         },
     )
 
@@ -289,6 +275,19 @@ def analytics_client_detail(
         )
         rating_by_product = abc_overview["rating_by_product"]
 
+    all_months = get_months(db, city=city, reverse=True)
+    status_months = normalize_selected_months(
+        selected_months=months or [],
+        all_months=all_months,
+    )
+    sku_status = build_client_sku_status(
+        db=db,
+        city=city,
+        client=client,
+        sale_type=sale_type,
+        selected_months=status_months,
+    )
+
     return render(
         request,
         "analytics/client_detail.html",
@@ -305,6 +304,7 @@ def analytics_client_detail(
             "abc_overview": abc_overview,
             "rating_by_product": rating_by_product,
             "matched": matched,
+            "sku_status": sku_status,
         },
     )
 
