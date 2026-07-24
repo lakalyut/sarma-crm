@@ -1,0 +1,629 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Анализ по клиентам</h1>
+{% include "includes/messages.html" %}
+
+<div class="filters-card">
+    <form method="get" id="ca-filters-form">
+        <div class="filters-grid ambassadors-filters-grid">
+            <div class="field filter-field filter-field-region-search">
+                <label for="ca-city-search">Регион</label>
+                <input type="hidden" name="city" id="ca-city-hidden" value="{{ selected_city or '' }}">
+                <input id="ca-city-search" type="text" value="" placeholder="Начни вводить регион..." autocomplete="off">
+
+                <div id="ca-city-dropdown" class="search-dropdown" style="display:none;">
+                    {% for c in cities %}
+                        <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label>Период</label>
+                <div class="multiselect" id="ca-months-multiselect">
+                    <div class="multiselect-display">
+                        <span class="multiselect-text">
+                            {% if raw_selected_months %}
+                                {% for m in raw_selected_months %}
+                                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Все месяцы
+                            {% endif %}
+                        </span>
+                        <span class="multiselect-arrow">▾</span>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <label class="month-checkbox month-checkbox-all">
+                            <input type="checkbox" class="multiselect-select-all-checkbox">
+                            <span>Выбрать все</span>
+                        </label>
+                        <div class="month-checkboxes">
+                            {% for m in all_months %}
+                                <label class="month-checkbox">
+                                    <input type="checkbox" name="months" value="{{ m }}" {% if m in raw_selected_months %}checked{% endif %}>
+                                    <span>{{ m|format_month }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label for="ca-segment-select">Сегмент ABC</label>
+                <select id="ca-segment-select" name="segment_id">
+                    {% for segment in segments %}
+                        <option
+                            value="{{ segment.id }}"
+                            {% if selected_segment and selected_segment.id == segment.id %}selected{% endif %}
+                        >{{ segment.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="ca-client-search">Клиенты (опционально)</label>
+                <input id="ca-client-search" type="text" value="" placeholder="Начни вводить клиента..." autocomplete="off">
+
+                <div id="ca-client-dropdown" class="search-dropdown" style="display:none;">
+                    {% for client_name in all_clients %}
+                        <div class="search-dropdown-item" data-value="{{ client_name }}">{{ client_name }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field filter-actions-row">
+                <label>&nbsp;</label>
+                <div class="filters-actions">
+                    <button type="submit">Показать</button>
+                    <a href="/analytics/client-analysis" class="btn btn-secondary">Сбросить</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="multiselect-tags amb-tags-row" id="ca-clients-tags">
+            {% for client in selected_clients %}
+                <span class="filter-tag">
+                    <span>{{ client }}</span>
+                    <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                    <input type="hidden" name="clients" value="{{ client }}">
+                </span>
+            {% endfor %}
+        </div>
+
+        <div class="selected-city-text">
+            {% if selected_city %}
+                Регион:
+                <span class="selected-city-value" id="ca-selected-city-label">{{ selected_city }}</span>
+            {% else %}
+                <span id="ca-selected-city-empty">Регион не выбран</span>
+                <span class="selected-city-value" id="ca-selected-city-label" style="display:none;"></span>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if selected_city and not types %}
+    <div class="message" style="margin-top: 12px;">Нет данных под выбранные фильтры.</div>
+{% elif selected_city %}
+    <div class="summary-panel" style="margin-top: 10px;">
+        <div class="summary-panel-header">
+            <span class="summary-panel-title">Сводка по клиентам</span>
+        </div>
+
+        <div class="summary-panel-body">
+            <div class="chart-tabs" id="ca-metric-tabs">
+                <button type="button" class="chart-tab active" data-metric="weight">Вес</button>
+                <button type="button" class="chart-tab" data-metric="qty">Количество</button>
+                <button type="button" class="chart-tab" data-metric="sku_count">Уникальных SKU</button>
+            </div>
+
+            <div class="sheet-wrapper ca-wrapper">
+                <div class="sheet-scroller">
+                    <table class="sheet-table ca-table" id="ca-table">
+                        <thead>
+                            <tr>
+                                <th class="ca-col-label">Название</th>
+                                {% for m in selected_months %}
+                                    <th>{{ m|format_month }}</th>
+                                {% endfor %}
+                                <th>Итого</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ca-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div
+                id="ca-app"
+                data-city="{{ selected_city }}"
+                data-months="{{ selected_months|tojson }}"
+                data-segment-id="{{ selected_segment.id if selected_segment else '' }}"
+                data-clients="{{ selected_clients|tojson }}"
+                data-types="{{ types|tojson }}"
+                data-first-type="{{ first_type or '' }}"
+                data-first-type-clients="{{ first_type_clients|tojson }}"
+            ></div>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initCheckboxMultiselect({
+        id: "ca-months-multiselect",
+        inputName: "months",
+        emptyText: "Все месяцы"
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("ca-filters-form");
+    const input = document.getElementById("ca-city-search");
+    const hidden = document.getElementById("ca-city-hidden");
+    const dropdown = document.getElementById("ca-city-dropdown");
+    const selectedCityLabel = document.getElementById("ca-selected-city-label");
+    const selectedCityEmpty = document.getElementById("ca-selected-city-empty");
+
+    if (!form || !input || !hidden || !dropdown) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const visible = !value || text.includes(value);
+            item.classList.toggle("hidden", !visible);
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const value = item.dataset.value;
+
+            hidden.value = value;
+
+            if (selectedCityLabel) {
+                selectedCityLabel.textContent = value;
+                selectedCityLabel.style.display = "";
+            }
+
+            if (selectedCityEmpty) {
+                selectedCityEmpty.style.display = "none";
+            }
+
+            input.value = "";
+            dropdown.style.display = "none";
+
+            window.location.href = "/analytics/client-analysis?city=" + encodeURIComponent(value);
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+});
+</script>
+
+<script>
+function initTagSearch(config) {
+    const input = document.getElementById(config.inputId);
+    const dropdown = document.getElementById(config.dropdownId);
+    const tags = document.getElementById(config.tagsId);
+
+    if (!input || !dropdown || !tags) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function existingValues() {
+        return Array.from(tags.querySelectorAll(`input[name="${config.inputName}"]`)).map(i => i.value);
+    }
+
+    function attachRemoveHandler(tag) {
+        const btn = tag.querySelector(".filter-tag-remove");
+        if (!btn) return;
+
+        btn.addEventListener("click", function () {
+            tag.remove();
+            filterItems();
+        });
+    }
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        const selected = existingValues();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const alreadySelected = selected.includes(item.dataset.value);
+            const visible = !alreadySelected && (!value || text.includes(value));
+
+            item.classList.toggle("hidden", !visible);
+
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    function renderTag(value) {
+        const tag = document.createElement("span");
+        tag.className = "filter-tag";
+
+        const text = document.createElement("span");
+        text.textContent = value;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "filter-tag-remove";
+        button.setAttribute("aria-label", "Удалить");
+        button.textContent = "×";
+
+        const hiddenInput = document.createElement("input");
+        hiddenInput.type = "hidden";
+        hiddenInput.name = config.inputName;
+        hiddenInput.value = value;
+
+        tag.appendChild(text);
+        tag.appendChild(button);
+        tag.appendChild(hiddenInput);
+
+        attachRemoveHandler(tag);
+        tags.appendChild(tag);
+    }
+
+    Array.from(tags.querySelectorAll(".filter-tag")).forEach(attachRemoveHandler);
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const value = item.dataset.value;
+
+            if (!existingValues().includes(value)) {
+                renderTag(value);
+            }
+
+            input.value = "";
+            dropdown.style.display = "none";
+            filterItems();
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    initTagSearch({
+        inputId: "ca-client-search",
+        dropdownId: "ca-client-dropdown",
+        tagsId: "ca-clients-tags",
+        inputName: "clients"
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const app = document.getElementById("ca-app");
+    if (!app) return;
+
+    const state = {
+        city: app.dataset.city,
+        months: JSON.parse(app.dataset.months || "[]"),
+        segmentId: app.dataset.segmentId || "",
+        clients: JSON.parse(app.dataset.clients || "[]"),
+        types: JSON.parse(app.dataset.types || "[]"),
+        metric: "weight",
+        expandedTypes: new Set(),
+        expandedClients: new Set(),
+        clientSubView: {},
+        typeClientsCache: {},
+        nomenclatureCache: {},
+        missingCache: {},
+    };
+
+    const firstType = app.dataset.firstType;
+    if (firstType) {
+        state.expandedTypes.add(firstType);
+        state.typeClientsCache[firstType] = JSON.parse(app.dataset.firstTypeClients || "[]");
+    }
+
+    const tbody = document.getElementById("ca-tbody");
+
+    function escHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+    }
+
+    function formatValue(value, metric) {
+        const digits = metric === "weight" ? 2 : 0;
+        return Number(value || 0).toLocaleString("ru-RU", {
+            minimumFractionDigits: digits,
+            maximumFractionDigits: digits
+        });
+    }
+
+    function metricCell(row, monthKey) {
+        if (!row.metricsAvailable.includes(state.metric)) return "—";
+        const bucket = monthKey ? (row.months[monthKey] || {}) : row.total;
+        return formatValue(bucket[state.metric], state.metric);
+    }
+
+    function abcBadgesHtml(abc) {
+        if (!abc || !Object.keys(abc).length) return "";
+        return ["A", "B", "C"].map(function (cat) {
+            const pair = abc[cat];
+            if (!pair) return "";
+            return `<span class="abc-badge abc-badge-${cat.toLowerCase()} ca-abc-badge">${cat}: ${pair[0]}/${pair[1]}</span>`;
+        }).join("");
+    }
+
+    function rowToHtml(row) {
+        const hasChildren = row.level !== "nomenclature";
+        const isExpanded = row.level === "type"
+            ? state.expandedTypes.has(row.key)
+            : (row.level === "client" ? state.expandedClients.has(row.parentType + "|" + row.key) : false);
+
+        const toggle = hasChildren
+            ? `<button type="button" class="amb-toggle ca-toggle" data-ca-toggle data-level="${row.level}" data-key="${escHtml(row.key)}"${row.parentType ? ` data-type="${escHtml(row.parentType)}"` : ""} aria-expanded="${isExpanded ? "true" : "false"}">${isExpanded ? "⌄" : "›"}</button>`
+            : `<span class="ca-toggle-placeholder"></span>`;
+
+        const abcHtml = row.level === "client" ? abcBadgesHtml(row.abc) : "";
+
+        const monthCells = state.months.map(function (m) {
+            return `<td class="ca-cell">${metricCell(row, m)}</td>`;
+        }).join("");
+
+        const totalCell = `<td class="ca-cell ca-cell-total">${metricCell(row, null)}</td>`;
+
+        return `<tr class="ca-row ca-row-${row.level}">
+            <td class="ca-label-cell">
+                <span class="ca-indent ca-indent-${row.level}">${toggle}<span class="ca-label-text">${escHtml(row.label)}</span>${abcHtml}</span>
+            </td>
+            ${monthCells}
+            ${totalCell}
+        </tr>`;
+    }
+
+    function subToggleHtml(type, client) {
+        const key = type + "|" + client;
+        const view = state.clientSubView[key] || "nomenclature";
+        const colspan = state.months.length + 2;
+
+        return `<tr class="ca-subtoggle-row">
+            <td colspan="${colspan}">
+                <div class="ca-sub-toggle">
+                    <button type="button" class="chart-tab ${view === "nomenclature" ? "active" : ""}" data-ca-subview data-subview="nomenclature" data-type="${escHtml(type)}" data-client="${escHtml(client)}">Номенклатуры</button>
+                    <button type="button" class="chart-tab ${view === "missing" ? "active" : ""}" data-ca-subview data-subview="missing" data-type="${escHtml(type)}" data-client="${escHtml(client)}">Чего не хватает</button>
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    function missingHtml(type, client) {
+        const key = type + "|" + client;
+        const missing = state.missingCache[key];
+        const colspan = state.months.length + 2;
+
+        if (!missing) {
+            return `<tr class="ca-missing-row"><td colspan="${colspan}">Загрузка…</td></tr>`;
+        }
+
+        const blocks = ["A", "B", "C"].map(function (cat) {
+            const products = missing[cat] || [];
+            if (!products.length) return "";
+
+            const tags = products.map(function (p) {
+                return `<span class="filter-tag">${escHtml(p.brand)} — ${escHtml(p.flavor)}</span>`;
+            }).join("");
+
+            return `<details class="abc-missing-block abc-missing-${cat.toLowerCase()}">
+                <summary>Не хватает из категории ${cat} (${products.length})</summary>
+                <div class="multiselect-tags" style="margin-top: 8px;">${tags}</div>
+            </details>`;
+        }).join("");
+
+        return `<tr class="ca-missing-row"><td colspan="${colspan}">${blocks || '<div class="message">Весь ассортимент сегмента закрыт.</div>'}</td></tr>`;
+    }
+
+    function renderAll() {
+        const html = [];
+
+        state.types.forEach(function (t) {
+            html.push(rowToHtml({
+                level: "type",
+                key: t.type,
+                label: t.type,
+                months: t.months,
+                total: t.total,
+                metricsAvailable: ["qty", "weight", "sku_count"]
+            }));
+
+            if (!state.expandedTypes.has(t.type)) return;
+
+            const clientRows = state.typeClientsCache[t.type] || [];
+            clientRows.forEach(function (c) {
+                html.push(rowToHtml({
+                    level: "client",
+                    key: c.client,
+                    label: c.client,
+                    months: c.months,
+                    total: c.total,
+                    abc: c.abc,
+                    parentType: t.type,
+                    metricsAvailable: ["qty", "weight", "sku_count"]
+                }));
+
+                const clientKey = t.type + "|" + c.client;
+                if (!state.expandedClients.has(clientKey)) return;
+
+                html.push(subToggleHtml(t.type, c.client));
+
+                const view = state.clientSubView[clientKey] || "nomenclature";
+                if (view === "missing") {
+                    html.push(missingHtml(t.type, c.client));
+                    return;
+                }
+
+                const nomRows = state.nomenclatureCache[clientKey];
+                if (!nomRows) {
+                    html.push(`<tr><td colspan="${state.months.length + 2}">Загрузка…</td></tr>`);
+                    return;
+                }
+
+                nomRows.forEach(function (n) {
+                    html.push(rowToHtml({
+                        level: "nomenclature",
+                        key: n.sku || n.name,
+                        label: n.name + (n.sku ? " (" + n.sku + ")" : ""),
+                        months: n.months,
+                        total: n.total,
+                        metricsAvailable: ["qty", "weight"]
+                    }));
+                });
+            });
+        });
+
+        tbody.innerHTML = html.join("");
+    }
+
+    function apiUrl(path, params) {
+        const url = new URL(window.location.origin + path);
+        Object.entries(params).forEach(function ([key, value]) {
+            if (Array.isArray(value)) {
+                value.forEach(v => url.searchParams.append(key, v));
+            } else if (value !== undefined && value !== null && value !== "") {
+                url.searchParams.set(key, value);
+            }
+        });
+        return url.toString();
+    }
+
+    async function ensureClients(type) {
+        if (state.typeClientsCache[type]) return;
+        const url = apiUrl("/api/client-analysis/clients", {
+            city: state.city,
+            sale_type: type,
+            months: state.months,
+            clients: state.clients,
+            segment_id: state.segmentId
+        });
+        const res = await fetch(url);
+        state.typeClientsCache[type] = await res.json();
+    }
+
+    async function ensureNomenclature(type, client) {
+        const key = type + "|" + client;
+        if (state.nomenclatureCache[key]) return;
+        const url = apiUrl("/api/client-analysis/nomenclature", {
+            city: state.city,
+            client: client,
+            sale_type: type,
+            months: state.months
+        });
+        const res = await fetch(url);
+        state.nomenclatureCache[key] = await res.json();
+    }
+
+    async function ensureMissing(type, client) {
+        const key = type + "|" + client;
+        if (state.missingCache[key]) return;
+        const url = apiUrl("/api/client-analysis/missing", {
+            city: state.city,
+            client: client,
+            sale_type: type,
+            segment_id: state.segmentId
+        });
+        const res = await fetch(url);
+        state.missingCache[key] = await res.json();
+    }
+
+    tbody.addEventListener("click", async function (e) {
+        const toggleBtn = e.target.closest("[data-ca-toggle]");
+        if (toggleBtn) {
+            const level = toggleBtn.dataset.level;
+            const key = toggleBtn.dataset.key;
+            const parentType = toggleBtn.dataset.type;
+
+            if (level === "type") {
+                if (state.expandedTypes.has(key)) {
+                    state.expandedTypes.delete(key);
+                    renderAll();
+                    return;
+                }
+                state.expandedTypes.add(key);
+                renderAll();
+                await ensureClients(key);
+                renderAll();
+                return;
+            }
+
+            if (level === "client") {
+                const clientKey = parentType + "|" + key;
+                if (state.expandedClients.has(clientKey)) {
+                    state.expandedClients.delete(clientKey);
+                    renderAll();
+                    return;
+                }
+                state.expandedClients.add(clientKey);
+                state.clientSubView[clientKey] = state.clientSubView[clientKey] || "nomenclature";
+                renderAll();
+                await ensureNomenclature(parentType, key);
+                renderAll();
+            }
+            return;
+        }
+
+        const subBtn = e.target.closest("[data-ca-subview]");
+        if (subBtn) {
+            const type = subBtn.dataset.type;
+            const client = subBtn.dataset.client;
+            const view = subBtn.dataset.subview;
+            const key = type + "|" + client;
+
+            state.clientSubView[key] = view;
+            renderAll();
+
+            if (view === "missing") {
+                await ensureMissing(type, client);
+                renderAll();
+            }
+        }
+    });
+
+    document.querySelectorAll("#ca-metric-tabs .chart-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll("#ca-metric-tabs .chart-tab").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            state.metric = btn.dataset.metric;
+            renderAll();
+        });
+    });
+
+    renderAll();
+});
+</script>
+{% endblock %}

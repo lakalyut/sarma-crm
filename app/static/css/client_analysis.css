@@ -1,0 +1,65 @@
+/* =========================
+   Анализ по клиентам: иерархическая таблица
+========================= */
+
+.ca-col-label {
+    width: 340px;
+}
+
+.ca-label-cell {
+    white-space: normal;
+}
+
+.ca-indent {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ca-toggle,
+.ca-toggle-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    flex-shrink: 0;
+}
+
+.ca-indent-client {
+    padding-left: 20px;
+}
+
+.ca-indent-nomenclature {
+    padding-left: 40px;
+}
+
+.ca-row-type td {
+    background: var(--bg-page);
+    font-weight: 600;
+}
+
+.ca-row-client td {
+    font-weight: 500;
+}
+
+.ca-abc-badge {
+    margin-left: 2px;
+}
+
+.ca-cell-total {
+    font-weight: 600;
+}
+
+.ca-subtoggle-row td {
+    background: var(--surface-alt);
+}
+
+.ca-sub-toggle {
+    display: flex;
+    gap: 8px;
+}
+
+.ca-missing-row td {
+    background: var(--surface);
+}

@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -137,3 +139,58 @@ def get_client_abc_overview(
         "missing_by_category": missing_by_category,
         "rating_by_product": rating_by_product,
     }
+
+
+def get_abc_badges_for_clients(
+    db: Session,
+    city: str,
+    sale_type: str,
+    clients: list[str],
+    segment_id: int,
+) -> dict[str, dict[str, list[int]]]:
+    if not clients:
+        return {}
+
+    ratings = (
+        db.query(ProductAbcRating)
+        .filter(ProductAbcRating.segment_id == segment_id)
+        .all()
+    )
+    rating_by_product = {r.product_id: r.category for r in ratings}
+
+    total_by_category: dict[str, int] = {c: 0 for c in ABC_CATEGORIES}
+    for category in rating_by_product.values():
+        if category in total_by_category:
+            total_by_category[category] += 1
+
+    owned_rows = (
+        db.query(Sale.client, Sale.product_id)
+        .filter(
+            Sale.city == city,
+            Sale.type == sale_type,
+            Sale.client.in_(clients),
+            Sale.product_id.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
+
+    owned_by_client: dict[str, set[int]] = defaultdict(set)
+    for row in owned_rows:
+        owned_by_client[row.client].add(row.product_id)
+
+    badges: dict[str, dict[str, list[int]]] = {}
+    for client in clients:
+        owned_ids = owned_by_client.get(client, set())
+        owned_by_category = {c: 0 for c in ABC_CATEGORIES}
+
+        for product_id in owned_ids:
+            category = rating_by_product.get(product_id)
+            if category in owned_by_category:
+                owned_by_category[category] += 1
+
+        badges[client] = {
+            c: [owned_by_category[c], total_by_category[c]] for c in ABC_CATEGORIES
+        }
+
+    return badges
