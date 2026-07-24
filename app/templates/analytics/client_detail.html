@@ -149,15 +149,26 @@
                                     <th style="width: 230px;">Статус</th>
                                     <th style="width: 70px;">ABC</th>
                                     {% for month in sku_status.months %}
-                                        <th>{{ month|format_month }}</th>
+                                        <th class="sortable" data-sort-type="number" data-sort-key="month-{{ loop.index0 }}">
+                                            {{ month|format_month }} <span class="sort-icon">↕</span>
+                                        </th>
                                     {% endfor %}
-                                    <th>Итого вес, кг</th>
+                                    <th class="sortable" data-sort-type="number" data-sort-key="total">
+                                        Итого вес, кг <span class="sort-icon">↕</span>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for sku_row in sku_status.sku_details %}
                                     {% set cat = rating_by_product.get(sku_row.product_id) %}
-                                    <tr class="amb-sku-row amb-sku-row-{{ sku_row.status }}" data-status="{{ sku_row.status }}">
+                                    <tr
+                                        class="amb-sku-row amb-sku-row-{{ sku_row.status }}"
+                                        data-status="{{ sku_row.status }}"
+                                        data-total="{{ sku_row.total }}"
+                                        {% for value in sku_row.months_data %}
+                                            data-month-{{ loop.index0 }}="{{ value }}"
+                                        {% endfor %}
+                                    >
                                         <td>{{ sku_row.sku }}</td>
                                         <td>
                                             <span class="amb-sku-status amb-sku-status-{{ sku_row.status }}">
@@ -478,6 +489,82 @@
                 });
             });
         });
+    });
+    </script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const table = document.querySelector("#cd-sku-status table");
+        if (!table) return;
+
+        const sortableHeaders = table.querySelectorAll("th.sortable");
+        const tbody = table.querySelector("tbody");
+
+        if (!sortableHeaders.length || !tbody) return;
+
+        let sortState = { key: null, direction: null };
+
+        function getSortableRows() {
+            return Array.from(tbody.querySelectorAll("tr.amb-sku-row"));
+        }
+
+        function updateHeaderState() {
+            sortableHeaders.forEach(th => {
+                th.classList.remove("sort-active");
+                const icon = th.querySelector(".sort-icon");
+                if (icon) icon.textContent = "↕";
+
+                if (th.dataset.sortKey === sortState.key && sortState.direction) {
+                    th.classList.add("sort-active");
+                    if (icon) {
+                        icon.textContent = sortState.direction === "asc" ? "↑" : "↓";
+                    }
+                }
+            });
+        }
+
+        function renderRows() {
+            const rows = getSortableRows();
+
+            if (!sortState.key || !sortState.direction) {
+                rows.forEach(row => tbody.appendChild(row));
+                updateHeaderState();
+                return;
+            }
+
+            const factor = sortState.direction === "asc" ? 1 : -1;
+
+            rows.sort((a, b) => {
+                const av = parseFloat(a.dataset[sortState.key] || "0");
+                const bv = parseFloat(b.dataset[sortState.key] || "0");
+                return (av - bv) * factor;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+            updateHeaderState();
+        }
+
+        sortableHeaders.forEach(th => {
+            th.addEventListener("click", function () {
+                const key = th.dataset.sortKey;
+
+                if (sortState.key !== key) {
+                    sortState.key = key;
+                    sortState.direction = "desc";
+                } else if (sortState.direction === "desc") {
+                    sortState.direction = "asc";
+                } else if (sortState.direction === "asc") {
+                    sortState.key = null;
+                    sortState.direction = null;
+                } else {
+                    sortState.direction = "desc";
+                }
+
+                renderRows();
+            });
+        });
+
+        updateHeaderState();
     });
     </script>
 {% endif %}

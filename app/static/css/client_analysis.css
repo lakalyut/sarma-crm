@@ -47,6 +47,23 @@
     margin-left: 2px;
 }
 
+.ca-segment-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 6px;
+}
+
+.ca-segment-select {
+    min-height: auto;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-weight: 400;
+}
+
 .ca-cell-total {
     font-weight: 600;
 }

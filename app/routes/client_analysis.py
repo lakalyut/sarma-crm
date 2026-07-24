@@ -7,7 +7,11 @@ from ..auth_models import User
 from ..database import get_db
 from ..models import AbcSegment
 from ..render import render
-from ..services.abc_service import ensure_default_segments, get_client_abc_overview
+from ..services.abc_service import (
+    ensure_default_segments,
+    get_client_abc_overview,
+    guess_default_segment,
+)
 from ..services.ambassadors_service import normalize_selected_months
 from ..services.client_analysis_service import (
     get_clients_rollup,
@@ -25,7 +29,6 @@ def client_analysis_page(
     city: str | None = None,
     months: list[str] = Query(default=None),
     clients: list[str] = Query(default=None),
-    segment_id: int | None = None,
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
@@ -33,12 +36,7 @@ def client_analysis_page(
 
     ensure_default_segments(db)
     segments = db.query(AbcSegment).order_by(AbcSegment.sort_order, AbcSegment.id).all()
-
-    selected_segment = None
-    if segment_id:
-        selected_segment = next((s for s in segments if s.id == segment_id), None)
-    if not selected_segment and segments:
-        selected_segment = segments[0]
+    segments_json = [{"id": s.id, "name": s.name} for s in segments]
 
     if not city:
         return render(
@@ -52,11 +50,12 @@ def client_analysis_page(
                 "selected_months": [],
                 "raw_selected_months": [],
                 "selected_clients": clients or [],
-                "segments": segments,
-                "selected_segment": selected_segment,
+                "segments_json": segments_json,
                 "types": [],
                 "first_type": None,
                 "first_type_clients": [],
+                "first_type_segment_id": None,
+                "type_default_segment_id": {},
                 "message": "Выберите нужный город",
             },
         )
@@ -75,7 +74,15 @@ def client_analysis_page(
         db, city=city, months=selected_months, clients=selected_clients
     )
 
+    type_default_segment_id = {
+        t["type"]: (guess_default_segment(segments, t["type"]).id if segments else None)
+        for t in types
+    }
+
     first_type = types[0]["type"] if types else None
+    first_type_segment_id = (
+        type_default_segment_id.get(first_type) if first_type else None
+    )
     first_type_clients = []
     if first_type:
         first_type_clients = get_clients_rollup(
@@ -84,7 +91,7 @@ def client_analysis_page(
             sale_type=first_type,
             months=selected_months,
             clients=selected_clients,
-            segment_id=selected_segment.id if selected_segment else None,
+            segment_id=first_type_segment_id,
         )
 
     return render(
@@ -98,11 +105,12 @@ def client_analysis_page(
             "selected_months": selected_months,
             "raw_selected_months": raw_selected_months,
             "selected_clients": selected_clients,
-            "segments": segments,
-            "selected_segment": selected_segment,
+            "segments_json": segments_json,
             "types": types,
             "first_type": first_type,
             "first_type_clients": first_type_clients,
+            "first_type_segment_id": first_type_segment_id,
+            "type_default_segment_id": type_default_segment_id,
         },
     )
 

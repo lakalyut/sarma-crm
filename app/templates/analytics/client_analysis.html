@@ -50,18 +50,6 @@
                 </div>
             </div>
 
-            <div class="field filter-field">
-                <label for="ca-segment-select">Сегмент ABC</label>
-                <select id="ca-segment-select" name="segment_id">
-                    {% for segment in segments %}
-                        <option
-                            value="{{ segment.id }}"
-                            {% if selected_segment and selected_segment.id == segment.id %}selected{% endif %}
-                        >{{ segment.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
             <div class="field filter-field filter-field-region-search">
                 <label for="ca-client-search">Клиенты (опционально)</label>
                 <input id="ca-client-search" type="text" value="" placeholder="Начни вводить клиента..." autocomplete="off">
@@ -140,9 +128,10 @@
                 id="ca-app"
                 data-city="{{ selected_city }}"
                 data-months="{{ selected_months|tojson }}"
-                data-segment-id="{{ selected_segment.id if selected_segment else '' }}"
                 data-clients="{{ selected_clients|tojson }}"
                 data-types="{{ types|tojson }}"
+                data-segments="{{ segments_json|tojson }}"
+                data-type-defaults="{{ type_default_segment_id|tojson }}"
                 data-first-type="{{ first_type or '' }}"
                 data-first-type-clients="{{ first_type_clients|tojson }}"
             ></div>
@@ -332,9 +321,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const state = {
         city: app.dataset.city,
         months: JSON.parse(app.dataset.months || "[]"),
-        segmentId: app.dataset.segmentId || "",
         clients: JSON.parse(app.dataset.clients || "[]"),
         types: JSON.parse(app.dataset.types || "[]"),
+        segments: JSON.parse(app.dataset.segments || "[]"),
+        typeSegmentId: JSON.parse(app.dataset.typeDefaults || "{}"),
         metric: "weight",
         expandedTypes: new Set(),
         expandedClients: new Set(),
@@ -381,6 +371,20 @@ document.addEventListener("DOMContentLoaded", function () {
         }).join("");
     }
 
+    function segmentSelectHtml(type) {
+        if (!state.segments.length) return "";
+
+        const current = String(state.typeSegmentId[type] || "");
+        const options = state.segments.map(function (s) {
+            const selected = String(s.id) === current ? "selected" : "";
+            return `<option value="${s.id}" ${selected}>${escHtml(s.name)}</option>`;
+        }).join("");
+
+        return ` <span class="ca-segment-wrap">Сегмент:
+            <select class="ca-segment-select" data-ca-segment-select data-type="${escHtml(type)}">${options}</select>
+        </span>`;
+    }
+
     function rowToHtml(row) {
         const hasChildren = row.level !== "nomenclature";
         const isExpanded = row.level === "type"
@@ -392,6 +396,7 @@ document.addEventListener("DOMContentLoaded", function () {
             : `<span class="ca-toggle-placeholder"></span>`;
 
         const abcHtml = row.level === "client" ? abcBadgesHtml(row.abc) : "";
+        const segmentHtml = row.level === "type" ? segmentSelectHtml(row.key) : "";
 
         const monthCells = state.months.map(function (m) {
             return `<td class="ca-cell">${metricCell(row, m)}</td>`;
@@ -401,7 +406,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return `<tr class="ca-row ca-row-${row.level}">
             <td class="ca-label-cell">
-                <span class="ca-indent ca-indent-${row.level}">${toggle}<span class="ca-label-text">${escHtml(row.label)}</span>${abcHtml}</span>
+                <span class="ca-indent ca-indent-${row.level}">${toggle}<span class="ca-label-text">${escHtml(row.label)}</span>${abcHtml}${segmentHtml}</span>
             </td>
             ${monthCells}
             ${totalCell}
@@ -529,7 +534,7 @@ document.addEventListener("DOMContentLoaded", function () {
             sale_type: type,
             months: state.months,
             clients: state.clients,
-            segment_id: state.segmentId
+            segment_id: state.typeSegmentId[type]
         });
         const res = await fetch(url);
         state.typeClientsCache[type] = await res.json();
@@ -555,7 +560,7 @@ document.addEventListener("DOMContentLoaded", function () {
             city: state.city,
             client: client,
             sale_type: type,
-            segment_id: state.segmentId
+            segment_id: state.typeSegmentId[type]
         });
         const res = await fetch(url);
         state.missingCache[key] = await res.json();
@@ -612,6 +617,31 @@ document.addEventListener("DOMContentLoaded", function () {
                 renderAll();
             }
         }
+    });
+
+    tbody.addEventListener("change", async function (e) {
+        const select = e.target.closest("[data-ca-segment-select]");
+        if (!select) return;
+
+        const type = select.dataset.type;
+        state.typeSegmentId[type] = select.value;
+
+        Object.keys(state.missingCache).forEach(function (key) {
+            if (key.startsWith(type + "|")) delete state.missingCache[key];
+        });
+
+        delete state.typeClientsCache[type];
+        renderAll();
+        await ensureClients(type);
+
+        const visibleMissingClients = Object.keys(state.clientSubView).filter(function (key) {
+            return key.startsWith(type + "|") && state.clientSubView[key] === "missing" && state.expandedClients.has(key);
+        });
+        await Promise.all(visibleMissingClients.map(function (key) {
+            return ensureMissing(type, key.slice(type.length + 1));
+        }));
+
+        renderAll();
     });
 
     document.querySelectorAll("#ca-metric-tabs .chart-tab").forEach(function (btn) {
