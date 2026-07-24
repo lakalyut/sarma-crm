@@ -104,6 +104,7 @@ def build_client_sku_status(
         db.query(
             Sale.month,
             Sale.weight,
+            Sale.product_id,
             sku_expr().label("sku_key"),
         )
         .filter(
@@ -117,6 +118,7 @@ def build_client_sku_status(
 
     weight_by_sku_month = defaultdict(lambda: defaultdict(float))
     unique_sku_total: set[str] = set()
+    product_id_by_sku: dict[str, int] = {}
     weight_total = 0.0
 
     for row in sales_rows:
@@ -129,6 +131,9 @@ def build_client_sku_status(
         if sku_key_value:
             weight_by_sku_month[sku_key_value][month] += weight
             unique_sku_total.add(sku_key_value)
+
+            if row.product_id is not None:
+                product_id_by_sku[sku_key_value] = row.product_id
 
     sku_details = []
     status_counts = {"new": 0, "lost": 0, "unstable": 0, "existing": 0}
@@ -159,6 +164,7 @@ def build_client_sku_status(
         sku_details.append(
             {
                 "sku": sku_name,
+                "product_id": product_id_by_sku.get(sku_name),
                 "months_data": months_data,
                 "total": round(total, 2),
                 "first_month": first_month,

@@ -265,6 +265,7 @@ def analytics_client_detail(
         selected_segment = guess_default_segment(segments, sale_type)
 
     abc_overview = None
+    rating_by_product: dict[int, str] = {}
     if selected_segment:
         abc_overview = get_client_abc_overview(
             db=db,
@@ -273,6 +274,7 @@ def analytics_client_detail(
             sale_type=sale_type,
             segment_id=selected_segment.id,
         )
+        rating_by_product = abc_overview["rating_by_product"]
 
     status_settings = {
         "new_client_months": get_int_param(request, "new_client_months", 2),
@@ -308,6 +310,7 @@ def analytics_client_detail(
             "segments": segments,
             "selected_segment": selected_segment,
             "abc_overview": abc_overview,
+            "rating_by_product": rating_by_product,
             "matched": matched,
             "status_settings": status_settings,
             "sku_status": sku_status,

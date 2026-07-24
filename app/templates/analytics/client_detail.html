@@ -147,6 +147,7 @@
                                 <tr>
                                     <th>SKU</th>
                                     <th style="width: 230px;">Статус</th>
+                                    <th style="width: 70px;">ABC</th>
                                     {% for month in sku_status.months %}
                                         <th>{{ month|format_month }}</th>
                                     {% endfor %}
@@ -155,12 +156,20 @@
                             </thead>
                             <tbody>
                                 {% for sku_row in sku_status.sku_details %}
+                                    {% set cat = rating_by_product.get(sku_row.product_id) %}
                                     <tr class="amb-sku-row amb-sku-row-{{ sku_row.status }}" data-status="{{ sku_row.status }}">
                                         <td>{{ sku_row.sku }}</td>
                                         <td>
                                             <span class="amb-sku-status amb-sku-status-{{ sku_row.status }}">
                                                 {{ sku_row.status_label }}
                                             </span>
+                                        </td>
+                                        <td>
+                                            {% if cat %}
+                                                <span class="abc-badge abc-badge-{{ cat|lower }}">{{ cat }}</span>
+                                            {% else %}
+                                                <span style="color: var(--text-muted);">—</span>
+                                            {% endif %}
                                         </td>
                                         {% for value in sku_row.months_data %}
                                             <td>{{ "%.2f"|format(value) }}</td>
@@ -294,6 +303,12 @@
             </div>
 
             <div id="cd-chart">
+                <div class="flex-row" style="gap:14px; margin: 0 0 12px;">
+                    <label><input type="checkbox" class="cd-chart-metric" value="qty" checked> Количество</label>
+                    <label><input type="checkbox" class="cd-chart-metric" value="weight" checked> Вес</label>
+                    <label><input type="checkbox" class="cd-chart-metric" value="sku_count"> Уникальные SKU</label>
+                </div>
+
                 <div class="sheet-wrapper chart-block">
                     <div class="chart-wrap">
                         <canvas
@@ -301,6 +316,7 @@
                             data-labels="{{ monthly|map(attribute='month')|map('format_month')|list|tojson }}"
                             data-qty="{{ monthly|map(attribute='qty')|list|tojson }}"
                             data-weight="{{ monthly|map(attribute='weight')|list|tojson }}"
+                            data-sku_count="{{ monthly|map(attribute='sku_count')|list|tojson }}"
                         ></canvas>
                     </div>
                 </div>
@@ -314,29 +330,67 @@
             if (!canvas || typeof Chart === "undefined") return;
 
             const labels = JSON.parse(canvas.dataset.labels);
-            const qty = JSON.parse(canvas.dataset.qty);
-            const weight = JSON.parse(canvas.dataset.weight);
 
-            new Chart(canvas, {
-                type: "line",
-                data: {
-                    labels,
-                    datasets: [
-                        { label: "Количество", data: qty, yAxisID: "y", tension: 0.25, fill: false },
-                        { label: "Вес", data: weight, yAxisID: "y1", tension: 0.25, fill: false },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: "index", intersect: false },
-                    plugins: { legend: { position: "top" } },
-                    scales: {
-                        y: { beginAtZero: true, position: "left", title: { display: true, text: "Количество" } },
-                        y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Вес" } },
+            const metricMap = {
+                qty: { label: "Количество", data: JSON.parse(canvas.dataset.qty), axis: "y" },
+                weight: { label: "Вес", data: JSON.parse(canvas.dataset.weight), axis: "y" },
+                sku_count: { label: "Уникальные SKU", data: JSON.parse(canvas.dataset.sku_count), axis: "y1" },
+            };
+
+            const checkboxes = Array.from(document.querySelectorAll("#cd-chart .cd-chart-metric"));
+            let chart = null;
+
+            function selectedMetrics() {
+                return checkboxes.filter(cb => cb.checked).map(cb => cb.value);
+            }
+
+            function render() {
+                const selected = selectedMetrics();
+                const hasSku = selected.includes("sku_count");
+
+                const datasets = selected.map(metric => ({
+                    label: metricMap[metric].label,
+                    data: metricMap[metric].data,
+                    yAxisID: metricMap[metric].axis,
+                    tension: 0.25,
+                    fill: false,
+                }));
+
+                if (chart) chart.destroy();
+
+                chart = new Chart(canvas, {
+                    type: "line",
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: "index", intersect: false },
+                        plugins: { legend: { position: "top" } },
+                        scales: {
+                            y: { beginAtZero: true, position: "left", title: { display: true, text: "Количество / Вес" } },
+                            y1: {
+                                beginAtZero: true,
+                                position: "right",
+                                grid: { drawOnChartArea: false },
+                                display: hasSku,
+                                title: { display: true, text: "SKU" },
+                            },
+                        },
                     },
-                },
+                });
+            }
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener("change", function () {
+                    if (!selectedMetrics().length) {
+                        cb.checked = true;
+                        return;
+                    }
+                    render();
+                });
             });
+
+            render();
         });
         </script>
     {% endif %}
