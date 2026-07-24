@@ -22,375 +22,406 @@
     ← Назад к списку клиентов
 </a>
 
-{% if segments %}
-    <div class="filters-card filters-card-compact" style="margin-top: 12px;">
-        <form method="get" action="/analytics/client" class="flex-row filter-row-inline">
-            <input type="hidden" name="city" value="{{ city }}">
-            <input type="hidden" name="client" value="{{ client }}">
-            <input type="hidden" name="sale_type" value="{{ sale_type }}">
-            {% for m in months %}
-                <input type="hidden" name="months" value="{{ m }}">
-            {% endfor %}
-            {% if matched is not none %}
-                <input type="hidden" name="matched" value="{{ matched }}">
-            {% endif %}
-
-            <div class="field field-tight filter-field" style="min-width: 200px;">
-                <label for="abc-segment-select">ABC-рейтинг по сегменту</label>
-                <select id="abc-segment-select" name="abc_segment">
-                    {% for segment in segments %}
-                        <option
-                            value="{{ segment.id }}"
-                            {% if selected_segment and selected_segment.id == segment.id %}selected{% endif %}
-                        >{{ segment.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <button type="submit" class="btn-secondary">Показать</button>
-        </form>
-    </div>
-{% endif %}
-
-{% if abc_overview %}
-    <h2 class="text-subheading">
-        Ассортимент по ABC ({{ selected_segment.name }})
-    </h2>
-
-    <div class="summary-cards">
-        <div class="summary-card sku">
-            <div class="summary-card-title">Категория A в ассортименте</div>
-            <div class="summary-card-value">{{ abc_overview.owned_by_category.A }} из {{ abc_overview.total_by_category.A }}</div>
-        </div>
-        <div class="summary-card qty">
-            <div class="summary-card-title">Категория B в ассортименте</div>
-            <div class="summary-card-value">{{ abc_overview.owned_by_category.B }} из {{ abc_overview.total_by_category.B }}</div>
-        </div>
-        <div class="summary-card weight">
-            <div class="summary-card-title">Категория C в ассортименте</div>
-            <div class="summary-card-value">{{ abc_overview.owned_by_category.C }} из {{ abc_overview.total_by_category.C }}</div>
-        </div>
-    </div>
-
-    {% for cat in ["A", "B", "C"] %}
-        {% set missing = abc_overview.missing_by_category[cat] %}
-        {% if missing %}
-            <details class="abc-missing-block abc-missing-{{ cat|lower }}" {% if cat == "A" %}open{% endif %}>
-                <summary>Не покупает из категории {{ cat }} ({{ missing|length }}) — за всё время</summary>
-                <div class="multiselect-tags" style="margin-top: 8px;">
-                    {% for p in missing %}
-                        <span class="filter-tag">{{ p.brand }} — {{ p.flavor }}</span>
-                    {% endfor %}
-                </div>
-            </details>
-        {% elif abc_overview.total_by_category[cat] %}
-            <div class="abc-missing-block" style="background: var(--success-bg); border-color: var(--success-border);">
-                Категория {{ cat }}: клиент закупает весь ассортимент по сегменту «{{ selected_segment.name }}».
-            </div>
-        {% endif %}
-    {% endfor %}
-{% endif %}
-
-{% if sku_status and sku_status.sku_details %}
-    <h2 class="text-subheading">SKU-статусы</h2>
-
-    <div class="amb-card">
-        <div class="amb-card-header">
-            <div class="amb-card-badges">
-                <span class="amb-badge amb-badge-blue">Всего SKU: {{ sku_status.sku_total }}</span>
-                <span class="amb-badge amb-badge-blue">Уникальных SKU: {{ sku_status.unique_sku_total }}</span>
-                <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(sku_status.weight_total) }} кг</span>
-            </div>
-        </div>
-
-        <div class="amb-status-filter" data-status-filter></div>
-
-        <div class="sheet-wrapper">
-            <div class="sheet-scroller">
-                <table class="sheet-table">
-                    <thead>
-                        <tr>
-                            <th>SKU</th>
-                            <th>Статус</th>
-                            {% for month in sku_status.months %}
-                                <th>{{ month|format_month }}</th>
-                            {% endfor %}
-                            <th>Итого вес, кг</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sku_row in sku_status.sku_details %}
-                            <tr class="amb-sku-row amb-sku-row-{{ sku_row.status }}" data-status="{{ sku_row.status }}">
-                                <td>{{ sku_row.sku }}</td>
-                                <td>
-                                    <span class="amb-sku-status amb-sku-status-{{ sku_row.status }}">
-                                        {{ sku_row.status_label }}
-                                    </span>
-                                </td>
-                                {% for value in sku_row.months_data %}
-                                    <td>{{ "%.2f"|format(value) }}</td>
-                                {% endfor %}
-                                <td>{{ "%.2f"|format(sku_row.total) }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll(".amb-card").forEach(card => {
-            const filterBox = card.querySelector("[data-status-filter]");
-            const rows = Array.from(card.querySelectorAll(".amb-sku-row"));
-
-            if (!filterBox || !rows.length) return;
-
-            const statuses = Array.from(new Set(rows.map(row => row.dataset.status).filter(Boolean)));
-
-            const statusLabels = {
-                all: "Все",
-                new: "Новые у клиента",
-                lost: "Пропали",
-                unstable: "Нестабильные",
-                existing: "Были с начала"
-            };
-
-            const statusOrder = ["new", "lost", "unstable", "existing"];
-            const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
-
-            filterBox.innerHTML = availableStatuses.map(status => `
-                <button
-                    type="button"
-                    class="amb-status-filter-btn ${status === "all" ? "active" : ""}"
-                    data-status="${status}"
-                >
-                    ${statusLabels[status]}
-                </button>
-            `).join("");
-
-            const buttons = Array.from(filterBox.querySelectorAll(".amb-status-filter-btn"));
-
-            buttons.forEach(button => {
-                button.addEventListener("click", function () {
-                    const selectedStatus = button.dataset.status;
-
-                    buttons.forEach(btn => {
-                        btn.classList.toggle("active", btn === button);
-                    });
-
-                    rows.forEach(row => {
-                        const isVisible = selectedStatus === "all" || row.dataset.status === selectedStatus;
-                        row.style.display = isVisible ? "" : "none";
-                    });
-                });
-            });
-        });
-    });
-    </script>
-{% endif %}
-
-{% if summary %}
-    <div class="summary-cards" style="margin-top: 10px;">
-        <div class="summary-card">
-            <div class="summary-card-title">Номенклатур, шт</div>
-            <div class="summary-card-value">{{ summary.nomenclatures }}</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-title">Уникальных SKU, шт</div>
-            <div class="summary-card-value">{{ summary.unique_sku }}</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-title">Суммарное количество, шт</div>
-            <div class="summary-card-value">{{ "%.2f"|format(summary.total_qty) }}</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-title">Суммарный вес, кг</div>
-            <div class="summary-card-value">{{ "%.2f"|format(summary.total_weight) }}</div>
-        </div>
-    </div>
-{% endif %}
-
-{% if monthly and monthly|length > 1 %}
-    <h2 class="text-subheading">Динамика по месяцам</h2>
-    <div class="sheet-wrapper">
-        <div class="sheet-scroller">
-            <table class="sheet-table">
-                <thead>
-                <tr>
-                    <th>Месяц</th>
-                    <th>Количество</th>
-                    <th>Вес</th>
-                    <th>SKU</th>
-                </tr>
-                </thead>
-                <tbody>
-                    {% for m in monthly %}
-                        <tr>
-                            <td>{{ m.month|format_month }}</td>
-                            <td>{{ "%.2f"|format(m.qty) }}</td>
-                            <td>{{ "%.2f"|format(m.weight) }}</td>
-                            <td>{{ m.sku_count }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="sheet-wrapper chart-block">
-        <div class="chart-wrap">
-            <canvas
-                id="client-monthly-chart"
-                data-labels="{{ monthly|map(attribute='month')|map('format_month')|list|tojson }}"
-                data-qty="{{ monthly|map(attribute='qty')|list|tojson }}"
-                data-weight="{{ monthly|map(attribute='weight')|list|tojson }}"
-            ></canvas>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const canvas = document.getElementById("client-monthly-chart");
-        if (!canvas || typeof Chart === "undefined") return;
-
-        const labels = JSON.parse(canvas.dataset.labels);
-        const qty = JSON.parse(canvas.dataset.qty);
-        const weight = JSON.parse(canvas.dataset.weight);
-
-        new Chart(canvas, {
-            type: "line",
-            data: {
-                labels,
-                datasets: [
-                    { label: "Количество", data: qty, yAxisID: "y", tension: 0.25, fill: false },
-                    { label: "Вес", data: weight, yAxisID: "y1", tension: 0.25, fill: false },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: "index", intersect: false },
-                plugins: { legend: { position: "top" } },
-                scales: {
-                    y: { beginAtZero: true, position: "left", title: { display: true, text: "Количество" } },
-                    y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Вес" } },
-                },
-            },
-        });
-    });
-    </script>
-{% endif %}
-
 {% if not rows %}
-    <div class="message">Нет данных по этому клиенту под выбранные фильтры.</div>
+    <div class="message" style="margin-top: 12px;">Нет данных по этому клиенту под выбранные фильтры.</div>
 {% else %}
-    <h2 class="text-subheading">Номенклатуры</h2>
-    <div class="sheet-wrapper">
-        <div class="sheet-scroller">
-            <table class="sheet-table" id="nomenclatures-table">
-                <thead>
-                <tr>
-                    <th>Номенклатура</th>
-                    <th>SKU</th>
-                    <th data-sort="qty" class="sortable">
-                        Кол-во <span class="sort-icon">↕</span>
-                    </th>
-                    <th data-sort="weight" class="sortable">
-                        Вес <span class="sort-icon">↕</span>
-                    </th>
-                    <th data-sort="abc" class="sortable">
-                        ABC <span class="sort-icon">↕</span>
-                    </th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for r in rows %}
-                    {% set cat = rating_by_product.get(r.product_id) %}
-                    {% set abc_weight = {"A": 1, "B": 2, "C": 3}.get(cat, 4) %}
-                    <tr data-qty="{{ r.qty }}" data-weight="{{ r.weight }}" data-abc="{{ abc_weight }}">
-                        <td>{{ r.name }}</td>
-                        <td>{{ r.sku }}</td>
-                        <td>{{ "%.2f"|format(r.qty) }}</td>
-                        <td>{{ "%.2f"|format(r.weight) }}</td>
-                        <td>
-                            {% if cat %}
-                                <span class="abc-badge abc-badge-{{ cat|lower }}">{{ cat }}</span>
-                            {% else %}
-                                <span style="color: var(--text-muted);">—</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+
+    {% if monthly and monthly|length > 1 %}
+        <div class="amb-card" style="margin-top: 16px;">
+            <div class="amb-card-header">
+                <div class="amb-card-title-wrap">
+                    <button type="button" class="amb-toggle" data-target="cd-monthly" aria-expanded="true">⌄</button>
+                    <h2 class="amb-card-title">Динамика по месяцам</h2>
+                </div>
+            </div>
+
+            <div id="cd-monthly">
+                <div class="sheet-wrapper">
+                    <div class="sheet-scroller">
+                        <table class="sheet-table">
+                            <thead>
+                            <tr>
+                                <th>Месяц</th>
+                                <th>Количество</th>
+                                <th>Вес</th>
+                                <th>SKU</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in monthly %}
+                                    <tr>
+                                        <td>{{ m.month|format_month }}</td>
+                                        <td>{{ "%.2f"|format(m.qty) }}</td>
+                                        <td>{{ "%.2f"|format(m.weight) }}</td>
+                                        <td>{{ m.sku_count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
+    {% endif %}
+
+    {% if sku_status and sku_status.sku_details %}
+        <div class="amb-card" style="margin-top: 16px;">
+            <div class="amb-card-header">
+                <div class="amb-card-title-wrap">
+                    <button type="button" class="amb-toggle" data-target="cd-sku-status" aria-expanded="true">⌄</button>
+                    <h2 class="amb-card-title">SKU-статусы</h2>
+                </div>
+
+                <div class="amb-card-badges">
+                    <span class="amb-badge amb-badge-blue">Всего SKU: {{ sku_status.sku_total }}</span>
+                    <span class="amb-badge amb-badge-blue">Уникальных SKU: {{ sku_status.unique_sku_total }}</span>
+                    <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(sku_status.weight_total) }} кг</span>
+                </div>
+            </div>
+
+            <div id="cd-sku-status">
+                <form method="get" action="/analytics/client">
+                    <input type="hidden" name="city" value="{{ city }}">
+                    <input type="hidden" name="client" value="{{ client }}">
+                    <input type="hidden" name="sale_type" value="{{ sale_type }}">
+                    {% for m in months %}
+                        <input type="hidden" name="months" value="{{ m }}">
+                    {% endfor %}
+                    {% if matched is not none %}
+                        <input type="hidden" name="matched" value="{{ matched }}">
+                    {% endif %}
+                    {% if selected_segment %}
+                        <input type="hidden" name="abc_segment" value="{{ selected_segment.id }}">
+                    {% endif %}
+
+                    <div class="amb-settings-toggle-line">
+                        <button type="button" class="amb-link-toggle" id="cd-status-settings-toggle">
+                            Настройки статусов SKU
+                            <span class="amb-settings-arrow">▾</span>
+                        </button>
+                    </div>
+
+                    <div class="amb-settings-panel" id="cd-status-settings-panel">
+                        <div class="amb-settings-grid">
+                            <div class="field filter-field">
+                                <label>Новый у клиента, мес.
+                                    <span class="hint-icon" title="SKU считается новым, если появился в последние N месяцев">?</span>
+                                </label>
+                                <input type="number" name="new_client_months" min="1" value="{{ status_settings.new_client_months }}">
+                                <div class="field-hint">
+                                    SKU считается новым, если появился в последние N месяцев
+                                </div>
+                            </div>
+
+                            <div class="field filter-field">
+                                <label>Пропал после, мес.
+                                    <span class="hint-icon" title="SKU считается пропавшим, если не продавался N месяцев подряд">?</span>
+                                </label>
+                                <input type="number" name="lost_months" min="1" value="{{ status_settings.lost_months }}">
+                                <div class="field-hint">
+                                    SKU считается пропавшим, если не продавался N месяцев подряд
+                                </div>
+                            </div>
+
+                            <div class="field filter-field">
+                                <label>Нестабильный, пропусков
+                                    <span class="hint-icon" title="SKU нестабилен, если есть пропуски продаж в N месяцев">?</span>
+                                </label>
+                                <input type="number" name="unstable_gap_months" min="1" value="{{ status_settings.unstable_gap_months }}">
+                                <div class="field-hint">
+                                    SKU нестабилен, если есть пропуски продаж в N месяцев
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-secondary">Применить</button>
+                    </div>
+                </form>
+
+                <div class="amb-status-filter" data-status-filter></div>
+
+                <div class="sheet-wrapper">
+                    <div class="sheet-scroller">
+                        <table class="sheet-table">
+                            <thead>
+                                <tr>
+                                    <th>SKU</th>
+                                    <th style="width: 230px;">Статус</th>
+                                    {% for month in sku_status.months %}
+                                        <th>{{ month|format_month }}</th>
+                                    {% endfor %}
+                                    <th>Итого вес, кг</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sku_row in sku_status.sku_details %}
+                                    <tr class="amb-sku-row amb-sku-row-{{ sku_row.status }}" data-status="{{ sku_row.status }}">
+                                        <td>{{ sku_row.sku }}</td>
+                                        <td>
+                                            <span class="amb-sku-status amb-sku-status-{{ sku_row.status }}">
+                                                {{ sku_row.status_label }}
+                                            </span>
+                                        </td>
+                                        {% for value in sku_row.months_data %}
+                                            <td>{{ "%.2f"|format(value) }}</td>
+                                        {% endfor %}
+                                        <td>{{ "%.2f"|format(sku_row.total) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if segments %}
+        <div class="amb-card" style="margin-top: 16px;">
+            <div class="amb-card-header">
+                <div class="amb-card-title-wrap">
+                    <button type="button" class="amb-toggle" data-target="cd-abc" aria-expanded="true">⌄</button>
+                    <h2 class="amb-card-title">Ассортимент по ABC</h2>
+                </div>
+            </div>
+
+            <div id="cd-abc">
+                <form method="get" action="/analytics/client" class="flex-row filter-row-inline">
+                    <input type="hidden" name="city" value="{{ city }}">
+                    <input type="hidden" name="client" value="{{ client }}">
+                    <input type="hidden" name="sale_type" value="{{ sale_type }}">
+                    {% for m in months %}
+                        <input type="hidden" name="months" value="{{ m }}">
+                    {% endfor %}
+                    {% if matched is not none %}
+                        <input type="hidden" name="matched" value="{{ matched }}">
+                    {% endif %}
+                    <input type="hidden" name="new_client_months" value="{{ status_settings.new_client_months }}">
+                    <input type="hidden" name="lost_months" value="{{ status_settings.lost_months }}">
+                    <input type="hidden" name="unstable_gap_months" value="{{ status_settings.unstable_gap_months }}">
+
+                    <div class="field field-tight filter-field" style="min-width: 200px;">
+                        <label for="abc-segment-select">Сегмент</label>
+                        <select id="abc-segment-select" name="abc_segment">
+                            {% for segment in segments %}
+                                <option
+                                    value="{{ segment.id }}"
+                                    {% if selected_segment and selected_segment.id == segment.id %}selected{% endif %}
+                                >{{ segment.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-secondary">Показать</button>
+                </form>
+
+                {% if abc_overview %}
+                    <div class="summary-cards" style="margin-top: 12px;">
+                        <div class="summary-card sku">
+                            <div class="summary-card-title">Категория A в ассортименте</div>
+                            <div class="summary-card-value">{{ abc_overview.owned_by_category.A }} из {{ abc_overview.total_by_category.A }}</div>
+                        </div>
+                        <div class="summary-card qty">
+                            <div class="summary-card-title">Категория B в ассортименте</div>
+                            <div class="summary-card-value">{{ abc_overview.owned_by_category.B }} из {{ abc_overview.total_by_category.B }}</div>
+                        </div>
+                        <div class="summary-card weight">
+                            <div class="summary-card-title">Категория C в ассортименте</div>
+                            <div class="summary-card-value">{{ abc_overview.owned_by_category.C }} из {{ abc_overview.total_by_category.C }}</div>
+                        </div>
+                    </div>
+
+                    {% for cat in ["A", "B", "C"] %}
+                        {% set missing = abc_overview.missing_by_category[cat] %}
+                        {% if missing %}
+                            <details class="abc-missing-block abc-missing-{{ cat|lower }}" {% if cat == "A" %}open{% endif %}>
+                                <summary>Не покупает из категории {{ cat }} ({{ missing|length }}) — за всё время</summary>
+                                <div class="multiselect-tags" style="margin-top: 8px;">
+                                    {% for p in missing %}
+                                        <span class="filter-tag">{{ p.brand }} — {{ p.flavor }}</span>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        {% elif abc_overview.total_by_category[cat] %}
+                            <div class="abc-missing-block" style="background: var(--success-bg); border-color: var(--success-border);">
+                                Категория {{ cat }}: клиент закупает весь ассортимент по сегменту «{{ selected_segment.name }}».
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if summary %}
+        <div class="amb-card" style="margin-top: 16px;">
+            <div class="amb-card-header">
+                <div class="amb-card-title-wrap">
+                    <button type="button" class="amb-toggle" data-target="cd-summary" aria-expanded="true">⌄</button>
+                    <h2 class="amb-card-title">Показатели</h2>
+                </div>
+            </div>
+
+            <div id="cd-summary">
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-card-title">Номенклатур, шт</div>
+                        <div class="summary-card-value">{{ summary.nomenclatures }}</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-card-title">Уникальных SKU, шт</div>
+                        <div class="summary-card-value">{{ summary.unique_sku }}</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-card-title">Суммарное количество, шт</div>
+                        <div class="summary-card-value">{{ "%.2f"|format(summary.total_qty) }}</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-card-title">Суммарный вес, кг</div>
+                        <div class="summary-card-value">{{ "%.2f"|format(summary.total_weight) }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if monthly and monthly|length > 1 %}
+        <div class="amb-card" style="margin-top: 16px;">
+            <div class="amb-card-header">
+                <div class="amb-card-title-wrap">
+                    <button type="button" class="amb-toggle" data-target="cd-chart" aria-expanded="true">⌄</button>
+                    <h2 class="amb-card-title">График</h2>
+                </div>
+            </div>
+
+            <div id="cd-chart">
+                <div class="sheet-wrapper chart-block">
+                    <div class="chart-wrap">
+                        <canvas
+                            id="client-monthly-chart"
+                            data-labels="{{ monthly|map(attribute='month')|map('format_month')|list|tojson }}"
+                            data-qty="{{ monthly|map(attribute='qty')|list|tojson }}"
+                            data-weight="{{ monthly|map(attribute='weight')|list|tojson }}"
+                        ></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const canvas = document.getElementById("client-monthly-chart");
+            if (!canvas || typeof Chart === "undefined") return;
+
+            const labels = JSON.parse(canvas.dataset.labels);
+            const qty = JSON.parse(canvas.dataset.qty);
+            const weight = JSON.parse(canvas.dataset.weight);
+
+            new Chart(canvas, {
+                type: "line",
+                data: {
+                    labels,
+                    datasets: [
+                        { label: "Количество", data: qty, yAxisID: "y", tension: 0.25, fill: false },
+                        { label: "Вес", data: weight, yAxisID: "y1", tension: 0.25, fill: false },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: "index", intersect: false },
+                    plugins: { legend: { position: "top" } },
+                    scales: {
+                        y: { beginAtZero: true, position: "left", title: { display: true, text: "Количество" } },
+                        y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Вес" } },
+                    },
+                },
+            });
+        });
+        </script>
+    {% endif %}
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
-        const table = document.getElementById("nomenclatures-table");
-        if (!table) return;
+        document.querySelectorAll(".amb-toggle").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                const targetId = btn.dataset.target;
+                const box = document.getElementById(targetId);
+                if (!box) return;
 
-        const tbody = table.querySelector("tbody");
-        const headers = table.querySelectorAll("thead th");
+                const hidden = box.classList.toggle("is-hidden");
+                const expanded = !hidden;
 
-        let sortState = { field: null, direction: null };
-
-        function updateHeaderState() {
-            headers.forEach(th => {
-                const icon = th.querySelector(".sort-icon");
-                th.classList.remove("sort-active");
-                if (th.dataset.sort && icon) icon.textContent = "↕";
+                btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+                btn.textContent = expanded ? "⌄" : "›";
             });
+        });
+    });
+    </script>
 
-            headers.forEach(th => {
-                if (th.dataset.sort && th.dataset.sort === sortState.field) {
-                    th.classList.add("sort-active");
-                    const icon = th.querySelector(".sort-icon");
-                    if (icon) icon.textContent = sortState.direction === "asc" ? "↑" : "↓";
-                }
-            });
-        }
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggle = document.getElementById("cd-status-settings-toggle");
+        const panel = document.getElementById("cd-status-settings-panel");
 
-        function renderSort() {
-            const rows = Array.from(tbody.querySelectorAll("tr"));
-            if (!sortState.field || !sortState.direction) {
-                updateHeaderState();
-                return;
+        if (!toggle || !panel) return;
+
+        const arrow = toggle.querySelector(".amb-settings-arrow");
+
+        toggle.addEventListener("click", function () {
+            const isOpen = panel.classList.toggle("open");
+
+            if (arrow) {
+                arrow.textContent = isOpen ? "▴" : "▾";
             }
+        });
+    });
+    </script>
 
-            const factor = sortState.direction === "asc" ? 1 : -1;
-            rows.sort((a, b) => {
-                const av = parseFloat(a.dataset[sortState.field] || "0");
-                const bv = parseFloat(b.dataset[sortState.field] || "0");
-                return (av - bv) * factor;
-            });
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const filterBox = document.querySelector("#cd-sku-status [data-status-filter]");
+        const rows = Array.from(document.querySelectorAll("#cd-sku-status .amb-sku-row"));
 
-            rows.forEach(row => tbody.appendChild(row));
-            updateHeaderState();
-        }
+        if (!filterBox || !rows.length) return;
 
-        headers.forEach(th => {
-            if (!th.dataset.sort) return;
+        const statuses = Array.from(new Set(rows.map(row => row.dataset.status).filter(Boolean)));
 
-            th.addEventListener("click", function () {
-                const field = th.dataset.sort;
+        const statusLabels = {
+            all: "Все",
+            new: "Новые у клиента",
+            lost: "Пропали",
+            unstable: "Нестабильные",
+            existing: "Были с начала"
+        };
 
-                if (sortState.field !== field) {
-                    sortState.field = field;
-                    sortState.direction = field === "abc" ? "asc" : "desc";
-                } else if (sortState.direction === "desc") {
-                    sortState.direction = "asc";
-                } else if (sortState.direction === "asc") {
-                    sortState.field = null;
-                    sortState.direction = null;
-                } else {
-                    sortState.direction = "desc";
-                }
+        const statusOrder = ["new", "lost", "unstable", "existing"];
+        const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
 
-                renderSort();
+        filterBox.innerHTML = availableStatuses.map(status => `
+            <button
+                type="button"
+                class="amb-status-filter-btn ${status === "all" ? "active" : ""}"
+                data-status="${status}"
+            >
+                ${statusLabels[status]}
+            </button>
+        `).join("");
+
+        const buttons = Array.from(filterBox.querySelectorAll(".amb-status-filter-btn"));
+
+        buttons.forEach(button => {
+            button.addEventListener("click", function () {
+                const selectedStatus = button.dataset.status;
+
+                buttons.forEach(btn => {
+                    btn.classList.toggle("active", btn === button);
+                });
+
+                rows.forEach(row => {
+                    const isVisible = selectedStatus === "all" || row.dataset.status === selectedStatus;
+                    row.style.display = isVisible ? "" : "none";
+                });
             });
         });
     });

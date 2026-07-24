@@ -16,22 +16,9 @@ from ..services.sales_options_service import (
     get_clients,
     get_months,
 )
+from ..utils.params import get_int_param
 
 router = APIRouter()
-
-
-def get_int_param(request: Request, name: str, default: int, min_value: int = 1) -> int:
-    raw_value = request.query_params.get(name)
-
-    if raw_value is None or raw_value == "":
-        return default
-
-    try:
-        value = int(raw_value)
-    except ValueError:
-        return default
-
-    return max(value, min_value)
 
 
 @router.get("/analytics/ambassadors")

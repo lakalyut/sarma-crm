@@ -1,3 +1,5 @@
+from datetime import datetime
+
 MONTHS_RU_ORDER = {
     "январь": 1,
     "февраль": 2,
@@ -15,9 +17,14 @@ MONTHS_RU_ORDER = {
 
 
 def month_sort_key(value: str):
-
     if not value:
         return (9999, 12)
+
+    try:
+        dt = datetime.fromisoformat(str(value))
+        return (dt.year, dt.month)
+    except (TypeError, ValueError):
+        pass
 
     parts = str(value).strip().split()
     if len(parts) < 2:
