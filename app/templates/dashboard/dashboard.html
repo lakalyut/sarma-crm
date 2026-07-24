@@ -76,11 +76,12 @@
         {% if selected_cities %}
             Регионы: <span class="selected-city-value">{{ selected_cities|join(', ') }}</span>
         {% else %}
-            <span>Все регионы ({{ data.cities|length }})</span>
+            <span>Регион не выбран</span>
         {% endif %}
     </div>
 </div>
 
+{% if selected_cities %}
 <div class="summary-panel" style="margin-top: 10px;">
     <div class="summary-panel-header">
         <span class="summary-panel-title">Динамика по регионам</span>
@@ -122,6 +123,7 @@
 
     </div>
 </div>
+{% endif %}
 
 <div id="regions-data" style="display:none;" data-regions="{{ data|tojson }}"></div>
 

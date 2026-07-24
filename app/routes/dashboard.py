@@ -20,9 +20,23 @@ def dashboard_page(
     _user: User = Depends(require_user),
 ):
     all_cities = get_cities(db)
-    active_cities = cities or all_cities
 
-    data = svc.get_regions_overview(db, active_cities, months)
+    if not cities:
+        return render(
+            request,
+            "dashboard/dashboard.html",
+            {
+                "data": {"cities": [], "months": [], "month_labels": [], "metrics": {}},
+                "metric_catalog": svc.METRIC_CATALOG,
+                "all_cities": all_cities,
+                "selected_cities": [],
+                "all_months": get_months(db),
+                "selected_months": months,
+                "message": "Выберите один или несколько регионов для сравнения",
+            },
+        )
+
+    data = svc.get_regions_overview(db, cities, months)
 
     return render(
         request,
