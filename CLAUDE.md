@@ -61,9 +61,11 @@ docker-compose/prod-контейнер), через Browser-preview инстру
 
 **Роуты — тонкие, бизнес-логика — в `app/services/`.** Каждый файл в
 [app/routes/](app/routes/) — один `APIRouter` на раздел (`analytics`, `products`, `imports`,
-`admin_users`, `admin_abc`, `admin_imports`, `ambassadors`, `misc`), подключается в
+`admin_users`, `admin_abc`, `admin_imports`, `client_analysis`, `misc`), подключается в
 [app/main.py](app/main.py). Роуты парсят query/form-параметры, зовут функцию из
 `app/services/*_service.py` (SQLAlchemy-запросы и агрегация), рендерят шаблон.
+`routes/ambassadors.py` (раздел «Амбассадорские отчёты») удалён — механика (SKU-статусы
+по многим клиентам) сейчас частью `client_analysis.py`, см. ниже.
 
 **Рендеринг страниц идёт через [app/render.py](app/render.py)** — хелпер `render(request,
 template, ctx)`, который сам достаёт `current_user` по cookie-сессии и кладёт его в контекст
@@ -96,34 +98,76 @@ template, ctx)`, который сам достаёт `current_user` по cookie
 клиент, сырые и сопоставленные название/SKU, qty/weight, `matched`. Почти вся аналитика —
 это `GROUP BY` по `Sale` с общим набором SQLAlchemy-фильтров из
 [app/services/sale_filters.py](app/services/sale_filters.py) (`build_sale_filters`), который
-собирают роуты `analytics.py`/`ambassadors.py`/`admin_abc.py` по параметрам `city`/`months`/
-`sale_types`/`client`/`matched`. Есть и списочные варианты `cities`/`clients` (в дополнение
-к одиночным `city`/`client`, не вместо) — под дашборд, который умеет фильтровать сразу по
-нескольким регионам/клиентам.
+собирают `routes/analytics.py` и `services/client_analysis_service.py`/`dashboard_service.py`
+по параметрам `city`/`months`/`sale_types`/`client`/`matched`. Есть и списочные варианты
+`cities`/`clients` (в дополнение к одиночным `city`/`client`, не вместо) — под дашборд и
+«Анализ по клиентам», которые умеют фильтровать сразу по нескольким регионам/клиентам.
 
 **ABC-рейтинг** — не автоматический: категория (A/B/C) проставляется вручную per-товар
 per-сегмент через `/admin/abc` в таблицу `product_abc_ratings`; сегменты (`AbcSegment`,
 напр. HoReCa/Розница) создаются там же. Автоматический расчёт по правилу 80/15/5 — в
 горизонте 3 роадмапа, ещё не сделан.
 
+**Детализация по клиенту** (`/analytics/client`, роут в
+[app/routes/analytics.py](app/routes/analytics.py), шаблон
+[client_detail.html](app/templates/analytics/client_detail.html)) — вся клиентская
+аналитика для одного клиента/города/типа точки в сворачиваемых карточках (`.amb-card`/
+`.amb-toggle`, тот же паттерн, что и на «Анализе по клиентам» ниже): динамика по месяцам,
+SKU-статусы (New/Lost/Unstable — `build_client_sku_status()` в
+[app/services/ambassadors_service.py](app/services/ambassadors_service.py), с фильтром по
+`sale_type` страницы и колонкой ABC из `rating_by_product`, сортировка по клику на месяц/
+Итого), «Ассортимент по ABC» (гэп-анализ, `abc_service.get_client_abc_overview`), сводные
+карточки, график (Chart.js, чекбоксы-метрики Количество/Вес/Уникальные SKU). Настройки
+порогов SKU-статусов (`new_client_months`/`lost_months`/`unstable_gap_months`) — через
+`get_int_param()` в [app/utils/params.py](app/utils/params.py).
+
+**«Анализ по клиентам»** (`/analytics/client-analysis`,
+[app/routes/client_analysis.py](app/routes/client_analysis.py) +
+[app/services/client_analysis_service.py](app/services/client_analysis_service.py)) — две
+вкладки на одной странице, переключение обычной GET-навигацией (`?tab=summary`/
+`?tab=ambassadors`): сервер каждый раз считает и рендерит **только** активную вкладку
+(вторая ветка Jinja не выполняется), поэтому одноимённые JS-хелперы вроде `initTagSearch`
+в шаблонах вкладок не конфликтуют друг с другом.
+- «Свод» — иерархия тип точки → клиент → номенклатура с ленивой подгрузкой
+  (`/api/client-analysis/{clients,nomenclature,missing}`), первый тип по весу — развёрнут
+  сразу. Метрика переключается вкладкой (Вес/Количество/Уникальных SKU) мгновенно на
+  клиенте — каждая lazy-строка везёт сразу все метрики, повторного запроса на клик нет.
+  ABC-сегмент — **свой на каждый тип точки** (не общий на всю страницу — наименования
+  типов разнятся по регионам), дефолт через `abc_service.guess_default_segment()`, бейджи
+  считает `get_abc_badges_for_clients()` (2 запроса на весь список клиентов типа, без
+  N+1). «Чего не хватает» — `get_client_abc_overview()` как есть.
+- «Амбассадорский отчёт» — SKU-статусы по нескольким клиентам сразу, **без** разбивки по
+  типу точки (историческое поведение, восстановлено дословно из git-истории вместе с
+  `build_ambassadors_report()`, а не по памяти) — отдельная от «Свода» механика, живёт
+  в шаблоне-партиале [_client_analysis_ambassadors.html](app/templates/analytics/_client_analysis_ambassadors.html).
+
+На странице «Клиенты» ([clients_summary.html](app/templates/analytics/clients_summary.html))
+чекбоксы в таблице → всплывающая панель «Сформировать свод»/«Амбассадорский отчёт» →
+редирект на `/analytics/client-analysis` с готовым списком клиентов (город/период
+переносятся тоже). Данные для JS всегда через `data-*`-атрибуты, не сырым `{{ ... |tojson }}`
+внутри `<script>` — автоэкранирование Jinja портит кавычки в JSON (`"` → `&#34;`), ловили
+живьём на этой самой панели.
+
 **Дашборд** (`/dashboard`, [app/routes/dashboard.py](app/routes/dashboard.py) +
-[app/services/dashboard_service.py](app/services/dashboard_service.py)) — кастомный
-конструктор виджетов, доступен всем ролям (`require_user`). Несколько именованных
-дашбордов на пользователя (`Dashboard`/`DashboardWidget` в `app/models.py`), каждый —
-свой набор регионов/клиентов/периода/режима сравнения (`aggregate` — суммарно,
-`split` — по регионам отдельно) и виджетов (`metric_card` / `chart`). `METRIC_CATALOG`
-в `dashboard_service.py` — единственное место, где перечислены доступные метрики;
-расчёт переиспользует `clients_service`/`charts_service`, новой SQL-агрегации под
-дашборд не заводили. Раскладка — GridStack.js (CDN), drag/resize, позиции шлются на
-`POST /dashboard/{id}/layout`. Карточки-цифры — тренд-формат (значение + дельты к
-прошлому месяцу/среднему/началу периода), переиспользует `.metric-value`/
-`.metric-delta-*` из `charts.css` (те же классы, что и карточки на `/analytics/charts`).
-Экспорт «Скачать PDF» — **не** `window.print()`: кнопка гоняет DOM-область с
-виджетами через `html2canvas` → `jsPDF` (тоже CDN) и режет канвас на срезы по
-странице вручную (наивный рецепт «одна картинка на каждую страницу» раздувает файл
-кратно числу страниц — проверено на практике, 20+ МБ на 2 страницы). Подробности и
-что осознанно не сделано (ABC как тип виджета, per-widget фильтры) — в ROADMAP.md,
-раздел «Дашборд».
+[app/services/dashboard_service.py](app/services/dashboard_service.py)) —
+фиксированная страница «Аналитика по регионам», доступна всем ролям
+(`require_user`). Пришла на смену кастомному конструктору виджетов (несколько
+именованных дашбордов, GridStack, PDF-экспорт через html2canvas/jsPDF — полностью
+убраны вместе с моделями `Dashboard`/`DashboardWidget`, миграция `7a1f2c9d5b3e`;
+история решений по конструктору — в ROADMAP.md, раздел «Дашборд», помечен как
+исторический). Фильтры — регионы (тег-поиск) и период; свод считает одна функция
+`get_regions_overview()` — сетка город×месяц по всем 6 метрикам `METRIC_CATALOG`
+(Вес/Количество/Клиенты/Всего SKU/Уникальных SKU/SKU на клиента) плюс итоги по
+городу (весь период), по месяцу (все выбранные города) и общий итог. Итоги **не**
+суммируются из готовой (город, месяц)-сетки — `unique_clients`/`unique_sku`
+пересчитываются отдельным запросом на нужной группировке, иначе клиент/SKU,
+повторившийся в нескольких месяцах, задвоился бы. Данные на весь период (все
+метрики, все города/месяцы) отдаются странице одним GET-запросом и кладутся в
+`data-regions` атрибут (`|tojson`, не сырым в `<script>` — см. предупреждение про
+Jinja-автоэкранирование выше); переключение вкладки метрики и вида графика
+(«Общий график» с городами-линиями / «По регионам отдельно» — мини-графики на
+город) дальше работает чисто на клиенте, без повторных походов на сервер — та же
+идея, что и в мгновенном переключении метрики на «Анализе по клиентам».
 
 **Шаблоны и статика без фронтенд-сборки** — чистый Jinja2 + ванильный CSS/JS, никакого
 бандлера. [app/templates/_styles.html](app/templates/_styles.html) — единый список

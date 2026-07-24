@@ -1,10 +1,6 @@
-from datetime import UTC, datetime
-
 from sqlalchemy import (
-    JSON,
     Boolean,
     Column,
-    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -85,42 +81,3 @@ class Sale(Base):
     weight = Column(Float)
 
     matched = Column(Boolean, default=False)
-
-
-class Dashboard(Base):
-    __tablename__ = "dashboards"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    name = Column(String, nullable=False)
-    is_default = Column(Boolean, default=False, nullable=False)
-
-    cities = Column(JSON, nullable=False, default=list)
-    clients = Column(JSON, nullable=False, default=list)
-    months = Column(JSON, nullable=False, default=list)
-    compare_mode = Column(String, nullable=False, default="aggregate")
-
-    created_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
-    )
-
-    widgets = relationship(
-        "DashboardWidget", cascade="all, delete-orphan", order_by="DashboardWidget.id"
-    )
-
-
-class DashboardWidget(Base):
-    __tablename__ = "dashboard_widgets"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=False)
-    metric = Column(String, nullable=False)
-    widget_type = Column(String, nullable=False)
-    chart_kind = Column(String, nullable=True)
-
-    grid_x = Column(Integer, nullable=False, default=0)
-    grid_y = Column(Integer, nullable=False, default=0)
-    grid_w = Column(Integer, nullable=False, default=3)
-    grid_h = Column(Integer, nullable=False, default=2)
