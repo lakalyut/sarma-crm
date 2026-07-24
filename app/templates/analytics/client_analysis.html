@@ -3,8 +3,24 @@
 <h1>Анализ по клиентам</h1>
 {% include "includes/messages.html" %}
 
+<div class="chart-tabs" style="margin-bottom: 12px;">
+    <a
+        href="/analytics/client-analysis?tab=summary&city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}"
+        class="chart-tab {% if active_tab != 'ambassadors' %}active{% endif %}"
+    >Свод</a>
+    <a
+        href="/analytics/client-analysis?tab=ambassadors&city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}"
+        class="chart-tab {% if active_tab == 'ambassadors' %}active{% endif %}"
+    >Амбассадорский отчёт</a>
+</div>
+
+{% if active_tab == "ambassadors" %}
+{% include "analytics/_client_analysis_ambassadors.html" %}
+{% else %}
+
 <div class="filters-card">
     <form method="get" id="ca-filters-form">
+        <input type="hidden" name="tab" value="summary">
         <div class="filters-grid ambassadors-filters-grid">
             <div class="field filter-field filter-field-region-search">
                 <label for="ca-city-search">Регион</label>
@@ -656,4 +672,5 @@ document.addEventListener("DOMContentLoaded", function () {
     renderAll();
 });
 </script>
+{% endif %}
 {% endblock %}

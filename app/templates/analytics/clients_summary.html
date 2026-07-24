@@ -236,6 +236,23 @@
         </div>
     </div>
 
+    <div
+        class="filters-card is-hidden"
+        id="ca-selection-bar"
+        style="margin-bottom: 12px;"
+        data-city="{{ selected_city or '' }}"
+        data-months="{{ selected_months|tojson }}"
+    >
+        <div class="flex-row" style="justify-content: space-between; align-items: center; gap: 12px;">
+            <span>Выбрано клиентов: <strong id="ca-selection-count">0</strong></span>
+            <div class="filters-actions">
+                <button type="button" class="btn" id="ca-selection-summary">Сформировать свод</button>
+                <button type="button" class="btn btn-secondary" id="ca-selection-ambassadors">Амбассадорский отчёт</button>
+                <button type="button" class="btn btn-secondary" id="ca-selection-clear">Очистить</button>
+            </div>
+        </div>
+    </div>
+
     <div id="clients-table-wrapper">
         {% if not rows %}
             <div class="message">Нет данных под выбранные фильтры.</div>
@@ -245,6 +262,7 @@
                     <table class="sheet-table" id="clients-table">
                         <thead>
                         <tr>
+                            <th style="width: 32px;"></th>
                             <th class="filterable-th" id="type-filter-th">
                                 <div class="th-filter-trigger" id="type-filter-trigger">
                                     <span>Тип точки</span>
@@ -301,6 +319,7 @@
                                     data-delta="0"
                                     data-monthly="{{ client_monthly|tojson }}"
                                 >
+                                    <td><input type="checkbox" class="ca-row-select" data-client="{{ r.client }}"></td>
                                     <td>{{ r.type }}</td>
                                     <td class="client-name-cell">{{ r.client }}</td>
                                     <td>{{ "%.2f"|format(r.qty) }}</td>
@@ -780,6 +799,67 @@ document.addEventListener("DOMContentLoaded", function () {
 
     renderMetrics();
     renderRows();
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const bar = document.getElementById("ca-selection-bar");
+    const countLabel = document.getElementById("ca-selection-count");
+    const summaryBtn = document.getElementById("ca-selection-summary");
+    const ambassadorsBtn = document.getElementById("ca-selection-ambassadors");
+    const clearBtn = document.getElementById("ca-selection-clear");
+
+    if (!bar || !countLabel) return;
+
+    const pageCity = bar.dataset.city || "";
+    const pageMonths = JSON.parse(bar.dataset.months || "[]");
+
+    function getSelectedClients() {
+        return Array.from(new Set(
+            Array.from(document.querySelectorAll(".ca-row-select:checked")).map(cb => cb.dataset.client)
+        ));
+    }
+
+    function updateBar() {
+        const clients = getSelectedClients();
+        countLabel.textContent = clients.length;
+        bar.classList.toggle("is-hidden", clients.length === 0);
+    }
+
+    function goToClientAnalysis(tab) {
+        const url = new URL(window.location.origin + "/analytics/client-analysis");
+        url.searchParams.set("tab", tab);
+        if (pageCity) url.searchParams.set("city", pageCity);
+        pageMonths.forEach(m => url.searchParams.append("months", m));
+        getSelectedClients().forEach(c => url.searchParams.append("clients", c));
+        window.location.href = url.toString();
+    }
+
+    document.querySelectorAll(".ca-row-select").forEach(cb => {
+        cb.addEventListener("change", updateBar);
+    });
+
+    if (summaryBtn) {
+        summaryBtn.addEventListener("click", function () {
+            goToClientAnalysis("summary");
+        });
+    }
+
+    if (ambassadorsBtn) {
+        ambassadorsBtn.addEventListener("click", function () {
+            goToClientAnalysis("ambassadors");
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", function () {
+            document.querySelectorAll(".ca-row-select:checked").forEach(cb => {
+                cb.checked = false;
+            });
+            updateBar();
+        });
+    }
 });
 </script>
 
