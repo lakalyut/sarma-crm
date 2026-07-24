@@ -19,10 +19,6 @@ __pycache__/
 .idea/
 .vscode/
 
-# Локальные заметки для Claude (не публикуем)
-CLAUDE.md
-ROADMAP.md
-
 # OS
 .DS_Store
 Thumbs.db
