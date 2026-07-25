@@ -457,7 +457,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return sum / values.length;
         }
 
-        function formatDelta(delta, label) {
+        function formatDelta(delta, label, diff, digits = 2, unit = "") {
             if (delta === null || delta === undefined || Number.isNaN(delta)) {
                 return `
                     <div class="metric-delta-row">
@@ -469,10 +469,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const sign = delta > 0 ? "+" : "";
             const cls = delta > 0 ? "delta-up" : (delta < 0 ? "delta-down" : "delta-neutral");
+            const diffSign = diff > 0 ? "+" : "";
+            const diffText = ` (${diffSign}${formatNumber(diff, digits)}${unit ? " " + unit : ""})`;
 
             return `
                 <div class="metric-delta-row">
-                    <span class="metric-delta ${cls}">${sign}${delta.toFixed(0)}%</span>
+                    <span class="metric-delta ${cls}">${sign}${delta.toFixed(0)}%${diffText}</span>
                     <span class="metric-delta-label">${label}</span>
                 </div>
             `;
@@ -488,6 +490,10 @@ document.addEventListener("DOMContentLoaded", function () {
             const avgDelta = calcDelta(current, average);
             const firstDelta = calcDelta(current, first);
 
+            const prevDiff = current - (prev || 0);
+            const avgDiff = current - (average || 0);
+            const firstDiff = current - first;
+
             return `
                 <div class="metric-card">
                     <div class="metric-label">${label}</div>
@@ -499,17 +505,26 @@ document.addEventListener("DOMContentLoaded", function () {
                             prevDelta,
                             prevIndex >= 0
                                 ? `к прошлому месяцу (${labels[prevIndex]})`
-                                : "к прошлому месяцу"
+                                : "к прошлому месяцу",
+                            prevDiff,
+                            digits,
+                            unit
                         )}
 
                         ${formatDelta(
                             avgDelta,
-                            `к среднему за период`
+                            `к среднему за период`,
+                            avgDiff,
+                            digits,
+                            unit
                         )}
 
                         ${formatDelta(
                             firstDelta,
-                            `к началу периода (${labels[0]})`
+                            `к началу периода (${labels[0]})`,
+                            firstDiff,
+                            digits,
+                            unit
                         )}
                     </div>
                 </div>
@@ -731,7 +746,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 maintainAspectRatio: false,
                 interaction: { mode: "index", intersect: false },
                 plugins: {
-                    legend: { position: "top" }
+                    legend: { position: "top" },
+                    tooltip: selectedMetrics.includes("weight_by_type") ? {
+                        callbacks: {
+                            footer: function (tooltipItems) {
+                                const total = tooltipItems.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
+                                return "Всего: " + formatNumber(total, 2) + " кг";
+                            }
+                        }
+                    } : undefined
             },
             scales: {
                 y: {
