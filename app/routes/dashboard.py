@@ -26,6 +26,7 @@ def dashboard_page(
             request,
             "dashboard/dashboard.html",
             {
+                "title": "Аналитика по регионам — Пульс",
                 "data": {"cities": [], "months": [], "month_labels": [], "metrics": {}},
                 "metric_catalog": svc.METRIC_CATALOG,
                 "all_cities": all_cities,
@@ -42,6 +43,7 @@ def dashboard_page(
         request,
         "dashboard/dashboard.html",
         {
+            "title": "Аналитика по регионам — Пульс",
             "data": data,
             "metric_catalog": svc.METRIC_CATALOG,
             "all_cities": all_cities,

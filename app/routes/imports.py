@@ -39,7 +39,7 @@ def import_xlsx_form(
     request: Request,
     _admin: User = Depends(require_admin),
 ):
-    return render(request, "imports/import_xlsx.html", {})
+    return render(request, "imports/import_xlsx.html", {"title": "Импорт XLSX — Пульс"})
 
 
 @router.post("/import-xlsx")
@@ -57,7 +57,7 @@ async def import_xlsx(
         return render(
             request,
             "imports/import_xlsx.html",
-            {"error": f"Ошибка чтения XLSX: {e}"},
+            {"title": "Импорт XLSX — Пульс", "error": f"Ошибка чтения XLSX: {e}"},
         )
 
     required = ["Месяц", "Тип", "Клиент", "Номенклатура", "SKU", "Количество", "Вес"]
@@ -66,7 +66,10 @@ async def import_xlsx(
         return render(
             request,
             "imports/import_xlsx.html",
-            {"error": f'Нет колонок: {", ".join(missing)}'},
+            {
+                "title": "Импорт XLSX — Пульс",
+                "error": f'Нет колонок: {", ".join(missing)}',
+            },
         )
 
     df["Количество"] = pd.to_numeric(df["Количество"], errors="coerce").fillna(0)
@@ -112,6 +115,7 @@ async def import_xlsx(
         request,
         "imports/import_xlsx.html",
         {
+            "title": "Импорт XLSX — Пульс",
             "message": f"Импортировано строк: {imported}, не сопоставлено: {unmatched}",
         },
     )

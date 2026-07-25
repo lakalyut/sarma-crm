@@ -25,7 +25,11 @@ def products_list(
     _admin: User = Depends(require_admin),
 ):
     products = db.query(Product).order_by(Product.brand, Product.flavor).all()
-    return render(request, "products/products_list.html", {"products": products})
+    return render(
+        request,
+        "products/products_list.html",
+        {"title": "Номенклатуры — Пульс", "products": products},
+    )
 
 
 @router.get("/admin/products/new")
@@ -33,7 +37,9 @@ def product_new_form(
     request: Request,
     _admin: User = Depends(require_admin),
 ):
-    return render(request, "products/product_new.html", {})
+    return render(
+        request, "products/product_new.html", {"title": "Номенклатуры — Пульс"}
+    )
 
 
 @router.post("/admin/products/new")
@@ -74,7 +80,9 @@ def products_import_form(
     request: Request,
     _admin: User = Depends(require_admin),
 ):
-    return render(request, "products/products_import.html", {})
+    return render(
+        request, "products/products_import.html", {"title": "Номенклатуры — Пульс"}
+    )
 
 
 @router.post("/admin/products/import")
@@ -124,7 +132,10 @@ def products_import(
     return render(
         request,
         "products/products_import.html",
-        {"message": f"Импортировано: {count} продуктов"},
+        {
+            "title": "Номенклатуры — Пульс",
+            "message": f"Импортировано: {count} продуктов",
+        },
     )
 
 
@@ -139,7 +150,11 @@ def edit_product_form(
     if not product:
         return {"error": "Product not found"}
 
-    return render(request, "products/product_edit.html", {"product": product})
+    return render(
+        request,
+        "products/product_edit.html",
+        {"title": f"{product.brand} — {product.flavor} — Пульс", "product": product},
+    )
 
 
 @router.post("/admin/products/edit/{product_id}")

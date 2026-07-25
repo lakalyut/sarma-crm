@@ -25,7 +25,11 @@ def users_list(
     _admin=Depends(require_admin),
 ):
     users = db.query(User).order_by(User.id.desc()).all()
-    return render(request, "admin/users_list.html", {"users": users})
+    return render(
+        request,
+        "admin/users_list.html",
+        {"title": "Пользователи — Пульс", "users": users},
+    )
 
 
 @router.get("/new")
@@ -33,7 +37,7 @@ def user_new_form(
     request: Request,
     _admin=Depends(require_admin),
 ):
-    return render(request, "admin/user_new.html", {})
+    return render(request, "admin/user_new.html", {"title": "Пользователи — Пульс"})
 
 
 @router.post("/new")
@@ -46,14 +50,21 @@ def user_new_submit(
 ):
     email = email.strip().lower()
     if role not in ("user", "admin"):
-        return render(request, "admin/user_new.html", {"error": "Некорректная роль"})
+        return render(
+            request,
+            "admin/user_new.html",
+            {"title": "Пользователи — Пульс", "error": "Некорректная роль"},
+        )
 
     exists = db.query(User).filter(User.email == email).first()
     if exists:
         return render(
             request,
             "admin/user_new.html",
-            {"error": "Пользователь с таким email уже существует"},
+            {
+                "title": "Пользователи — Пульс",
+                "error": "Пользователь с таким email уже существует",
+            },
         )
 
     user = User(email=email, role=role, is_active=True)
@@ -81,7 +92,7 @@ def user_new_submit(
     return render(
         request,
         "admin/user_created.html",
-        {"email": email, "role": role, "link": link},
+        {"title": "Пользователи — Пульс", "email": email, "role": role, "link": link},
     )
 
 
@@ -101,6 +112,7 @@ def user_toggle_active(
             request,
             "admin/users_list.html",
             {
+                "title": "Пользователи — Пульс",
                 "users": db.query(User).order_by(User.id.desc()).all(),
                 "error": "Нельзя отключить самого себя.",
             },
@@ -155,7 +167,12 @@ def user_reset_link(
     return render(
         request,
         "admin/user_created.html",
-        {"email": user.email, "role": user.role, "link": link},
+        {
+            "title": "Пользователи — Пульс",
+            "email": user.email,
+            "role": user.role,
+            "link": link,
+        },
     )
 
 
@@ -179,6 +196,7 @@ def user_change_role(
             request,
             "admin/users_list.html",
             {
+                "title": "Пользователи — Пульс",
                 "users": db.query(User).order_by(User.id.desc()).all(),
                 "error": "Нельзя убрать роль admin у самого себя.",
             },

@@ -31,6 +31,7 @@ def abc_matrix(
         request,
         "admin/abc_matrix.html",
         {
+            "title": "ABC-рейтинг — Пульс",
             "segments": data["segments"],
             "grouped_products": data["grouped_products"],
             "rating_map": data["rating_map"],

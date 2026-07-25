@@ -48,6 +48,7 @@ def analytics_clients(
             request,
             "analytics/clients_summary.html",
             {
+                "title": "Клиенты — Пульс",
                 "rows": [],
                 "cities": cities,
                 "all_months": [],
@@ -108,6 +109,7 @@ def analytics_clients(
         request,
         "analytics/clients_summary.html",
         {
+            "title": "Клиенты — Пульс",
             "rows": rows,
             "cities": cities,
             "all_months": all_months,
@@ -144,6 +146,7 @@ def analytics_charts(
             request,
             "analytics/charts.html",
             {
+                "title": "Графики — Пульс",
                 "cities": cities,
                 "all_months": [],
                 "all_types": [],
@@ -177,6 +180,7 @@ def analytics_charts(
         request,
         "analytics/charts.html",
         {
+            "title": "Графики — Пульс",
             "cities": cities,
             "all_months": all_months,
             "all_types": all_types,
@@ -300,6 +304,7 @@ def analytics_client_detail(
         request,
         "analytics/client_detail.html",
         {
+            "title": f"{client} — Пульс",
             "rows": rows,
             "city": city,
             "client": client,
@@ -325,4 +330,8 @@ def unmatched_list(
     _admin: User = Depends(require_admin),
 ):
     rows = db.query(Sale).filter(Sale.matched.is_(False)).order_by(Sale.id.desc()).all()
-    return render(request, "analytics/unmatched.html", {"items": rows})
+    return render(
+        request,
+        "analytics/unmatched.html",
+        {"title": "Несопоставленные — Пульс", "items": rows},
+    )

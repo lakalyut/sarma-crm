@@ -40,6 +40,7 @@ def imports_delete_form(
         request,
         "admin/imports_delete.html",
         {
+            "title": "Удаление импорта — Пульс",
             "cities": cities,
             "months": all_months,
             "sale_types": sale_types,
@@ -73,6 +74,7 @@ def imports_delete_preview(
             request,
             "admin/imports_delete.html",
             {
+                "title": "Удаление импорта — Пульс",
                 "cities": cities,
                 "months": all_months,
                 "sale_types": sale_types,
@@ -97,6 +99,7 @@ def imports_delete_preview(
         request,
         "admin/imports_delete.html",
         {
+            "title": "Удаление импорта — Пульс",
             "cities": cities,
             "months": all_months,
             "sale_types": sale_types,
@@ -131,6 +134,7 @@ def imports_delete_confirm(
             request,
             "admin/imports_delete.html",
             {
+                "title": "Удаление импорта — Пульс",
                 "cities": cities,
                 "months": all_months,
                 "sale_types": sale_types,
@@ -156,6 +160,7 @@ def imports_delete_confirm(
             request,
             "admin/imports_delete.html",
             {
+                "title": "Удаление импорта — Пульс",
                 "cities": cities,
                 "months": all_months,
                 "sale_types": sale_types,
@@ -178,6 +183,7 @@ def imports_delete_confirm(
         request,
         "admin/imports_delete.html",
         {
+            "title": "Удаление импорта — Пульс",
             "cities": cities,
             "months": all_months,
             "sale_types": sale_types,
