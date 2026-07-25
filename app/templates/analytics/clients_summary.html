@@ -139,11 +139,7 @@
     <div class="selected-city-text">
         {% if selected_months %}
             Месяцы:
-            <span class="selected-city-value">
-                {% for m in selected_months %}
-                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
-                {% endfor %}
-            </span>
+            <span class="selected-city-value">{{ selected_months|format_month_list }}</span>
         {% else %}
             <span>Все месяцы</span>
         {% endif %}

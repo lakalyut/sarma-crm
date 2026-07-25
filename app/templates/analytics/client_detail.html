@@ -8,9 +8,7 @@
     <strong>Клиент:</strong> {{ client }}<br>
     <strong>Месяцы:</strong>
 {% if months %}
-    {% for m in months %}
-        {{ m|format_month }}{% if not loop.last %}, {% endif %}
-    {% endfor %}
+    {{ months|format_month_list }}
 {% else %}
     все
 {% endif %}

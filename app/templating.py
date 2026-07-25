@@ -32,6 +32,36 @@ def format_month(value: str):
     return f"{month_name} {dt.year}"
 
 
+def format_month_list(value):
+    """Сворачивает список месяцев ('YYYY-MM-01') в компактную строку — тот
+    же формат, что и закрытый вид мультиселекта в checkbox_multiselect.js:
+    <=3 месяцев — список через запятую; >3 подряд идущих — диапазон
+    «первый – последний»; >3 вразнобой — «первые 3, +N»."""
+    if not value:
+        return ""
+
+    months = sorted(value)
+
+    if len(months) <= 3:
+        return ", ".join(format_month(m) for m in months)
+
+    def next_month(m):
+        dt = datetime.fromisoformat(m)
+        year = dt.year + dt.month // 12
+        month = dt.month % 12 + 1
+        return f"{year:04d}-{month:02d}-01"
+
+    is_contiguous = all(
+        next_month(months[i]) == months[i + 1] for i in range(len(months) - 1)
+    )
+
+    if is_contiguous:
+        return f"{format_month(months[0])} – {format_month(months[-1])}"
+
+    labels = [format_month(m) for m in months]
+    return ", ".join(labels[:3]) + f" +{len(labels) - 3}"
+
+
 def tojson_filter(value):
     return json.dumps(value)
 
@@ -44,5 +74,6 @@ def format_ru_number(value, digits: int = 0) -> str:
 
 
 templates.env.filters["format_month"] = format_month
+templates.env.filters["format_month_list"] = format_month_list
 templates.env.filters["tojson"] = tojson_filter
 templates.env.filters["format_ru_number"] = format_ru_number
