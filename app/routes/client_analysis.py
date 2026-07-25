@@ -75,7 +75,9 @@ def client_analysis_page(
                 "first_type_clients": [],
                 "first_type_segment_id": None,
                 "type_default_segment_id": {},
-                "message": "Выберите нужный город",
+                "empty_state": {
+                    "hint": "Выберите регион в фильтре выше — здесь появится анализ по клиентам"
+                },
             },
         )
 

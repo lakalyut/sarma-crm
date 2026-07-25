@@ -254,7 +254,9 @@
     </div>
 
     <div id="clients-table-wrapper">
-        {% if not rows %}
+        {% if not rows and empty_state %}
+            {% include "includes/empty_state.html" %}
+        {% elif not rows %}
             <div class="message">Нет данных под выбранные фильтры.</div>
         {% else %}
             <div class="sheet-wrapper">

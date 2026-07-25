@@ -108,9 +108,11 @@
     </form>
 </div>
 
-{% if selected_city and not types %}
+{% if not selected_city %}
+    {% include "includes/empty_state.html" %}
+{% elif not types %}
     <div class="message" style="margin-top: 12px;">Нет данных под выбранные фильтры.</div>
-{% elif selected_city %}
+{% else %}
     <div class="summary-panel" style="margin-top: 10px;">
         <div class="summary-panel-header">
             <span class="summary-panel-title">Сводка по клиентам</span>

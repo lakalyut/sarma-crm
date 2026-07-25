@@ -44,7 +44,10 @@ def dashboard_page(
                 "selected_regions": [],
                 "all_months": get_months(db),
                 "selected_months": months,
-                "message": "Выберите один или несколько регионов для сравнения",
+                "empty_state": {
+                    "title": "Регионы не выбраны",
+                    "hint": "Выберите один или несколько регионов в фильтре выше — здесь появится сводная таблица и график",
+                },
             },
         )
 

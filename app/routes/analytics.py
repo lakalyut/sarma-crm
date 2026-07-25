@@ -67,7 +67,9 @@ def analytics_clients(
                 },
                 "type_cards": [],
                 "monthly_by_client": {},
-                "message": "Выберите нужный город",
+                "empty_state": {
+                    "hint": "Выберите регион в фильтре выше — здесь появится сводка по клиентам"
+                },
             },
         )
 
@@ -155,7 +157,9 @@ def analytics_charts(
                 "selected_types": [],
                 "matched": None,
                 "group": group,
-                "message": "Выберите нужный город",
+                "empty_state": {
+                    "hint": "Выберите регион в фильтре выше — здесь появится динамика"
+                },
             },
         )
 
