@@ -16,6 +16,7 @@ from ..product_parser import (
 )
 from ..render import render
 from ..services.sales_options_service import get_months, get_types
+from ..templating import format_month
 
 router = APIRouter()
 
@@ -26,9 +27,10 @@ def import_delete_options(
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
+    months = get_months(db, city=city, reverse=True)
     return JSONResponse(
         {
-            "months": get_months(db, city=city, reverse=True),
+            "months": [{"value": m, "label": format_month(m)} for m in months],
             "types": get_types(db, city=city),
         }
     )

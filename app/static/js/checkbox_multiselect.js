@@ -16,17 +16,43 @@ function initCheckboxMultiselect(config) {
         );
     }
 
+    function getLabel(cb) {
+        const span = cb.parentElement && cb.parentElement.querySelector("span");
+        return span ? span.textContent.trim() : cb.value;
+    }
+
+    // Список отсортирован сервером хронологически (обычно от новых к старым) —
+    // соседние по DOM чекбоксы формируют непрерывный диапазон месяцев без
+    // разбора самих дат, просто по позиции в списке.
     function updateText() {
-        const checked = getCheckboxes()
-            .filter(cb => cb.checked)
-            .map(cb => cb.value);
+        const all = getCheckboxes();
+        const checked = all.filter(cb => cb.checked);
 
         if (checked.length === 0) {
             textSpan.textContent = config.emptyText || "Не выбраны";
-        } else if (checked.length <= 2) {
-            textSpan.textContent = checked.join(", ");
+            return;
+        }
+
+        if (config.dateRange && checked.length > 1) {
+            const indices = checked.map(cb => all.indexOf(cb)).sort((a, b) => a - b);
+            const isContiguous = indices[indices.length - 1] - indices[0] === indices.length - 1;
+            const byValue = [...checked].sort((a, b) => a.value.localeCompare(b.value));
+
+            if (isContiguous) {
+                const first = byValue[0];
+                const last = byValue[byValue.length - 1];
+                textSpan.textContent = `${getLabel(first)} – ${getLabel(last)}`;
+            } else {
+                textSpan.textContent = byValue.map(getLabel).join(", ");
+            }
+            return;
+        }
+
+        const labels = checked.map(getLabel);
+        if (labels.length <= 2) {
+            textSpan.textContent = labels.join(", ");
         } else {
-            textSpan.textContent = checked.slice(0, 2).join(", ") + " +" + (checked.length - 2);
+            textSpan.textContent = labels.slice(0, 2).join(", ") + " +" + (labels.length - 2);
         }
     }
 
