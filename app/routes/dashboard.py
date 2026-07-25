@@ -31,6 +31,12 @@ def dashboard_page(
             {
                 "title": "Аналитика по регионам — Пульс",
                 "data": {"cities": [], "months": [], "month_labels": [], "metrics": {}},
+                "detail_data": {
+                    "cities": [],
+                    "months": [],
+                    "month_labels": [],
+                    "metrics": {},
+                },
                 "metric_catalog": svc.METRIC_CATALOG,
                 "all_cities": all_cities,
                 "all_regions": all_regions,
@@ -57,6 +63,7 @@ def dashboard_page(
     )
 
     data = svc.get_regions_overview(db, query_cities, months, city_to_region_name)
+    detail_data = svc.get_regions_overview(db, query_cities, months)
 
     return render(
         request,
@@ -64,6 +71,7 @@ def dashboard_page(
         {
             "title": "Аналитика по регионам — Пульс",
             "data": data,
+            "detail_data": detail_data,
             "metric_catalog": svc.METRIC_CATALOG,
             "all_cities": all_cities,
             "all_regions": all_regions,

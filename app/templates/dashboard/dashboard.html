@@ -110,6 +110,11 @@
             <button type="button" class="table-view-tab" data-chart-view="split">По регионам отдельно</button>
         </div>
 
+        <div class="table-view-tabs" id="regions-chart-type-tabs">
+            <button type="button" class="table-view-tab active" data-chart-type="line">Линия</button>
+            <button type="button" class="table-view-tab" data-chart-type="bar">Гистограмма</button>
+        </div>
+
         <div class="sheet-wrapper chart-block" id="regions-chart-combined-wrap">
             <div class="chart-wrap">
                 <canvas id="regions-chart-combined"></canvas>
@@ -135,7 +140,7 @@
 </div>
 {% endif %}
 
-<div id="regions-data" style="display:none;" data-regions="{{ data|tojson }}"></div>
+<div id="regions-data" style="display:none;" data-regions="{{ data|tojson }}" data-regions-detail="{{ detail_data|tojson }}"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
@@ -246,19 +251,22 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!dataEl) return;
 
     const data = JSON.parse(dataEl.dataset.regions || "{}");
-    const cities = data.cities || [];
-    const monthLabels = data.month_labels || [];
-    const metrics = data.metrics || {};
+    const detailData = JSON.parse(dataEl.dataset.regionsDetail || "{}");
 
-    if (!cities.length) return;
+    if (!(data.cities || []).length) return;
 
     const palette = ["#6d5ef8", "#0ea5e9", "#f59e0b", "#22c55e", "#ec4899", "#14b8a6", "#8b5cf6", "#f43f5e"];
     const colorFor = i => palette[i % palette.length];
 
     let currentMetric = "weight";
     let currentView = "combined";
+    let currentChartType = "line";
     let combinedChart = null;
     const splitCharts = [];
+
+    function activeDataset() {
+        return currentView === "split" ? detailData : data;
+    }
 
     function formatNumber(value, digits) {
         return Number(value || 0).toLocaleString("ru-RU", {
@@ -268,12 +276,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function renderTable() {
-        const meta = metrics[currentMetric];
-        if (!meta) return;
+        const source = activeDataset();
+        const cities = source.cities || [];
+        const monthLabels = source.month_labels || [];
+        const meta = (source.metrics || {})[currentMetric];
 
-        const digits = meta.kind === "int" ? 0 : 2;
         const thead = document.querySelector("#regions-table thead");
         const tbody = document.querySelector("#regions-table tbody");
+
+        if (!meta) {
+            thead.innerHTML = "";
+            tbody.innerHTML = "";
+            return;
+        }
+
+        const digits = meta.kind === "int" ? 0 : 2;
 
         const headCells = ["Регион"].concat(monthLabels).concat(["Итого"]);
         thead.innerHTML = "<tr>" + headCells.map(h => `<th>${h}</th>`).join("") + "</tr>";
@@ -292,7 +309,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function renderCombinedChart() {
-        const meta = metrics[currentMetric];
+        const cities = data.cities || [];
+        const monthLabels = data.month_labels || [];
+        const meta = (data.metrics || {})[currentMetric];
         if (!meta) return;
 
         const canvas = document.getElementById("regions-chart-combined");
@@ -301,8 +320,10 @@ document.addEventListener("DOMContentLoaded", function () {
             combinedChart = null;
         }
 
+        const isBar = currentChartType === "bar";
+
         combinedChart = new Chart(canvas, {
-            type: "line",
+            type: currentChartType,
             data: {
                 labels: monthLabels,
                 datasets: cities.map((city, i) => ({
@@ -310,7 +331,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     data: meta.grid[city] || [],
                     borderColor: colorFor(i),
                     backgroundColor: colorFor(i),
-                    tension: 0.25
+                    fill: false,
+                    tension: isBar ? undefined : 0.25
                 }))
             },
             options: { responsive: true, maintainAspectRatio: false }
@@ -318,13 +340,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function renderSplitCharts() {
-        const meta = metrics[currentMetric];
-        if (!meta) return;
+        const cities = detailData.cities || [];
+        const monthLabels = detailData.month_labels || [];
+        const meta = (detailData.metrics || {})[currentMetric];
 
         const wrap = document.getElementById("regions-chart-split-wrap");
         splitCharts.forEach(c => c.destroy());
         splitCharts.length = 0;
         wrap.innerHTML = "";
+
+        if (!meta) return;
+
+        const isBar = currentChartType === "bar";
 
         cities.forEach((city, i) => {
             const card = document.createElement("div");
@@ -344,7 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
             wrap.appendChild(card);
 
             splitCharts.push(new Chart(canvas, {
-                type: "line",
+                type: currentChartType,
                 data: {
                     labels: monthLabels,
                     datasets: [{
@@ -352,8 +379,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         data: meta.grid[city] || [],
                         borderColor: colorFor(i),
                         backgroundColor: colorFor(i),
-                        fill: true,
-                        tension: 0.25
+                        fill: false,
+                        tension: isBar ? undefined : 0.25
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
@@ -395,6 +422,16 @@ document.addEventListener("DOMContentLoaded", function () {
             document.querySelectorAll("#regions-chart-view-tabs .table-view-tab").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
             currentView = btn.dataset.chartView;
+            renderTable();
+            renderChart();
+        });
+    });
+
+    document.querySelectorAll("#regions-chart-type-tabs .table-view-tab").forEach(btn => {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll("#regions-chart-type-tabs .table-view-tab").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentChartType = btn.dataset.chartType;
             renderChart();
         });
     });
