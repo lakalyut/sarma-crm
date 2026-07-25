@@ -192,6 +192,11 @@
 
         <div class="metrics-cards" id="metrics-cards"></div>
 
+        <div class="table-view-tabs" id="charts-chart-type-tabs">
+            <button type="button" class="table-view-tab active" data-chart-type="line">Линия</button>
+            <button type="button" class="table-view-tab" data-chart-type="bar">Гистограмма</button>
+        </div>
+
         <div class="sheet-wrapper chart-block">
             <div class="chart-wrap">
                 <canvas id="metricsChart"></canvas>
@@ -373,6 +378,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!canvas) return;
 
     let chart = null;
+    let lastData = null;
+    let currentChartType = "line";
     let selectedMetrics = ["weight", "qty"];
 
     const METRIC_STORAGE_KEY = "charts_selected_metrics";
@@ -705,20 +712,29 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function render(data) {
+        lastData = data;
+
         const labels = data.labels || [];
         const series = data.series || [];
         if (!series.length) return;
 
         const s = series[0];
 
+        const isStacked = selectedMetrics.includes("weight_by_type");
+
         const hint = document.getElementById("chart-hint");
 
         if (hint) {
-            if (selectedMetrics.includes("weight_by_type")) {
+            if (isStacked) {
                 hint.innerHTML = "Показывает, из каких типов точек складывается общий вес";
             } else {
                 hint.innerHTML = "";
         }
+        }
+
+        const chartTypeTabs = document.getElementById("charts-chart-type-tabs");
+        if (chartTypeTabs) {
+            chartTypeTabs.style.display = isStacked ? "none" : "";
         }
 
         const metricMap = {
@@ -755,7 +771,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (chart) chart.destroy();
 
         chart = new Chart(canvas, {
-            type: "line",
+            type: isStacked ? "line" : currentChartType,
             data: { labels, datasets },
             options: {
                 responsive: true,
@@ -848,6 +864,15 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             renderTable(lastTableLabels, lastTableSeries);
+        });
+    });
+
+    document.querySelectorAll("#charts-chart-type-tabs .table-view-tab").forEach(btn => {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll("#charts-chart-type-tabs .table-view-tab").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentChartType = btn.dataset.chartType;
+            if (lastData) render(lastData);
         });
     });
 

@@ -146,8 +146,12 @@
                             <thead>
                                 <tr>
                                     <th>SKU</th>
-                                    <th style="width: 230px;">Статус</th>
-                                    <th style="width: 70px;">ABC</th>
+                                    <th style="width: 230px;" class="sortable" data-sort-type="status" data-sort-key="status">
+                                        Статус <span class="sort-icon">↕</span>
+                                    </th>
+                                    <th style="width: 70px;" class="sortable" data-sort-type="abc" data-sort-key="abc">
+                                        ABC <span class="sort-icon">↕</span>
+                                    </th>
                                     {% for month in sku_status.months %}
                                         <th class="sortable" data-sort-type="number" data-sort-key="month-{{ loop.index0 }}">
                                             {{ month|format_month }} <span class="sort-icon">↕</span>
@@ -164,6 +168,7 @@
                                     <tr
                                         class="amb-sku-row amb-sku-row-{{ sku_row.status }}"
                                         data-status="{{ sku_row.status }}"
+                                        data-abc="{{ cat or '' }}"
                                         data-total="{{ sku_row.total }}"
                                         {% for value in sku_row.months_data %}
                                             data-month-{{ loop.index0 }}="{{ value }}"
@@ -320,6 +325,11 @@
                     <label><input type="checkbox" class="cd-chart-metric" value="sku_count"> Уникальные SKU</label>
                 </div>
 
+                <div class="table-view-tabs" id="cd-chart-type-tabs">
+                    <button type="button" class="table-view-tab active" data-chart-type="line">Линия</button>
+                    <button type="button" class="table-view-tab" data-chart-type="bar">Гистограмма</button>
+                </div>
+
                 <div class="sheet-wrapper chart-block">
                     <div class="chart-wrap">
                         <canvas
@@ -350,6 +360,7 @@
 
             const checkboxes = Array.from(document.querySelectorAll("#cd-chart .cd-chart-metric"));
             let chart = null;
+            let currentChartType = "line";
 
             function selectedMetrics() {
                 return checkboxes.filter(cb => cb.checked).map(cb => cb.value);
@@ -370,7 +381,7 @@
                 if (chart) chart.destroy();
 
                 chart = new Chart(canvas, {
-                    type: "line",
+                    type: currentChartType,
                     data: { labels, datasets },
                     options: {
                         responsive: true,
@@ -397,6 +408,15 @@
                         cb.checked = true;
                         return;
                     }
+                    render();
+                });
+            });
+
+            document.querySelectorAll("#cd-chart-type-tabs .table-view-tab").forEach(btn => {
+                btn.addEventListener("click", function () {
+                    document.querySelectorAll("#cd-chart-type-tabs .table-view-tab").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    currentChartType = btn.dataset.chartType;
                     render();
                 });
             });
@@ -463,13 +483,17 @@
         const statusOrder = ["new", "lost", "unstable", "existing"];
         const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
 
+        function countFor(status) {
+            return status === "all" ? rows.length : rows.filter(row => row.dataset.status === status).length;
+        }
+
         filterBox.innerHTML = availableStatuses.map(status => `
             <button
                 type="button"
                 class="amb-status-filter-btn ${status === "all" ? "active" : ""}"
                 data-status="${status}"
             >
-                ${statusLabels[status]}
+                ${statusLabels[status]} (${countFor(status)})
             </button>
         `).join("");
 
@@ -502,10 +526,25 @@
 
         if (!sortableHeaders.length || !tbody) return;
 
-        let sortState = { key: null, direction: null };
+        const STATUS_RANK = { new: 0, unstable: 1, lost: 2, existing: 3 };
+        const ABC_RANK = { A: 0, B: 1, C: 2 };
+
+        let sortState = { key: null, type: null, direction: null };
 
         function getSortableRows() {
             return Array.from(tbody.querySelectorAll("tr.amb-sku-row"));
+        }
+
+        function sortValue(row) {
+            if (sortState.type === "status") {
+                const rank = STATUS_RANK[row.dataset.status];
+                return rank === undefined ? Infinity : rank;
+            }
+            if (sortState.type === "abc") {
+                const rank = ABC_RANK[row.dataset.abc];
+                return rank === undefined ? Infinity : rank;
+            }
+            return parseFloat(row.dataset[sortState.key] || "0");
         }
 
         function updateHeaderState() {
@@ -533,10 +572,18 @@
             }
 
             const factor = sortState.direction === "asc" ? 1 : -1;
+            const isRanked = sortState.type === "status" || sortState.type === "abc";
 
             rows.sort((a, b) => {
-                const av = parseFloat(a.dataset[sortState.key] || "0");
-                const bv = parseFloat(b.dataset[sortState.key] || "0");
+                const av = sortValue(a);
+                const bv = sortValue(b);
+
+                if (isRanked) {
+                    if (av === Infinity && bv === Infinity) return 0;
+                    if (av === Infinity) return 1;
+                    if (bv === Infinity) return -1;
+                }
+
                 return (av - bv) * factor;
             });
 
@@ -550,6 +597,7 @@
 
                 if (sortState.key !== key) {
                     sortState.key = key;
+                    sortState.type = th.dataset.sortType;
                     sortState.direction = "desc";
                 } else if (sortState.direction === "desc") {
                     sortState.direction = "asc";

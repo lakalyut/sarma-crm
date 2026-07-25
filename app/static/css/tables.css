@@ -204,9 +204,9 @@ table.sheet-table tbody tr:hover td {
 
 #clients-table th:nth-child(4),
 #clients-table td:nth-child(4) {
-        width: 92px;
-        min-width: 92px;
-        max-width: 92px;
+        width: 108px;
+        min-width: 108px;
+        max-width: 108px;
     }
 
 #clients-table th:nth-child(5),
@@ -232,9 +232,9 @@ table.sheet-table tbody tr:hover td {
 
 #clients-table th:nth-child(8),
 #clients-table td:nth-child(8) {
-        width: 128px;
-        min-width: 128px;
-        max-width: 128px;
+        width: 150px;
+        min-width: 150px;
+        max-width: 150px;
     }
 
 #clients-table th:nth-child(9),

@@ -210,6 +210,7 @@ def build_ambassadors_report(
             Sale.client,
             Sale.month,
             Sale.weight,
+            Sale.product_id,
             sku_expr().label("sku_key"),
         )
         .filter(
@@ -225,6 +226,7 @@ def build_ambassadors_report(
     sku_weight_by_client = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     unique_sku_total_by_client = defaultdict(set)
     weight_total_by_client = defaultdict(float)
+    product_id_by_sku: dict[str, int] = {}
 
     for row in sales_rows:
         client = row.client or "Без клиента"
@@ -239,6 +241,9 @@ def build_ambassadors_report(
             unique_sku_by_client_month[client][month].add(sku_key_value)
             unique_sku_total_by_client[client].add(sku_key_value)
             sku_weight_by_client[client][sku_key_value][month] += weight
+
+            if row.product_id is not None:
+                product_id_by_sku[sku_key_value] = row.product_id
 
     for client in selected_clients:
         sku_summary = []
@@ -278,6 +283,7 @@ def build_ambassadors_report(
             sku_details.append(
                 {
                     "sku": sku_name,
+                    "product_id": product_id_by_sku.get(sku_name),
                     "months_data": months_data,
                     "total": round(total, 2),
                     "first_month": first_month,

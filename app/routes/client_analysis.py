@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..auth_deps import require_user
 from ..auth_models import User
 from ..database import get_db
-from ..models import AbcSegment, Sale
+from ..models import AbcSegment, ProductAbcRating, Sale
 from ..render import render
 from ..services.abc_service import (
     ensure_default_segments,
@@ -36,6 +36,7 @@ def client_analysis_page(
     months: list[str] = Query(default=None),
     clients: list[str] = Query(default=None),
     new_skus: list[str] = Query(default=None),
+    abc_segment: int | None = None,
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
@@ -70,6 +71,8 @@ def client_analysis_page(
                 },
                 "report": {"months": [], "clients": []},
                 "segments_json": segments_json,
+                "rating_by_product": {},
+                "selected_segment_id": None,
                 "types": [],
                 "first_type": None,
                 "first_type_clients": [],
@@ -117,6 +120,21 @@ def client_analysis_page(
             status_settings=status_settings,
         )
 
+        selected_segment = None
+        if abc_segment:
+            selected_segment = next((s for s in segments if s.id == abc_segment), None)
+        if not selected_segment and segments:
+            selected_segment = segments[0]
+
+        rating_by_product: dict[int, str] = {}
+        if selected_segment:
+            ratings = (
+                db.query(ProductAbcRating)
+                .filter(ProductAbcRating.segment_id == selected_segment.id)
+                .all()
+            )
+            rating_by_product = {r.product_id: r.category for r in ratings}
+
         return render(
             request,
             "analytics/client_analysis.html",
@@ -135,6 +153,10 @@ def client_analysis_page(
                 "status_settings": status_settings,
                 "report": report,
                 "segments_json": segments_json,
+                "rating_by_product": rating_by_product,
+                "selected_segment_id": (
+                    selected_segment.id if selected_segment else None
+                ),
             },
         )
 

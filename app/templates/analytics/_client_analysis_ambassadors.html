@@ -116,6 +116,17 @@
         </div>
         {% endif %}
 
+        {% if segments_json %}
+        <div class="selected-city-text">
+            Сегмент ABC:
+            <select name="abc_segment" id="amb-abc-segment-select" onchange="this.form.submit()">
+                {% for s in segments_json %}
+                    <option value="{{ s.id }}" {% if s.id == selected_segment_id %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
         <div class="amb-settings-toggle-line">
             <button type="button" class="amb-link-toggle" id="amb-settings-toggle">
                 Настройки классификации SKU
@@ -262,7 +273,12 @@
                                 <thead>
                                     <tr>
                                         <th>SKU</th>
-                                        <th>Статус</th>
+                                        <th class="sortable" data-sort-type="status" data-sort-key="status">
+                                            Статус <span class="sort-icon">↕</span>
+                                        </th>
+                                        <th style="width: 70px;" class="sortable" data-sort-type="abc" data-sort-key="abc">
+                                            ABC <span class="sort-icon">↕</span>
+                                        </th>
                                         {% for month in report.months %}
                                             <th
                                                 class="sortable"
@@ -284,9 +300,11 @@
 
                                 <tbody>
                                     {% for sku_row in client.sku_details %}
+                                        {% set cat = rating_by_product.get(sku_row.product_id) %}
                                         <tr
                                             class="amb-sku-row amb-sku-row-{{ sku_row.status }}"
                                             data-status="{{ sku_row.status }}"
+                                            data-abc="{{ cat or '' }}"
                                             data-total="{{ sku_row.total }}"
                                             {% for value in sku_row.months_data %}
                                                 data-month-{{ loop.index0 }}="{{ value }}"
@@ -302,6 +320,13 @@
                                                     {{ sku_row.status_label }}
                                                 </span>
                                             </td>
+                                            <td>
+                                                {% if cat %}
+                                                    <span class="abc-badge abc-badge-{{ cat|lower }}">{{ cat }}</span>
+                                                {% else %}
+                                                    <span style="color: var(--text-muted);">—</span>
+                                                {% endif %}
+                                            </td>
 
                                             {% for value in sku_row.months_data %}
                                                 <td>{{ "%.2f"|format(value) }}</td>
@@ -312,6 +337,7 @@
 
                                     <tr class="amb-sku-total-row">
                                         <td><strong>Итого</strong></td>
+                                        <td></td>
                                         <td></td>
                                         {% for value in client.summary.weight %}
                                             <td><strong>{{ "%.2f"|format(value) }}</strong></td>
@@ -602,8 +628,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!sortableHeaders.length || !tbody) return;
 
+            const STATUS_RANK = { new: 0, unstable: 1, lost: 2, existing: 3 };
+            const ABC_RANK = { A: 0, B: 1, C: 2 };
+
             let sortState = {
                 key: null,
+                type: null,
                 direction: null
             };
 
@@ -613,6 +643,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
             function getTotalRow() {
                 return tbody.querySelector("tr.amb-sku-total-row");
+            }
+
+            function sortValue(row) {
+                if (sortState.type === "status") {
+                    const rank = STATUS_RANK[row.dataset.status];
+                    return rank === undefined ? Infinity : rank;
+                }
+                if (sortState.type === "abc") {
+                    const rank = ABC_RANK[row.dataset.abc];
+                    return rank === undefined ? Infinity : rank;
+                }
+                return parseFloat(row.dataset[sortState.key] || "0");
             }
 
             function updateHeaderState() {
@@ -642,10 +684,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 const factor = sortState.direction === "asc" ? 1 : -1;
+                const isRanked = sortState.type === "status" || sortState.type === "abc";
 
                 rows.sort((a, b) => {
-                    const av = parseFloat(a.dataset[sortState.key] || "0");
-                    const bv = parseFloat(b.dataset[sortState.key] || "0");
+                    const av = sortValue(a);
+                    const bv = sortValue(b);
+
+                    if (isRanked) {
+                        if (av === Infinity && bv === Infinity) return 0;
+                        if (av === Infinity) return 1;
+                        if (bv === Infinity) return -1;
+                    }
+
                     return (av - bv) * factor;
                 });
 
@@ -661,6 +711,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     if (sortState.key !== key) {
                         sortState.key = key;
+                        sortState.type = th.dataset.sortType;
                         sortState.direction = "desc";
                     } else if (sortState.direction === "desc") {
                         sortState.direction = "asc";
@@ -702,13 +753,17 @@ document.addEventListener("DOMContentLoaded", function () {
         const statusOrder = ["new", "lost", "unstable", "existing"];
         const availableStatuses = ["all", ...statusOrder.filter(status => statuses.includes(status))];
 
+        function countFor(status) {
+            return status === "all" ? rows.length : rows.filter(row => row.dataset.status === status).length;
+        }
+
         filterBox.innerHTML = availableStatuses.map(status => `
             <button
                 type="button"
                 class="amb-status-filter-btn ${status === "all" ? "active" : ""}"
                 data-status="${status}"
             >
-                ${statusLabels[status]}
+                ${statusLabels[status]} (${countFor(status)})
             </button>
         `).join("");
 

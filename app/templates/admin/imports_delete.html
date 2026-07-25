@@ -177,10 +177,15 @@
                 const isContiguous = indices[indices.length - 1] - indices[0] === indices.length - 1;
                 const byValue = [...checked].sort((a, b) => a.value.localeCompare(b.value));
 
-                if (isContiguous) {
-                    const first = byValue[0];
-                    const last = byValue[byValue.length - 1];
-                    textSpan.textContent = `${getLabel(first)} – ${getLabel(last)}`;
+                if (checked.length > 3) {
+                    if (isContiguous) {
+                        const first = byValue[0];
+                        const last = byValue[byValue.length - 1];
+                        textSpan.textContent = `${getLabel(first)} – ${getLabel(last)}`;
+                    } else {
+                        const labels = byValue.map(getLabel);
+                        textSpan.textContent = labels.slice(0, 3).join(", ") + " +" + (labels.length - 3);
+                    }
                 } else {
                     textSpan.textContent = byValue.map(getLabel).join(", ");
                 }
