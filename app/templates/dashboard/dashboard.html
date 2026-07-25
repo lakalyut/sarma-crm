@@ -115,13 +115,11 @@
             <button type="button" class="table-view-tab" data-chart-type="bar">Гистограмма</button>
         </div>
 
-        <div class="sheet-wrapper chart-block" id="regions-chart-combined-wrap">
+        <div class="sheet-wrapper chart-block">
             <div class="chart-wrap">
                 <canvas id="regions-chart-combined"></canvas>
             </div>
         </div>
-
-        <div class="regions-chart-split is-hidden" id="regions-chart-split-wrap"></div>
 
         <div class="sheet-wrapper">
             <div class="sheet-scroller">
@@ -265,7 +263,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let currentView = "combined";
     let currentChartType = "line";
     let combinedChart = null;
-    const splitCharts = [];
 
     function activeDataset() {
         return currentView === "split" ? detailData : data;
@@ -311,10 +308,20 @@ document.addEventListener("DOMContentLoaded", function () {
         tbody.innerHTML = bodyRows.join("");
     }
 
-    function renderCombinedChart() {
-        const cities = data.cities || [];
-        const monthLabels = data.month_labels || [];
-        const meta = (data.metrics || {})[currentMetric];
+    // Оба вида ("Общий график" / "По регионам отдельно") — один и тот же
+    // многолинейный график в одном canvas, различается только источник
+    // данных (activeDataset): свёрнутый до региона или развёрнутый по
+    // входящим в него городам. Раньше "по регионам отдельно" рисовал сетку
+    // отдельных мини-графиков — по запросу свели к одному графику, заодно
+    // ушла причина бага с "осиротевшими" мини-графиками под общим (у
+    // отдельного контейнера была своя display:grid в dashboard.css,
+    // подключённом позже base.css, — она перебивала .is-hidden при
+    // равной специфичности и контейнер не скрывался).
+    function renderChart() {
+        const source = activeDataset();
+        const cities = source.cities || [];
+        const monthLabels = source.month_labels || [];
+        const meta = (source.metrics || {})[currentMetric];
         if (!meta) return;
 
         const canvas = document.getElementById("regions-chart-combined");
@@ -340,70 +347,6 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
-    }
-
-    function renderSplitCharts() {
-        const cities = detailData.cities || [];
-        const monthLabels = detailData.month_labels || [];
-        const meta = (detailData.metrics || {})[currentMetric];
-
-        const wrap = document.getElementById("regions-chart-split-wrap");
-        splitCharts.forEach(c => c.destroy());
-        splitCharts.length = 0;
-        wrap.innerHTML = "";
-
-        if (!meta) return;
-
-        const isBar = currentChartType === "bar";
-
-        cities.forEach((city, i) => {
-            const card = document.createElement("div");
-            card.className = "sheet-wrapper regions-split-card";
-
-            const title = document.createElement("div");
-            title.className = "regions-split-title";
-            title.textContent = city;
-            card.appendChild(title);
-
-            const chartWrap = document.createElement("div");
-            chartWrap.className = "chart-wrap regions-split-chart-wrap";
-            const canvas = document.createElement("canvas");
-            chartWrap.appendChild(canvas);
-            card.appendChild(chartWrap);
-
-            wrap.appendChild(card);
-
-            splitCharts.push(new Chart(canvas, {
-                type: currentChartType,
-                data: {
-                    labels: monthLabels,
-                    datasets: [{
-                        label: city,
-                        data: meta.grid[city] || [],
-                        borderColor: colorFor(i),
-                        backgroundColor: colorFor(i),
-                        fill: false,
-                        tension: isBar ? undefined : 0.25
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            }));
-        });
-    }
-
-    function renderChart() {
-        const combinedWrap = document.getElementById("regions-chart-combined-wrap");
-        const splitWrap = document.getElementById("regions-chart-split-wrap");
-
-        if (currentView === "split") {
-            combinedWrap.classList.add("is-hidden");
-            splitWrap.classList.remove("is-hidden");
-            renderSplitCharts();
-        } else {
-            splitWrap.classList.add("is-hidden");
-            combinedWrap.classList.remove("is-hidden");
-            renderCombinedChart();
-        }
     }
 
     function renderAll() {

@@ -7,30 +7,6 @@
     background: var(--bg-page);
 }
 
-.regions-chart-split {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 12px;
-    margin-top: 4px;
-}
-
-.regions-split-card {
-    margin-top: 0;
-    padding: 12px;
-}
-
-.regions-split-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: 8px;
-}
-
-.regions-split-chart-wrap {
-    height: 220px;
-    padding: 0;
-}
-
 @media print {
     .sidebar,
     .mobile-topbar,

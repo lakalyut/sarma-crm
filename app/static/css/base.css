@@ -55,6 +55,11 @@
         box-sizing: border-box;
     }
 
+    input[type="checkbox"],
+    input[type="radio"] {
+        accent-color: var(--primary);
+    }
+
     body {
         margin: 0;
         background: var(--bg-page);
