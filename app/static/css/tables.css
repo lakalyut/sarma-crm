@@ -175,62 +175,89 @@ table.sheet-table tbody tr:hover td {
         height: 52px;
     }
 
+/* 9 колонок: чекбокс, Тип точки, Клиент, Количество, Вес, SKU, Динамика,
+   Δ период, Подробности — индексы ниже считаны от этого порядка (коммит
+   e29e593 добавил колонку-чекбокс первой и сдвинул все остальные на 1, эти
+   правила изначально написаны под старый порядок и не были пересчитаны). */
 #clients-table th:nth-child(1),
 #clients-table td:nth-child(1) {
+        width: 40px;
+        min-width: 40px;
+        max-width: 40px;
+        text-align: center;
+    }
+
+#clients-table th:nth-child(2),
+#clients-table td:nth-child(2) {
         width: 110px;
         min-width: 110px;
         max-width: 110px;
     }
 
-#clients-table th:nth-child(2),
-#clients-table td:nth-child(2) {
+#clients-table th:nth-child(3),
+#clients-table td:nth-child(3) {
         width: auto;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-#clients-table th:nth-child(3),
-#clients-table td:nth-child(3) {
+#clients-table th:nth-child(4),
+#clients-table td:nth-child(4) {
         width: 92px;
         min-width: 92px;
         max-width: 92px;
     }
 
-#clients-table th:nth-child(4),
-#clients-table td:nth-child(4) {
+#clients-table th:nth-child(5),
+#clients-table td:nth-child(5) {
         width: 70px;
         min-width: 70px;
         max-width: 70px;
     }
 
-#clients-table th:nth-child(5),
-#clients-table td:nth-child(5) {
+#clients-table th:nth-child(6),
+#clients-table td:nth-child(6) {
         width: 56px;
         min-width: 56px;
         max-width: 56px;
     }
 
-#clients-table th:nth-child(6),
-#clients-table td:nth-child(6) {
+#clients-table th:nth-child(7),
+#clients-table td:nth-child(7) {
         width: 120px;
         min-width: 120px;
         max-width: 120px;
     }
 
-#clients-table th:nth-child(7),
-#clients-table td:nth-child(7) {
+#clients-table th:nth-child(8),
+#clients-table td:nth-child(8) {
         width: 128px;
         min-width: 128px;
         max-width: 128px;
     }
 
-#clients-table th:nth-child(8),
-#clients-table td:nth-child(8) {
+#clients-table th:nth-child(9),
+#clients-table td:nth-child(9) {
         width: 96px;
         min-width: 96px;
         max-width: 96px;
         white-space: nowrap;
+    }
+
+#client-table-search {
+        min-width: 260px;
+    }
+
+#cd-sku-status .sheet-table {
+        table-layout: auto;
+    }
+
+#cd-sku-status .sheet-table th:first-child,
+#cd-sku-status .sheet-table td:first-child {
+        min-width: 200px;
+        max-width: 280px;
+        white-space: normal;
     }
 
 .spark-cell {
