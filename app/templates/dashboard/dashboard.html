@@ -12,8 +12,11 @@
                 <input id="regions-city-search" type="text" placeholder="Начни вводить регион..." autocomplete="off">
 
                 <div id="regions-city-dropdown" class="search-dropdown" style="display:none;">
+                    {% for r in all_regions %}
+                        <div class="search-dropdown-item" data-value="{{ r.name }}" data-type="region">{{ r.name }} · регион</div>
+                    {% endfor %}
                     {% for c in all_cities %}
-                        <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+                        <div class="search-dropdown-item" data-value="{{ c }}" data-type="city">{{ c }}</div>
                     {% endfor %}
                 </div>
             </div>
@@ -62,6 +65,13 @@
         </div>
 
         <div class="multiselect-tags dash-tags-row" id="regions-cities-tags">
+            {% for r in selected_regions %}
+                <span class="filter-tag">
+                    <span>{{ r }} · регион</span>
+                    <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                    <input type="hidden" name="regions" value="{{ r }}">
+                </span>
+            {% endfor %}
             {% for c in selected_cities %}
                 <span class="filter-tag">
                     <span>{{ c }}</span>
@@ -73,15 +83,15 @@
     </form>
 
     <div class="selected-city-text">
-        {% if selected_cities %}
-            Регионы: <span class="selected-city-value">{{ selected_cities|join(', ') }}</span>
+        {% if selected_regions or selected_cities %}
+            Регионы: <span class="selected-city-value">{{ (selected_regions + selected_cities)|join(', ') }}</span>
         {% else %}
             <span>Регион не выбран</span>
         {% endif %}
     </div>
 </div>
 
-{% if selected_cities %}
+{% if selected_regions or selected_cities %}
 <div class="summary-panel" style="margin-top: 10px;">
     <div class="summary-panel-header">
         <span class="summary-panel-title">Динамика по регионам</span>
@@ -149,7 +159,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
 
     function existingValues() {
-        return Array.from(tags.querySelectorAll('input[name="cities"]')).map(i => i.value);
+        return Array.from(tags.querySelectorAll('input[name="cities"], input[name="regions"]')).map(i => i.value);
     }
 
     function attachRemoveHandler(tag) {
@@ -177,12 +187,14 @@ document.addEventListener("DOMContentLoaded", function () {
         dropdown.style.display = visibleCount > 0 ? "block" : "none";
     }
 
-    function renderTag(value) {
+    function renderTag(value, type) {
+        const isRegion = type === "region";
+
         const tag = document.createElement("span");
         tag.className = "filter-tag";
 
         const text = document.createElement("span");
-        text.textContent = value;
+        text.textContent = isRegion ? `${value} · регион` : value;
 
         const button = document.createElement("button");
         button.type = "button";
@@ -192,7 +204,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const hidden = document.createElement("input");
         hidden.type = "hidden";
-        hidden.name = "cities";
+        hidden.name = isRegion ? "regions" : "cities";
         hidden.value = value;
 
         tag.appendChild(text);
@@ -212,7 +224,7 @@ document.addEventListener("DOMContentLoaded", function () {
         item.addEventListener("click", function () {
             const value = item.dataset.value;
             if (!existingValues().includes(value)) {
-                renderTag(value);
+                renderTag(value, item.dataset.type);
             }
             input.value = "";
             dropdown.style.display = "none";

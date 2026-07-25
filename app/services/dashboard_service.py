@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from ..models import Sale
@@ -86,14 +86,33 @@ def _aggregate(db: Session, filters: list, dims: list[tuple[str, object]]) -> di
     return result
 
 
-def get_regions_overview(db: Session, cities: list[str], months: list[str]) -> dict:
+def get_regions_overview(
+    db: Session,
+    cities: list[str],
+    months: list[str],
+    city_to_region_name: dict[str, str] | None = None,
+) -> dict:
     """Свод по регионам для страницы /dashboard: сетка город×месяц по всем
     метрикам каталога + итоги по городу (весь период), по месяцу (все
-    выбранные города) и общий итог."""
+    выбранные города) и общий итог.
+
+    city_to_region_name — города, входящие в выбранный макро-регион
+    (справочник /admin/regions): их строки в SQL переименовываются в имя
+    региона ДО group by, поэтому unique_clients/unique_sku на объединённую
+    строку считаются честно (а не суммированием готовых per-город чисел,
+    где клиент/SKU, встретившийся в нескольких городах региона, задвоился
+    бы). Города вне city_to_region_name группируются как обычно, по себе.
+    """
     filters = build_sale_filters(cities=cities, months=months)
 
-    grid = _aggregate(db, filters, [("city", Sale.city), ("month", Sale.month)])
-    city_totals = _aggregate(db, filters, [("city", Sale.city)])
+    city_col = (
+        case(city_to_region_name, value=Sale.city, else_=Sale.city)
+        if city_to_region_name
+        else Sale.city
+    )
+
+    grid = _aggregate(db, filters, [("city", city_col), ("month", Sale.month)])
+    city_totals = _aggregate(db, filters, [("city", city_col)])
     month_totals = _aggregate(db, filters, [("month", Sale.month)])
     grand = _aggregate(db, filters, [])
 
