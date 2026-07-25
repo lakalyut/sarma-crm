@@ -370,6 +370,17 @@ document.addEventListener("DOMContentLoaded", function () {
     let chart = null;
     let selectedMetrics = ["weight", "qty"];
 
+    const METRIC_STORAGE_KEY = "charts_selected_metrics";
+
+    try {
+        const savedMetrics = JSON.parse(localStorage.getItem(METRIC_STORAGE_KEY) || "null");
+        if (Array.isArray(savedMetrics) && savedMetrics.length) {
+            selectedMetrics = savedMetrics;
+        }
+    } catch (e) {
+        console.warn("Не удалось восстановить выбранные метрики:", e);
+    }
+
     const modeConfig = {
         volume: ["weight"],
         volume_stacked: ["weight_by_type"],
@@ -805,6 +816,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 selectedMetrics = ["weight"];
                 const fallback = document.querySelector('.metric-checkbox[value="weight"]');
                 if (fallback) fallback.checked = true;
+            }
+
+            try {
+                localStorage.setItem(METRIC_STORAGE_KEY, JSON.stringify(selectedMetrics));
+            } catch (e) {
+                console.warn("Не удалось сохранить выбранные метрики:", e);
             }
 
             refresh();
