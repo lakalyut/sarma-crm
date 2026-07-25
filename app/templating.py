@@ -51,9 +51,12 @@ def format_month_list(value):
         month = dt.month % 12 + 1
         return f"{year:04d}-{month:02d}-01"
 
-    is_contiguous = all(
-        next_month(months[i]) == months[i + 1] for i in range(len(months) - 1)
-    )
+    try:
+        is_contiguous = all(
+            next_month(months[i]) == months[i + 1] for i in range(len(months) - 1)
+        )
+    except (TypeError, ValueError):
+        is_contiguous = False
 
     if is_contiguous:
         return f"{format_month(months[0])} – {format_month(months[-1])}"
