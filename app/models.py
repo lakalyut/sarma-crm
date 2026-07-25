@@ -60,6 +60,26 @@ class ProductAbcRating(Base):
     )
 
 
+class Region(Base):
+    __tablename__ = "regions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    name = Column(String, unique=True, nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
+
+
+class CityRegion(Base):
+    __tablename__ = "city_regions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    city = Column(String, unique=True, nullable=False)
+    region_id = Column(Integer, ForeignKey("regions.id"), nullable=False)
+
+    region = relationship("Region")
+
+
 class Sale(Base):
     __tablename__ = "sales"
 

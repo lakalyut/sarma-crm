@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Регионы</h1>
+<p class="page-subtitle" style="margin-top: -8px;">
+    Город входит только в один регион — привязка используется как фильтр на «Аналитике по регионам».
+</p>
+
+<div class="filters-card filters-card-compact">
+    <form method="post" action="/admin/regions/new" class="flex-row filter-row-inline">
+        <div class="field field-tight" style="min-width: 240px;">
+            <label for="region-name">Добавить регион</label>
+            <input id="region-name" name="name" type="text" placeholder="Например, Урал" required>
+        </div>
+        <button type="submit" class="btn-secondary">Добавить</button>
+    </form>
+</div>
+
+{% if not regions %}
+    <div class="message">Сначала добавьте хотя бы один регион.</div>
+{% elif not cities %}
+    <div class="message">Нет городов — сначала загрузите продажи.</div>
+{% else %}
+    <form method="post" action="/admin/regions">
+        <div class="sheet-wrapper" style="margin-top: 12px;">
+            <div class="sheet-scroller">
+                <table class="sheet-table">
+                    <thead>
+                    <tr>
+                        <th>Город</th>
+                        <th>Регион</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        {% for city in cities %}
+                            {% set current = city_region_map.get(city) %}
+                            <tr>
+                                <td>{{ city }}</td>
+                                <td>
+                                    <select name="region_{{ city }}">
+                                        <option value="" {% if not current %}selected{% endif %}>—</option>
+                                        {% for region in regions %}
+                                            <option value="{{ region.id }}" {% if current and current.region_id == region.id %}selected{% endif %}>{{ region.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex-row" style="margin-top: 14px;">
+            <button type="submit">Сохранить</button>
+        </div>
+    </form>
+{% endif %}
+{% endblock %}

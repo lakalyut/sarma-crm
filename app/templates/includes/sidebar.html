@@ -11,11 +11,19 @@
 
     <nav class="sidebar-nav">
         <div class="sidebar-nav-group">
-            <div class="sidebar-nav-label">Аналитика</div>
+            <div class="sidebar-nav-label">Свод</div>
             <a href="/dashboard" class="sidebar-nav-link {% if request.url.path == '/dashboard' %}active{% endif %}" title="Аналитика по регионам">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
                 <span class="sidebar-nav-text">Аналитика по регионам</span>
             </a>
+            <a href="/analytics/client-analysis" class="sidebar-nav-link {% if request.url.path == '/analytics/client-analysis' %}active{% endif %}" title="Анализ по клиентам">
+                <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                <span class="sidebar-nav-text">Анализ по клиентам</span>
+            </a>
+        </div>
+
+        <div class="sidebar-nav-group">
+            <div class="sidebar-nav-label">Аналитика</div>
             <a href="/analytics/clients" class="sidebar-nav-link {% if request.url.path == '/analytics/clients' %}active{% endif %}" title="Клиенты">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 <span class="sidebar-nav-text">Клиенты</span>
@@ -23,10 +31,6 @@
             <a href="/analytics/charts" class="sidebar-nav-link {% if request.url.path == '/analytics/charts' %}active{% endif %}" title="Графики">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                 <span class="sidebar-nav-text">Графики</span>
-            </a>
-            <a href="/analytics/client-analysis" class="sidebar-nav-link {% if request.url.path == '/analytics/client-analysis' %}active{% endif %}" title="Анализ по клиентам">
-                <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                <span class="sidebar-nav-text">Анализ по клиентам</span>
             </a>
         </div>
 
@@ -40,6 +44,10 @@
                 <a href="/admin/abc" class="sidebar-nav-link {% if request.url.path == '/admin/abc' %}active{% endif %}" title="ABC-рейтинг">
                     <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
                     <span class="sidebar-nav-text">ABC-рейтинг</span>
+                </a>
+                <a href="/admin/regions" class="sidebar-nav-link {% if request.url.path == '/admin/regions' %}active{% endif %}" title="Регионы">
+                    <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span class="sidebar-nav-text">Регионы</span>
                 </a>
                 <a href="/import-xlsx" class="sidebar-nav-link {% if request.url.path == '/import-xlsx' %}active{% endif %}" title="Импорт XLSX">
                     <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>

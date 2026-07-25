@@ -13,6 +13,7 @@ from .auth_routes import router as auth_router
 from .database import Base, SessionLocal, engine
 from .routes.admin_abc import router as admin_abc_router
 from .routes.admin_imports import router as admin_imports_router
+from .routes.admin_regions import router as admin_regions_router
 from .routes.admin_users import router as admin_users_router
 from .routes.analytics import router as analytics_router
 from .routes.client_analysis import router as client_analysis_router
@@ -52,6 +53,7 @@ app.include_router(dashboard_router)
 app.include_router(admin_imports_router)
 app.include_router(client_analysis_router)
 app.include_router(admin_abc_router)
+app.include_router(admin_regions_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
