@@ -12,14 +12,25 @@
 <form method="post" action="/admin/imports/delete/preview">
     <div class="flex-row filters-row" style="gap:16px; margin-top:12px;">
 
-        <div class="field filter-field" style="min-width:220px;">
-            <label>Город</label>
-            <select name="city" id="delete-import-city">
-                <option value="">Не выбран</option>
+        <div class="field filter-field filter-field-region-search" style="min-width:220px;">
+            <label for="delete-import-city-search">Город</label>
+            <input type="hidden" name="city" id="delete-import-city" value="{{ selected_city or '' }}">
+            <input id="delete-import-city-search" type="text" placeholder="Начни вводить город..." autocomplete="off">
+
+            <div id="delete-import-city-dropdown" class="search-dropdown" style="display:none;">
+                <div class="search-dropdown-item" data-value="">Не выбран</div>
                 {% for c in cities %}
-                    <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
+                    <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
                 {% endfor %}
-            </select>
+            </div>
+
+            <div class="selected-city-text">
+                {% if selected_city %}
+                    Город: <span class="selected-city-value">{{ selected_city }}</span>
+                {% else %}
+                    <span>Город не выбран</span>
+                {% endif %}
+            </div>
         </div>
 
         <div class="field" style="min-width:260px;">
@@ -287,6 +298,7 @@
     document.addEventListener("click", function() {
         monthsMs.classList.remove("open");
         typesMs.classList.remove("open");
+        if (cityDropdown) cityDropdown.style.display = "none";
     });
 
     async function loadOptionsForCity(city) {
@@ -305,9 +317,62 @@
         typesFilter.render(data.types || []);
     }
 
-    citySelect.addEventListener("change", function() {
-        loadOptionsForCity(citySelect.value);
-    });
+    const cityInput = document.getElementById("delete-import-city-search");
+    const cityDropdown = document.getElementById("delete-import-city-dropdown");
+    const cityCaption = citySelect.closest(".field").querySelector(".selected-city-text");
+
+    if (cityInput && cityDropdown) {
+        const cityItems = Array.from(cityDropdown.querySelectorAll(".search-dropdown-item"));
+
+        function filterCityItems() {
+            const value = cityInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            cityItems.forEach(item => {
+                const text = item.dataset.value.toLowerCase();
+                const visible = !value || text.includes(value);
+                item.classList.toggle("hidden", !visible);
+                if (visible) visibleCount++;
+            });
+
+            cityDropdown.style.display = visibleCount > 0 ? "block" : "none";
+        }
+
+        function setCityCaption(value) {
+            if (!cityCaption) return;
+            cityCaption.textContent = "";
+
+            const span = document.createElement("span");
+
+            if (value) {
+                cityCaption.append("Город: ");
+                span.className = "selected-city-value";
+                span.textContent = value;
+            } else {
+                span.textContent = "Город не выбран";
+            }
+
+            cityCaption.appendChild(span);
+        }
+
+        cityInput.addEventListener("focus", filterCityItems);
+        cityInput.addEventListener("input", filterCityItems);
+        cityInput.addEventListener("click", function (e) {
+            e.stopPropagation();
+        });
+
+        cityItems.forEach(item => {
+            item.addEventListener("click", function () {
+                const value = item.dataset.value;
+                citySelect.value = value;
+                cityInput.value = "";
+                cityDropdown.style.display = "none";
+
+                setCityCaption(value);
+                loadOptionsForCity(value);
+            });
+        });
+    }
 })();
 </script>
 
