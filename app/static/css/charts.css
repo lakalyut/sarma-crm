@@ -67,21 +67,21 @@
 
 .metric-delta-wrap {
     margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    align-items: baseline;
+    row-gap: 3px;
+    column-gap: 6px;
     font-size: 12px;
 }
 
 .metric-delta-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
+    display: contents;
 }
 
 .metric-delta {
     font-weight: 600;
-    min-width: 42px;
+    white-space: nowrap;
 }
 
 .metric-delta-label {
