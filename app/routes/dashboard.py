@@ -9,7 +9,7 @@ from ..services import city_regions_service as regions_svc
 from ..services import dashboard_service as svc
 from ..services.sales_options_service import get_cities, get_months
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/analytics/regions", tags=["regions"])
 
 
 @router.get("")

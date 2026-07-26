@@ -53,7 +53,7 @@ def client_analysis_page(
             request,
             "analytics/client_analysis.html",
             {
-                "title": "Анализ по клиентам — Пульс",
+                "title": "Аналитика по клиентам — Пульс",
                 "active_tab": active_tab,
                 "cities": cities,
                 "all_months": [],
@@ -139,7 +139,7 @@ def client_analysis_page(
             request,
             "analytics/client_analysis.html",
             {
-                "title": "Анализ по клиентам — Пульс",
+                "title": "Аналитика по клиентам — Пульс",
                 "active_tab": active_tab,
                 "cities": cities,
                 "all_months": all_months,
@@ -188,7 +188,7 @@ def client_analysis_page(
         request,
         "analytics/client_analysis.html",
         {
-            "title": "Анализ по клиентам — Пульс",
+            "title": "Аналитика по клиентам — Пульс",
             "active_tab": active_tab,
             "cities": cities,
             "all_months": all_months,

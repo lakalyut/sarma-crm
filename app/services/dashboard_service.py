@@ -92,7 +92,7 @@ def get_regions_overview(
     months: list[str],
     city_to_region_name: dict[str, str] | None = None,
 ) -> dict:
-    """Свод по регионам для страницы /dashboard: сетка город×месяц по всем
+    """Свод по регионам для страницы /analytics/regions: сетка город×месяц по всем
     метрикам каталога + итоги по городу (весь период), по месяцу (все
     выбранные города) и общий итог.
 

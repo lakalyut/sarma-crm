@@ -1,11 +1,12 @@
 {% macro month_year_grid(all_months, selected_months, input_name='months') %}
     {% set year_groups = all_months|group_months_by_year(selected_months) %}
     {% if year_groups %}
+        {% set first_year, first_months, first_sel_count = year_groups[0] %}
         <div class="mp-pager">
             <div class="mp-pager-head">
-                <button type="button" class="mp-arrow mp-prev" aria-label="Предыдущий год">‹</button>
-                <span class="mp-year-label"></span>
-                <button type="button" class="mp-arrow mp-next" aria-label="Следующий год">›</button>
+                <button type="button" class="mp-arrow mp-prev" aria-label="Предыдущий год" {% if year_groups|length == 1 %}style="visibility: hidden;"{% endif %}>‹</button>
+                <span class="mp-year-label">{{ first_year }}{% if first_sel_count %} · {{ first_sel_count }}{% endif %}</span>
+                <button type="button" class="mp-arrow mp-next" aria-label="Следующий год" style="visibility: hidden;">›</button>
             </div>
             {% for year, year_months, sel_count in year_groups %}
                 <div class="mp-year-grid{% if not loop.first %} is-hidden{% endif %}" data-year="{{ year }}">
