@@ -36,7 +36,7 @@ def client_analysis_page(
     months: list[str] = Query(default=None),
     clients: list[str] = Query(default=None),
     new_skus: list[str] = Query(default=None),
-    abc_segment: int | None = None,
+    abc_segment: list[int] = Query(default=[]),
     db: Session = Depends(get_db),
     _user: User = Depends(require_user),
 ):
@@ -71,8 +71,8 @@ def client_analysis_page(
                 },
                 "report": {"months": [], "clients": []},
                 "segments_json": segments_json,
-                "rating_by_product": {},
-                "selected_segment_id": None,
+                "rating_by_client": {},
+                "segment_id_by_client": {},
                 "types": [],
                 "first_type": None,
                 "first_type_clients": [],
@@ -120,20 +120,37 @@ def client_analysis_page(
             status_settings=status_settings,
         )
 
-        selected_segment = None
-        if abc_segment:
-            selected_segment = next((s for s in segments if s.id == abc_segment), None)
-        if not selected_segment and segments:
-            selected_segment = segments[0]
+        # Сегмент ABC — свой на каждого клиента (не общий на всю вкладку, по
+        # аналогии со "Сводом", где сегмент свой на каждый тип точки). Один
+        # <select> на карточку клиента, submit кладёт значения в abc_segment
+        # в том же порядке, что и клиенты — report.clients уже гарантированно
+        # в порядке selected_clients (build_ambassadors_report так строит).
+        valid_segment_ids = {s.id for s in segments}
+        default_segment_id = segments[0].id if segments else None
+        segment_id_by_client: dict[str, int | None] = {}
+        for i, client_name in enumerate(selected_clients):
+            candidate = abc_segment[i] if i < len(abc_segment) else None
+            segment_id_by_client[client_name] = (
+                candidate if candidate in valid_segment_ids else default_segment_id
+            )
 
-        rating_by_product: dict[int, str] = {}
-        if selected_segment:
+        unique_segment_ids = {v for v in segment_id_by_client.values() if v}
+        ratings_by_segment: dict[int, dict[int, str]] = {}
+        if unique_segment_ids:
             ratings = (
                 db.query(ProductAbcRating)
-                .filter(ProductAbcRating.segment_id == selected_segment.id)
+                .filter(ProductAbcRating.segment_id.in_(unique_segment_ids))
                 .all()
             )
-            rating_by_product = {r.product_id: r.category for r in ratings}
+            for r in ratings:
+                ratings_by_segment.setdefault(r.segment_id, {})[
+                    r.product_id
+                ] = r.category
+
+        rating_by_client = {
+            client_name: ratings_by_segment.get(segment_id, {})
+            for client_name, segment_id in segment_id_by_client.items()
+        }
 
         return render(
             request,
@@ -153,10 +170,8 @@ def client_analysis_page(
                 "status_settings": status_settings,
                 "report": report,
                 "segments_json": segments_json,
-                "rating_by_product": rating_by_product,
-                "selected_segment_id": (
-                    selected_segment.id if selected_segment else None
-                ),
+                "rating_by_client": rating_by_client,
+                "segment_id_by_client": segment_id_by_client,
             },
         )
 

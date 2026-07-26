@@ -108,17 +108,6 @@
         </div>
         {% endif %}
 
-        {% if segments_json %}
-        <div class="selected-city-text">
-            Сегмент ABC:
-            <select name="abc_segment" id="amb-abc-segment-select" onchange="this.form.submit()">
-                {% for s in segments_json %}
-                    <option value="{{ s.id }}" {% if s.id == selected_segment_id %}selected{% endif %}>{{ s.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        {% endif %}
-
         <div class="amb-settings-toggle-line">
             <button type="button" class="amb-link-toggle" id="amb-settings-toggle" aria-expanded="false">
                 Настройки классификации SKU
@@ -203,6 +192,20 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                         <h2 class="amb-card-title">{{ client.name }}</h2>
+                        {% if segments_json %}
+                            <span class="ca-segment-wrap">Сегмент:
+                                <select
+                                    class="ca-segment-select"
+                                    name="abc_segment"
+                                    form="ambassadors-filters-form"
+                                    onchange="document.getElementById('ambassadors-filters-form').requestSubmit()"
+                                >
+                                    {% for s in segments_json %}
+                                        <option value="{{ s.id }}" {% if s.id == segment_id_by_client.get(client.name) %}selected{% endif %}>{{ s.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </span>
+                        {% endif %}
                     </div>
 
                     <div class="amb-card-badges">
@@ -291,8 +294,9 @@
                                 </thead>
 
                                 <tbody>
+                                    {% set client_ratings = rating_by_client.get(client.name, {}) %}
                                     {% for sku_row in client.sku_details %}
-                                        {% set cat = rating_by_product.get(sku_row.product_id) %}
+                                        {% set cat = client_ratings.get(sku_row.product_id) %}
                                         <tr
                                             class="amb-sku-row amb-sku-row-{{ sku_row.status }}"
                                             data-status="{{ sku_row.status }}"
