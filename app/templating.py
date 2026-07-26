@@ -65,6 +65,32 @@ def format_month_list(value):
     return ", ".join(labels[:3]) + f" +{len(labels) - 3}"
 
 
+def format_month_short(value: str):
+    try:
+        dt = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return value
+    return MONTHS_RU.get(dt.month, "")[:3]
+
+
+def group_months_by_year(all_months, selected_months=None):
+    """Группирует уже отсортированный (reverse-chronological) список месяцев
+    по году, сохраняя порядок первого появления. Возвращает список
+    (год, месяцы_года, кол-во_выбранных_в_этом_году) — под аккордеон
+    выбора периода (год — заголовок, месяцы — сетка)."""
+    selected_set = set(selected_months or [])
+    years: dict[str, list[str]] = {}
+
+    for m in all_months or []:
+        year = m[:4]
+        years.setdefault(year, []).append(m)
+
+    return [
+        (year, months, sum(1 for m in months if m in selected_set))
+        for year, months in years.items()
+    ]
+
+
 def tojson_filter(value):
     return json.dumps(value)
 
@@ -77,6 +103,8 @@ def format_ru_number(value, digits: int = 0) -> str:
 
 
 templates.env.filters["format_month"] = format_month
+templates.env.filters["format_month_short"] = format_month_short
 templates.env.filters["format_month_list"] = format_month_list
+templates.env.filters["group_months_by_year"] = group_months_by_year
 templates.env.filters["tojson"] = tojson_filter
 templates.env.filters["format_ru_number"] = format_ru_number

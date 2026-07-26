@@ -17,6 +17,7 @@ function initCheckboxMultiselect(config) {
     }
 
     function getLabel(cb) {
+        if (cb.dataset.label) return cb.dataset.label;
         const span = cb.parentElement && cb.parentElement.querySelector("span");
         return span ? span.textContent.trim() : cb.value;
     }
@@ -95,6 +96,15 @@ function initCheckboxMultiselect(config) {
 
     document.addEventListener("click", function() {
         ms.classList.remove("open");
+    });
+
+    list.querySelectorAll(".mp-year-head").forEach(head => {
+        head.addEventListener("click", function () {
+            const grid = head.nextElementSibling;
+            const hidden = grid.classList.toggle("is-hidden");
+            head.classList.toggle("open", !hidden);
+            head.querySelector(".mp-year-chevron").textContent = hidden ? "›" : "⌄";
+        });
     });
 
     updateText();

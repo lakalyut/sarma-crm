@@ -194,6 +194,61 @@
     padding-bottom: 11px;
 }
 
+.mp-year-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.mp-year-badge {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--primary-tint);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.mp-year-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 2px 2px 10px;
+}
+
+.mp-month-chip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 0;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.mp-month-chip:hover {
+    border-color: var(--primary);
+}
+
+.mp-month-chip input {
+    position: absolute;
+    opacity: 0;
+}
+
+.mp-month-chip:has(input:checked) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+
 .filters-actions {
         display: flex;
         gap: 10px;

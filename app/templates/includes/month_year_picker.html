@@ -1,0 +1,19 @@
+{% macro month_year_grid(all_months, selected_months, input_name='months') %}
+    {% for year, year_months, sel_count in all_months|group_months_by_year(selected_months) %}
+        <div class="mp-year">
+            <div class="mp-year-head{% if loop.first or sel_count %} open{% endif %}">
+                <span class="mp-year-chevron">{% if loop.first or sel_count %}⌄{% else %}›{% endif %}</span>
+                <span class="mp-year-label">{{ year }}</span>
+                {% if sel_count %}<span class="mp-year-badge">{{ sel_count }}</span>{% endif %}
+            </div>
+            <div class="mp-year-grid{% if not (loop.first or sel_count) %} is-hidden{% endif %}">
+                {% for m in year_months %}
+                    <label class="mp-month-chip">
+                        <input type="checkbox" name="{{ input_name }}" value="{{ m }}" data-label="{{ m|format_month }}" {% if m in selected_months %}checked{% endif %}>
+                        <span>{{ m|format_month_short }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+{% endmacro %}

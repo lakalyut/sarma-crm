@@ -1,3 +1,4 @@
+{% from "includes/month_year_picker.html" import month_year_grid %}
 <div class="filters-card">
     <form method="get" id="ambassadors-filters-form">
         <input type="hidden" name="tab" value="ambassadors">
@@ -38,12 +39,7 @@
                         </label>
 
                         <div class="month-checkboxes">
-                            {% for m in all_months %}
-                                <label class="month-checkbox">
-                                    <input type="checkbox" name="months" value="{{ m }}" {% if m in selected_months %}checked{% endif %}>
-                                    <span>{{ m|format_month }}</span>
-                                </label>
-                            {% endfor %}
+                            {{ month_year_grid(all_months, selected_months, "months") }}
                         </div>
                     </div>
                 </div>
