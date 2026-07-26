@@ -16,9 +16,13 @@ MONTHS_RU_ORDER = {
 }
 
 
-def month_sort_key(value: str):
+def parse_month(value: str) -> tuple[int, int] | None:
+    """Разбирает месяц из Sale.month в (год, номер_месяца) — поддерживает
+    оба формата, встречающихся в данных: ISO 'YYYY-MM-01' и уже
+    отформатированное 'Месяц Год' (напр. 'Май 2026', так грузятся
+    некоторые города при импорте). None, если не разобрать ни так, ни так."""
     if not value:
-        return (9999, 12)
+        return None
 
     try:
         dt = datetime.fromisoformat(str(value))
@@ -28,16 +32,21 @@ def month_sort_key(value: str):
 
     parts = str(value).strip().split()
     if len(parts) < 2:
-        return (9999, 12)
+        return None
 
     month_name = parts[0].strip().lower()
     year_part = parts[-1].strip()
 
-    month_num = MONTHS_RU_ORDER.get(month_name, 12)
+    if month_name not in MONTHS_RU_ORDER:
+        return None
 
     try:
         year_num = int(year_part)
     except ValueError:
-        year_num = 9999
+        return None
 
-    return (year_num, month_num)
+    return (year_num, MONTHS_RU_ORDER[month_name])
+
+
+def month_sort_key(value: str):
+    return parse_month(value) or (9999, 12)
