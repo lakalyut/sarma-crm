@@ -65,9 +65,10 @@
 
 .ca-segment-select {
     min-height: auto;
-    padding: 2px 6px;
+    padding: 2px 20px 2px 6px;
     font-size: 12px;
     font-weight: 400;
+    background-position: right 6px center;
 }
 
 .ca-cell-total {

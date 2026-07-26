@@ -330,8 +330,9 @@ table.sheet-table tbody tr:hover td {
 
 .abc-matrix-table select {
         min-height: 32px;
-        padding: 4px 8px;
+        padding: 4px 20px 4px 8px;
         font-size: 12px;
+        background-position: right 6px center;
     }
 
 .abc-matrix-table input[type="checkbox"] {
