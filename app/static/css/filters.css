@@ -251,7 +251,7 @@
     display: none;
 }
 
-.mp-month-chip {
+.mp-year-grid .mp-month-chip {
     position: relative;
     display: flex;
     align-items: center;
