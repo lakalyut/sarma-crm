@@ -322,6 +322,20 @@
         background: var(--primary-tint);
     }
 
+/* Вариант чекбоксами — для мультивыбора без сброса поиска на каждый клик
+   (см. регион на "Аналитике по регионам"): список остаётся открытым и
+   отфильтрованным, можно отметить сразу несколько совпадений подряд. */
+.search-dropdown-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+.search-dropdown-checkbox input[type="checkbox"] {
+        margin: 0;
+        flex-shrink: 0;
+    }
+
 .search-dropdown-item.hidden {
         display: none;
     }

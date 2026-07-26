@@ -14,10 +14,16 @@
 
                 <div id="regions-city-dropdown" class="search-dropdown" style="display:none;">
                     {% for r in all_regions %}
-                        <div class="search-dropdown-item" data-value="{{ r.name }}" data-type="region">{{ r.name }} · регион</div>
+                        <label class="search-dropdown-item search-dropdown-checkbox" data-value="{{ r.name }}" data-type="region">
+                            <input type="checkbox">
+                            <span>{{ r.name }} · регион</span>
+                        </label>
                     {% endfor %}
                     {% for c in all_cities %}
-                        <div class="search-dropdown-item" data-value="{{ c }}" data-type="city">{{ c }}</div>
+                        <label class="search-dropdown-item search-dropdown-checkbox" data-value="{{ c }}" data-type="city">
+                            <input type="checkbox">
+                            <span>{{ c }}</span>
+                        </label>
                     {% endfor %}
                 </div>
             </div>
@@ -164,24 +170,34 @@ document.addEventListener("DOMContentLoaded", function () {
         return Array.from(tags.querySelectorAll('input[name="cities"], input[name="regions"]')).map(i => i.value);
     }
 
+    function syncCheckboxes() {
+        const selected = existingValues();
+        items.forEach(item => {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = selected.includes(item.dataset.value);
+        });
+    }
+
     function attachRemoveHandler(tag) {
         const btn = tag.querySelector(".filter-tag-remove");
         if (!btn) return;
         btn.addEventListener("click", function () {
             tag.remove();
-            filterItems();
+            syncCheckboxes();
         });
     }
 
+    // Список НЕ прячет уже выбранные и не закрывается/не сбрасывает текст
+    // поиска при отметке чекбокса — иначе набирать "ПУ" и отмечать все
+    // подряд совпадения (Новосибирск ПУ, ПУ Алтайский край, ...) приходилось
+    // бы заново на каждый клик.
     function filterItems() {
         const value = input.value.trim().toLowerCase();
-        const selected = existingValues();
         let visibleCount = 0;
 
         items.forEach(item => {
             const text = item.dataset.value.toLowerCase();
-            const alreadySelected = selected.includes(item.dataset.value);
-            const visible = !alreadySelected && (!value || text.includes(value));
+            const visible = !value || text.includes(value);
             item.classList.toggle("hidden", !visible);
             if (visible) visibleCount++;
         });
@@ -223,16 +239,27 @@ document.addEventListener("DOMContentLoaded", function () {
     input.addEventListener("input", filterItems);
 
     items.forEach(item => {
-        item.addEventListener("click", function () {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (!checkbox) return;
+
+        checkbox.addEventListener("change", function () {
             const value = item.dataset.value;
-            if (!existingValues().includes(value)) {
-                renderTag(value, item.dataset.type);
+
+            if (checkbox.checked) {
+                if (!existingValues().includes(value)) {
+                    renderTag(value, item.dataset.type);
+                }
+            } else {
+                const existingTag = Array.from(tags.querySelectorAll(".filter-tag")).find(function (t) {
+                    const hiddenInput = t.querySelector('input[type="hidden"]');
+                    return hiddenInput && hiddenInput.value === value;
+                });
+                if (existingTag) existingTag.remove();
             }
-            input.value = "";
-            dropdown.style.display = "none";
-            filterItems();
         });
     });
+
+    syncCheckboxes();
 
     document.addEventListener("click", function (e) {
         if (!dropdown.contains(e.target) && e.target !== input) {
