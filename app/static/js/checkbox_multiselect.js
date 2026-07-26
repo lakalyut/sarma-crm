@@ -37,7 +37,12 @@ function initCheckboxMultiselect(config) {
         if (config.dateRange && checked.length > 1) {
             const indices = checked.map(cb => all.indexOf(cb)).sort((a, b) => a - b);
             const isContiguous = indices[indices.length - 1] - indices[0] === indices.length - 1;
-            const byValue = [...checked].sort((a, b) => a.value.localeCompare(b.value));
+            // Значение чекбокса не всегда ISO-дата (часть городов грузится сразу
+            // как "Месяц Год" — см. app/utils/dates.py:parse_month) — сортировка
+            // по localeCompare(value) для таких строк не хронологическая. DOM-
+            // порядок уже хронологический (сервер сортирует reverse=True), просто
+            // разворачиваем его, а не пересортировываем по значению.
+            const byValue = [...checked].sort((a, b) => all.indexOf(b) - all.indexOf(a));
 
             if (checked.length > 3) {
                 if (isContiguous) {
@@ -80,9 +85,12 @@ function initCheckboxMultiselect(config) {
         e.stopPropagation();
     });
 
+    let updatePager = function () {};
+
     list.addEventListener("change", function() {
         updateText();
         updateSelectAllState();
+        updatePager();
     });
 
     selectAll.addEventListener("change", function() {
@@ -92,20 +100,67 @@ function initCheckboxMultiselect(config) {
 
         updateText();
         updateSelectAllState();
+        updatePager();
     });
 
     document.addEventListener("click", function() {
         ms.classList.remove("open");
     });
 
-    list.querySelectorAll(".mp-year-head").forEach(head => {
-        head.addEventListener("click", function () {
-            const grid = head.nextElementSibling;
-            const hidden = grid.classList.toggle("is-hidden");
-            head.classList.toggle("open", !hidden);
-            head.querySelector(".mp-year-chevron").textContent = hidden ? "›" : "⌄";
+    const pager = list.querySelector(".mp-pager");
+    if (pager) {
+        const yearGrids = Array.from(pager.querySelectorAll(".mp-year-grid"));
+        const yearLabel = pager.querySelector(".mp-year-label");
+        const prevBtn = pager.querySelector(".mp-prev");
+        const nextBtn = pager.querySelector(".mp-next");
+        let currentIndex = 0;
+
+        function gridHasSelection(grid) {
+            return grid.querySelector('input[type="checkbox"]:checked') !== null;
+        }
+
+        function renderPager() {
+            yearGrids.forEach((grid, i) => {
+                grid.classList.toggle("is-hidden", i !== currentIndex);
+            });
+
+            const current = yearGrids[currentIndex];
+            const count = current.querySelectorAll('input[type="checkbox"]:checked').length;
+            yearLabel.textContent = current.dataset.year + (count ? " · " + count : "");
+
+            const atNewest = currentIndex === 0;
+            const atOldest = currentIndex === yearGrids.length - 1;
+
+            prevBtn.style.visibility = atOldest ? "hidden" : "visible";
+            nextBtn.style.visibility = atNewest ? "hidden" : "visible";
+
+            prevBtn.classList.toggle(
+                "has-dot",
+                !atOldest && yearGrids.slice(currentIndex + 1).some(gridHasSelection)
+            );
+            nextBtn.classList.toggle(
+                "has-dot",
+                !atNewest && yearGrids.slice(0, currentIndex).some(gridHasSelection)
+            );
+        }
+
+        prevBtn.addEventListener("click", function () {
+            if (currentIndex < yearGrids.length - 1) {
+                currentIndex += 1;
+                renderPager();
+            }
         });
-    });
+
+        nextBtn.addEventListener("click", function () {
+            if (currentIndex > 0) {
+                currentIndex -= 1;
+                renderPager();
+            }
+        });
+
+        updatePager = renderPager;
+        renderPager();
+    }
 
     updateText();
     updateSelectAllState();

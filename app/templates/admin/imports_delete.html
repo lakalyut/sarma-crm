@@ -175,7 +175,10 @@
             if (dateRange && checked.length > 1) {
                 const indices = checked.map(cb => all.indexOf(cb)).sort((a, b) => a - b);
                 const isContiguous = indices[indices.length - 1] - indices[0] === indices.length - 1;
-                const byValue = [...checked].sort((a, b) => a.value.localeCompare(b.value));
+                // Значение чекбокса не всегда ISO-дата (см. app/utils/dates.py:parse_month) —
+                // сортировка по localeCompare(value) для "Месяц Год"-строк не хронологическая.
+                // DOM-порядок уже хронологический, просто разворачиваем его.
+                const byValue = [...checked].sort((a, b) => all.indexOf(b) - all.indexOf(a));
 
                 if (checked.length > 3) {
                     if (isContiguous) {
