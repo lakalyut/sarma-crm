@@ -23,7 +23,13 @@
     align-items: center;
     justify-content: center;
     width: 20px;
+    height: 20px;
     flex-shrink: 0;
+}
+
+.ca-toggle svg {
+    width: 12px;
+    height: 12px;
 }
 
 .ca-indent-client {

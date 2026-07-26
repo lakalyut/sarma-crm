@@ -28,7 +28,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-monthly" aria-expanded="true">⌄</button>
+                    <button type="button" class="amb-toggle" data-target="cd-monthly" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">Динамика по месяцам</h2>
                 </div>
             </div>
@@ -66,7 +66,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-sku-status" aria-expanded="true">⌄</button>
+                    <button type="button" class="amb-toggle" data-target="cd-sku-status" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">SKU-статусы</h2>
                 </div>
 
@@ -93,9 +93,9 @@
                     {% endif %}
 
                     <div class="amb-settings-toggle-line">
-                        <button type="button" class="amb-link-toggle" id="cd-status-settings-toggle">
+                        <button type="button" class="amb-link-toggle" id="cd-status-settings-toggle" aria-expanded="false">
                             Настройки статусов SKU
-                            <span class="amb-settings-arrow">▾</span>
+                            <span class="amb-settings-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
                         </button>
                     </div>
 
@@ -203,7 +203,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-abc" aria-expanded="true">⌄</button>
+                    <button type="button" class="amb-toggle" data-target="cd-abc" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">Ассортимент по ABC</h2>
                 </div>
             </div>
@@ -279,7 +279,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-summary" aria-expanded="true">⌄</button>
+                    <button type="button" class="amb-toggle" data-target="cd-summary" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">Показатели</h2>
                 </div>
             </div>
@@ -311,7 +311,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-chart" aria-expanded="true">⌄</button>
+                    <button type="button" class="amb-toggle" data-target="cd-chart" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">График</h2>
                 </div>
             </div>
@@ -436,7 +436,6 @@
                 const expanded = !hidden;
 
                 btn.setAttribute("aria-expanded", expanded ? "true" : "false");
-                btn.textContent = expanded ? "⌄" : "›";
             });
         });
     });
@@ -449,14 +448,9 @@
 
         if (!toggle || !panel) return;
 
-        const arrow = toggle.querySelector(".amb-settings-arrow");
-
         toggle.addEventListener("click", function () {
             const isOpen = panel.classList.toggle("open");
-
-            if (arrow) {
-                arrow.textContent = isOpen ? "▴" : "▾";
-            }
+            toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
         });
     });
     </script>

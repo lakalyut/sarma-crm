@@ -448,7 +448,7 @@ document.addEventListener("DOMContentLoaded", function () {
             : (row.level === "client" ? state.expandedClients.has(row.parentType + "|" + row.key) : false);
 
         const toggle = hasChildren
-            ? `<button type="button" class="amb-toggle ca-toggle" data-ca-toggle data-level="${row.level}" data-key="${escHtml(row.key)}"${row.parentType ? ` data-type="${escHtml(row.parentType)}"` : ""} aria-expanded="${isExpanded ? "true" : "false"}">${isExpanded ? "⌄" : "›"}</button>`
+            ? `<button type="button" class="amb-toggle ca-toggle" data-ca-toggle data-level="${row.level}" data-key="${escHtml(row.key)}"${row.parentType ? ` data-type="${escHtml(row.parentType)}"` : ""} aria-expanded="${isExpanded ? "true" : "false"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>`
             : `<span class="ca-toggle-placeholder"></span>`;
 
         const abcHtml = row.level === "client" ? abcBadgesHtml(row.abc) : "";
