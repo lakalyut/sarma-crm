@@ -99,7 +99,7 @@
             {% if current_user and current_user.role == "admin" %}
             <div class="field filter-field">
                 <label>Только сопоставленные</label>
-                <select name="matched">
+                <select name="matched" class="js-custom-select">
                     <option value="" {% if matched is none %}selected{% endif %}>Все</option>
                     <option value="1" {% if matched is sameas true %}selected{% endif %}>Да</option>
                     <option value="0" {% if matched is sameas false %}selected{% endif %}>Нет</option>

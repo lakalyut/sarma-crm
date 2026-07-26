@@ -437,7 +437,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }).join("");
 
         return ` <span class="ca-segment-wrap">Сегмент:
-            <select class="ca-segment-select" data-ca-segment-select data-type="${escHtml(type)}">${options}</select>
+            <select class="ca-segment-select js-custom-select" data-ca-segment-select data-type="${escHtml(type)}">${options}</select>
         </span>`;
     }
 
@@ -569,6 +569,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         tbody.innerHTML = html.join("");
+        initCustomSelects(tbody);
     }
 
     function apiUrl(path, params) {

@@ -335,6 +335,16 @@ table.sheet-table tbody tr:hover td {
         background-position: right 6px center;
     }
 
+.abc-matrix-table .custom-select-display {
+        min-height: 32px;
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+.abc-matrix-table .custom-select-dropdown {
+        min-width: 90px;
+    }
+
 .abc-matrix-table input[type="checkbox"] {
         width: 18px;
         height: 18px;

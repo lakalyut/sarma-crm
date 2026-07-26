@@ -36,7 +36,7 @@
                             <tr>
                                 <td>{{ city }}</td>
                                 <td>
-                                    <select name="region_{{ city }}">
+                                    <select name="region_{{ city }}" class="js-custom-select">
                                         <option value="" {% if not current %}selected{% endif %}>—</option>
                                         {% for region in regions %}
                                             <option value="{{ region.id }}" {% if current and current.region_id == region.id %}selected{% endif %}>{{ region.name }}</option>

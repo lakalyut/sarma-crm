@@ -31,7 +31,7 @@
           <td>{{ u.email }}</td>
           <td>
             <form method="post" action="/admin/users/{{ u.id }}/change-role" style="display:inline-flex; gap:8px; align-items:center;">
-              <select name="role" style="min-width:120px;">
+              <select name="role" class="js-custom-select" style="min-width:120px;">
                 <option value="user" {% if u.role == "user" %}selected{% endif %}>user</option>
                 <option value="admin" {% if u.role == "admin" %}selected{% endif %}>admin</option>
               </select>

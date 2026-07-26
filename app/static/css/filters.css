@@ -54,9 +54,11 @@
     }
 
 /* Единый вид для всех контролов строки фильтров: поиск, нативный select
+   (JS-фоллбэк, если custom_select.js не подхватился), .custom-select-display
    и .multiselect-display должны выглядеть как одна семья контролов. */
 .filter-field-region-search input[type="text"],
-.filter-field select {
+.filter-field select,
+.filter-field .custom-select-display {
         border: 1px solid var(--input-border);
         border-radius: 10px;
         background-color: var(--surface);
@@ -66,7 +68,9 @@
 
 /* Кастомная стрелка/appearance у select — теперь в базовом правиле select
    (forms.css), общем для всего приложения. Тут только переопределяем
-   padding-right, который иначе перебила бы шорткат-запись padding выше. */
+   padding-right, который иначе перебила бы шорткат-запись padding выше.
+   Актуально только как фоллбэк на случай, если custom_select.js не
+   подхватился — в норме select здесь заменён на .custom-select. */
 .filter-field select {
         padding-right: 34px;
     }
@@ -77,6 +81,7 @@
 .filter-field input[type="password"],
 .filter-field input[type="number"],
 .filter-field select,
+.filter-field .custom-select,
 .filter-field .multiselect-display {
         width: 100%;
     }

@@ -42,7 +42,7 @@
                                     {% for segment in segments %}
                                         {% set current = rating_map.get((product.id, segment.id)) %}
                                         <td>
-                                            <select name="category_{{ product.id }}_{{ segment.id }}">
+                                            <select name="category_{{ product.id }}_{{ segment.id }}" class="js-custom-select">
                                                 <option value="" {% if not current %}selected{% endif %}>—</option>
                                                 {% for cat in categories %}
                                                     <option value="{{ cat }}" {% if current == cat %}selected{% endif %}>{{ cat }}</option>

@@ -71,6 +71,18 @@
     background-position: right 6px center;
 }
 
+.ca-segment-select .custom-select-display {
+    min-height: auto;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-weight: 400;
+    gap: 4px;
+}
+
+.ca-segment-select .custom-select-dropdown {
+    min-width: 120px;
+}
+
 .ca-cell-total {
     font-weight: 600;
 }
