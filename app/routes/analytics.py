@@ -74,11 +74,12 @@ def analytics_clients(
         )
 
     all_months = get_months(db, city=city, reverse=True)
-    all_types = get_types(db, city=city)
 
     selected_months = months or []
     if all_months:
         selected_months = [m for m in selected_months if m in all_months]
+
+    all_types = get_types(db, city=city, months=selected_months)
 
     selected_types = sale_types or []
     if all_types:
@@ -164,11 +165,12 @@ def analytics_charts(
         )
 
     all_months = get_months(db, city=city, reverse=True)
-    all_types = get_types(db, city=city)
 
     selected_months = months or []
     if all_months:
         selected_months = [m for m in selected_months if m in all_months]
+
+    all_types = get_types(db, city=city, months=selected_months)
 
     selected_types = sale_types or []
     if all_types:

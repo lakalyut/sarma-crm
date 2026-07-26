@@ -85,13 +85,14 @@ def client_analysis_page(
         )
 
     all_months = get_months(db, city=city, reverse=True)
-    all_clients = get_clients(db, city=city)
 
     raw_selected_months = [m for m in (months or []) if m in all_months]
     selected_months = normalize_selected_months(
         selected_months=raw_selected_months,
         all_months=all_months,
     )
+
+    all_clients = get_clients(db, city=city, months=raw_selected_months)
     selected_clients = [c for c in (clients or []) if c in all_clients]
 
     if active_tab == "ambassadors":

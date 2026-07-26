@@ -21,11 +21,18 @@ def get_months(db: Session, city: str | None = None, reverse: bool = True) -> li
     return sorted(months, key=month_sort_key, reverse=reverse)
 
 
-def get_types(db: Session, city: str | None = None) -> list[str]:
+def get_types(
+    db: Session,
+    city: str | None = None,
+    months: list[str] | None = None,
+) -> list[str]:
     query = db.query(Sale.type).filter(Sale.type.isnot(None))
 
     if city:
         query = query.filter(Sale.city == city)
+
+    if months:
+        query = query.filter(Sale.month.in_(months))
 
     return [row[0] for row in query.distinct().order_by(Sale.type).all() if row[0]]
 
@@ -33,12 +40,16 @@ def get_types(db: Session, city: str | None = None) -> list[str]:
 def get_clients(
     db: Session,
     city: str | None = None,
+    months: list[str] | None = None,
     filters: list | None = None,
 ) -> list[str]:
     query = db.query(Sale.client).filter(Sale.client.isnot(None))
 
     if city:
         query = query.filter(Sale.city == city)
+
+    if months:
+        query = query.filter(Sale.month.in_(months))
 
     if filters:
         query = query.filter(*filters)
