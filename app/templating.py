@@ -77,18 +77,36 @@ def group_months_by_year(all_months, selected_months=None):
     """Группирует уже отсортированный (reverse-chronological) список месяцев
     по году, сохраняя порядок первого появления. Возвращает список
     (год, месяцы_года, кол-во_выбранных_в_этом_году) — под аккордеон
-    выбора периода (год — заголовок, месяцы — сетка)."""
+    выбора периода (год — заголовок, месяцы — сетка).
+
+    Год берётся через datetime.fromisoformat(), не срезом строки m[:4] —
+    Sale.month не валидируется при импорте, на "грязных" данных (значение
+    уже отформатировано как "Июнь 2026" вместо "2026-06-01") m[:4] дал бы
+    "Июнь" и склеил бы вместе месяцы из разных годов под одним заголовком.
+    Неразбираемые значения уходят в один общий хвостовой бакет "—", не
+    смешиваясь ни с реальными годами, ни друг с другом по случайному
+    совпадению первых символов."""
     selected_set = set(selected_months or [])
     years: dict[str, list[str]] = {}
 
     for m in all_months or []:
-        year = m[:4]
+        try:
+            year = str(datetime.fromisoformat(m).year)
+        except (TypeError, ValueError):
+            year = ""
         years.setdefault(year, []).append(m)
 
-    return [
+    unknown = years.pop("", None)
+
+    result = [
         (year, months, sum(1 for m in months if m in selected_set))
         for year, months in years.items()
     ]
+
+    if unknown:
+        result.append(("—", unknown, sum(1 for m in unknown if m in selected_set)))
+
+    return result
 
 
 def tojson_filter(value):
