@@ -532,6 +532,14 @@ document.addEventListener("DOMContentLoaded", function () {
         return url.toString();
     }
 
+    if (!hidden.value) {
+        const lastRegion = window.PulseRegionMemory && window.PulseRegionMemory.get();
+        if (lastRegion) {
+            window.location.replace(buildRegionUrl(lastRegion));
+            return;
+        }
+    }
+
     input.addEventListener("focus", filterItems);
     input.addEventListener("input", filterItems);
 
@@ -553,6 +561,7 @@ document.addEventListener("DOMContentLoaded", function () {
             input.value = "";
             dropdown.style.display = "none";
 
+            if (window.PulseRegionMemory) window.PulseRegionMemory.save(value);
             window.location.href = buildRegionUrl(value);
         });
     });

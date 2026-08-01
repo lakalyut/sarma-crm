@@ -162,12 +162,31 @@ document.addEventListener("DOMContentLoaded", function () {
     const input = document.getElementById("regions-city-search");
     const dropdown = document.getElementById("regions-city-dropdown");
     const tags = document.getElementById("regions-cities-tags");
+    const form = document.getElementById("regions-filters-form");
     if (!input || !dropdown || !tags) return;
 
     const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
 
     function existingValues() {
         return Array.from(tags.querySelectorAll('input[name="cities"], input[name="regions"]')).map(i => i.value);
+    }
+
+    const currentParams = new URLSearchParams(window.location.search);
+    if (!currentParams.has("cities") && !currentParams.has("regions")) {
+        const lastRegion = window.PulseRegionMemory && window.PulseRegionMemory.get();
+        if (lastRegion) {
+            const url = new URL(window.location.origin + "/analytics/regions");
+            url.searchParams.set("cities", lastRegion);
+            window.location.replace(url.toString());
+            return;
+        }
+    }
+
+    if (form) {
+        form.addEventListener("submit", function () {
+            const first = existingValues()[0];
+            if (window.PulseRegionMemory) window.PulseRegionMemory.save(first);
+        });
     }
 
     function syncCheckboxes() {

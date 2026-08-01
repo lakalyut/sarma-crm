@@ -421,6 +421,14 @@ document.addEventListener("DOMContentLoaded", function () {
         dropdown.style.display = visibleCount > 0 ? "block" : "none";
     }
 
+    if (!hidden.value) {
+        const lastRegion = window.PulseRegionMemory && window.PulseRegionMemory.get();
+        if (lastRegion) {
+            window.location.replace(buildRegionUrl(lastRegion));
+            return;
+        }
+    }
+
     function buildRegionUrl(cityValue) {
         const url = new URL(window.location.origin + "/analytics/clients");
         url.searchParams.set("city", cityValue);
@@ -475,6 +483,7 @@ document.addEventListener("DOMContentLoaded", function () {
             input.value = "";
             dropdown.style.display = "none";
 
+            if (window.PulseRegionMemory) window.PulseRegionMemory.save(value);
             window.location.href = buildRegionUrl(value);
         });
     });
