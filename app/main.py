@@ -18,6 +18,7 @@ from .routes.admin_users import router as admin_users_router
 from .routes.analytics import router as analytics_router
 from .routes.client_analysis import router as client_analysis_router
 from .routes.dashboard import router as dashboard_router
+from .routes.events import router as events_router
 from .routes.imports import router as imports_router
 from .routes.misc import router as misc_router
 from .routes.products import router as products_router
@@ -54,6 +55,7 @@ app.include_router(admin_imports_router)
 app.include_router(client_analysis_router)
 app.include_router(admin_abc_router)
 app.include_router(admin_regions_router)
+app.include_router(events_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 

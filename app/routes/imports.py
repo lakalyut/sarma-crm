@@ -15,6 +15,7 @@ from ..product_parser import (
     match_product_by_flavor,
 )
 from ..render import render
+from ..services.event_log_service import log_import
 from ..services.sales_options_service import get_months, get_types
 from ..templating import format_month
 
@@ -50,7 +51,7 @@ async def import_xlsx(
     city: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
 ):
     content = await file.read()
     try:
@@ -81,15 +82,19 @@ async def import_xlsx(
 
     imported = 0
     unmatched = 0
+    months_seen: set[str] = set()
 
     for _, row in df.iterrows():
         raw_name = str(row["Номенклатура"])
         raw_sku = str(row["SKU"])
         p, _score = match_product_by_flavor(raw_name, products)
 
+        month = str(row["Месяц"])
+        months_seen.add(month)
+
         sale = Sale(
             city=city,
-            month=str(row["Месяц"]),
+            month=month,
             type=str(row["Тип"]),
             client=str(row["Клиент"]),
             raw_name=raw_name,
@@ -112,6 +117,15 @@ async def import_xlsx(
         imported += 1
 
     db.commit()
+
+    log_import(
+        db,
+        city=city,
+        months=sorted(months_seen),
+        rows_imported=imported,
+        rows_unmatched=unmatched,
+        user_id=admin.id,
+    )
 
     return render(
         request,

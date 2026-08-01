@@ -1,6 +1,9 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import (
     Boolean,
     Column,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -101,3 +104,23 @@ class Sale(Base):
     weight = Column(Float)
 
     matched = Column(Boolean, default=False)
+
+
+class EventLog(Base):
+    __tablename__ = "event_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    event_type = Column(String, nullable=False, default="import")
+    city = Column(String, nullable=False)
+    months = Column(String, nullable=False, default="")
+
+    rows_imported = Column(Integer, nullable=False, default=0)
+    rows_unmatched = Column(Integer, nullable=False, default=0)
+
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+    user = relationship("User")

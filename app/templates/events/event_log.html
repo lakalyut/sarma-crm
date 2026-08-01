@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Лента событий</h1>
+
+<div class="filters-card">
+    <form method="get" class="filters-grid">
+        <div class="field filter-field">
+            <label for="event-city-filter">Город</label>
+            <select id="event-city-filter" name="city" class="js-custom-select" onchange="this.form.submit()">
+                <option value="">Все города</option>
+                {% for c in cities %}
+                    <option value="{{ c }}" {% if c == selected_city %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+{% if not events %}
+    {% include "includes/empty_state.html" %}
+{% else %}
+    <div class="sheet-wrapper" style="margin-top: 12px;">
+        <div class="sheet-scroller">
+            <table class="sheet-table">
+                <thead>
+                <tr>
+                    <th>Когда</th>
+                    <th>Кто</th>
+                    <th>Событие</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for e in events %}
+                    <tr>
+                        <td>{{ e.created_at.strftime("%d.%m.%Y %H:%M") }}</td>
+                        <td>{{ e.user_email }}</td>
+                        <td>
+                            загрузил {{ e.city }}{% if e.months_display %}, {{ e.months_display }}{% endif %}:
+                            {{ e.rows_imported }} строк{% if e.rows_unmatched %}, {{ e.rows_unmatched }} несопоставлено{% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
