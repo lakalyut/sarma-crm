@@ -4,8 +4,45 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models import Sale
+from ..templating import format_month
+from ..utils.dates import month_sort_key
 from .abc_service import get_abc_badges_for_clients
 from .sale_filters import build_sale_filters
+
+
+def get_summary_totals(
+    db: Session,
+    city: str,
+    months: list[str] | None = None,
+    clients: list[str] | None = None,
+) -> dict:
+    """Помесячные итоги по всей текущей выборке (все типы точки/клиенты вместе) —
+    для карточек-метрик сверху «Свода». Уникальные SKU — отдельный distinct-запрос
+    на месяц, не сумма по типам (иначе SKU, повторившийся в нескольких типах, задвоился бы).
+    """
+    filters = build_sale_filters(city=city, months=months, clients=clients)
+
+    monthly_rows = (
+        db.query(
+            Sale.month.label("month"),
+            func.sum(Sale.qty).label("qty"),
+            func.sum(Sale.weight).label("weight"),
+            func.count(func.distinct(Sale.sku)).label("sku_count"),
+        )
+        .filter(*filters)
+        .group_by(Sale.month)
+        .all()
+    )
+
+    month_list = sorted({r.month for r in monthly_rows if r.month}, key=month_sort_key)
+    by_month = {row.month: row for row in monthly_rows}
+
+    return {
+        "labels": [format_month(m) for m in month_list],
+        "weight": [float(by_month[m].weight or 0) for m in month_list],
+        "qty": [float(by_month[m].qty or 0) for m in month_list],
+        "unique_sku": [int(by_month[m].sku_count or 0) for m in month_list],
+    }
 
 
 def get_types_rollup(

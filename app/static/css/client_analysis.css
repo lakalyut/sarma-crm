@@ -2,6 +2,10 @@
    Анализ по клиентам: иерархическая таблица
 ========================= */
 
+#ca-metric-cards.metrics-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .ca-col-label {
     width: 340px;
 }
@@ -85,6 +89,17 @@
 
 .ca-cell-total {
     font-weight: 600;
+}
+
+.ca-abc-row td {
+    background: var(--surface-alt);
+    padding-left: 20px;
+}
+
+.ca-abc-row-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-right: 4px;
 }
 
 .ca-subtoggle-row td {

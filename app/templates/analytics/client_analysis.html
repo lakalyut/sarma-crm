@@ -109,6 +109,13 @@
 {% elif not types %}
     <div class="message" style="margin-top: 12px;">Нет данных под выбранные фильтры.</div>
 {% else %}
+    <div class="metrics-cards" id="ca-metric-cards" style="margin-top: 10px;"></div>
+    <div
+        id="ca-summary-totals"
+        style="display:none;"
+        data-summary-totals="{{ summary_totals|tojson }}"
+    ></div>
+
     <div class="summary-panel" style="margin-top: 10px;">
         <div class="summary-panel-header">
             <span class="summary-panel-title">Сводка по клиентам</span>
@@ -155,6 +162,113 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const container = document.getElementById("ca-metric-cards");
+    const dataEl = document.getElementById("ca-summary-totals");
+    if (!container || !dataEl) return;
+
+    const totals = JSON.parse(dataEl.dataset.summaryTotals || "{}");
+    const labels = totals.labels || [];
+    if (!labels.length) return;
+
+    const lastIndex = labels.length - 1;
+    const prevIndex = lastIndex - 1;
+
+    function formatNumber(value, digits) {
+        return Number(value || 0).toLocaleString("ru-RU", {
+            minimumFractionDigits: digits,
+            maximumFractionDigits: digits
+        });
+    }
+
+    function calcDelta(current, base) {
+        current = Number(current || 0);
+        base = Number(base || 0);
+        if (!base) return null;
+        return ((current - base) / base) * 100;
+    }
+
+    function calcAverage(arr) {
+        const values = (arr || []).map(Number).filter(v => !Number.isNaN(v));
+        if (!values.length) return null;
+        return values.reduce((acc, v) => acc + v, 0) / values.length;
+    }
+
+    function formatDelta(delta, label, diff, digits, unit) {
+        if (delta === null || delta === undefined || Number.isNaN(delta)) {
+            return `
+                <div class="metric-delta-row">
+                    <span class="metric-delta muted">нет сравнения</span>
+                    <span class="metric-delta-label">${label}</span>
+                </div>
+            `;
+        }
+
+        const sign = delta > 0 ? "+" : "";
+        const cls = delta > 0 ? "delta-up" : (delta < 0 ? "delta-down" : "delta-neutral");
+        const diffSign = diff > 0 ? "+" : "";
+        const diffText = ` (${diffSign}${formatNumber(diff, digits)}${unit ? " " + unit : ""})`;
+
+        return `
+            <div class="metric-delta-row">
+                <span class="metric-delta ${cls}">${sign}${delta.toFixed(0)}%${diffText}</span>
+                <span class="metric-delta-label">${label}</span>
+            </div>
+        `;
+    }
+
+    function getCard(valueArr, label, digits, unit) {
+        const current = Number(valueArr?.[lastIndex] ?? 0);
+        const prev = prevIndex >= 0 ? Number(valueArr?.[prevIndex] ?? 0) : null;
+        const first = Number(valueArr?.[0] ?? 0);
+        const average = calcAverage((valueArr || []).slice(0, lastIndex));
+
+        const prevDelta = calcDelta(current, prev);
+        const avgDelta = calcDelta(current, average);
+        const firstDelta = calcDelta(current, first);
+
+        const prevDiff = current - (prev || 0);
+        const avgDiff = current - (average || 0);
+        const firstDiff = current - first;
+
+        return `
+            <div class="metric-card">
+                <div class="metric-label">${label}</div>
+                <div class="metric-value">${formatNumber(current, digits)} ${unit}</div>
+                <div class="metric-period">за ${labels[lastIndex]}</div>
+
+                <div class="metric-delta-wrap">
+                    ${formatDelta(
+                        prevDelta,
+                        prevIndex >= 0 ? `к прошлому месяцу (${labels[prevIndex]})` : "к прошлому месяцу",
+                        prevDiff,
+                        digits,
+                        unit
+                    )}
+
+                    ${formatDelta(avgDelta, "к среднему за период", avgDiff, digits, unit)}
+
+                    ${formatDelta(
+                        firstDelta,
+                        `к началу периода (${labels[0]})`,
+                        firstDiff,
+                        digits,
+                        unit
+                    )}
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = [
+        getCard(totals.weight, "Вес", 2, "кг"),
+        getCard(totals.qty, "Количество", 0, ""),
+        getCard(totals.unique_sku, "Уникальных SKU", 0, ""),
+    ].join("");
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
     initCheckboxMultiselect({
         id: "ca-months-multiselect",
         inputName: "months",
@@ -191,6 +305,18 @@ document.addEventListener("DOMContentLoaded", function () {
         dropdown.style.display = visibleCount > 0 ? "block" : "none";
     }
 
+    function buildRegionUrl(cityValue) {
+        return "/analytics/client-analysis?city=" + encodeURIComponent(cityValue);
+    }
+
+    if (!hidden.value) {
+        const lastRegion = window.PulseRegionMemory && window.PulseRegionMemory.get();
+        if (lastRegion) {
+            window.location.replace(buildRegionUrl(lastRegion));
+            return;
+        }
+    }
+
     input.addEventListener("focus", filterItems);
     input.addEventListener("input", filterItems);
 
@@ -212,7 +338,8 @@ document.addEventListener("DOMContentLoaded", function () {
             input.value = "";
             dropdown.style.display = "none";
 
-            window.location.href = "/analytics/client-analysis?city=" + encodeURIComponent(value);
+            if (window.PulseRegionMemory) window.PulseRegionMemory.save(value);
+            window.location.href = buildRegionUrl(value);
         });
     });
 
@@ -451,7 +578,6 @@ document.addEventListener("DOMContentLoaded", function () {
             ? `<button type="button" class="amb-toggle ca-toggle" data-ca-toggle data-level="${row.level}" data-key="${escHtml(row.key)}"${row.parentType ? ` data-type="${escHtml(row.parentType)}"` : ""} aria-expanded="${isExpanded ? "true" : "false"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>`
             : `<span class="ca-toggle-placeholder"></span>`;
 
-        const abcHtml = row.level === "client" ? abcBadgesHtml(row.abc) : "";
         const segmentHtml = row.level === "type" ? segmentSelectHtml(row.key) : "";
 
         const monthCells = state.months.map(function (m) {
@@ -462,11 +588,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return `<tr class="ca-row ca-row-${row.level}">
             <td class="ca-label-cell">
-                <span class="ca-indent ca-indent-${row.level}">${toggle}<span class="ca-label-text">${escHtml(row.label)}</span>${abcHtml}${segmentHtml}</span>
+                <span class="ca-indent ca-indent-${row.level}">${toggle}<span class="ca-label-text">${escHtml(row.label)}</span>${segmentHtml}</span>
             </td>
             ${monthCells}
             ${totalCell}
         </tr>`;
+    }
+
+    function abcBadgesRowHtml(abc) {
+        const badges = abcBadgesHtml(abc);
+        if (!badges) return "";
+        const colspan = state.months.length + 2;
+        return `<tr class="ca-abc-row"><td colspan="${colspan}"><span class="ca-abc-row-label">ABC:</span> ${badges}</td></tr>`;
     }
 
     function subToggleHtml(type, client) {
@@ -541,6 +674,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const clientKey = t.type + "|" + c.client;
                 if (!state.expandedClients.has(clientKey)) return;
 
+                html.push(abcBadgesRowHtml(c.abc));
                 html.push(subToggleHtml(t.type, c.client));
 
                 const view = state.clientSubView[clientKey] || "nomenclature";

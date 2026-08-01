@@ -20,6 +20,7 @@ from ..services.ambassadors_service import (
 from ..services.client_analysis_service import (
     get_clients_rollup,
     get_nomenclature_rollup,
+    get_summary_totals,
     get_types_rollup,
 )
 from ..services.sales_options_service import get_cities, get_clients, get_months
@@ -78,6 +79,12 @@ def client_analysis_page(
                 "first_type_clients": [],
                 "first_type_segment_id": None,
                 "type_default_segment_id": {},
+                "summary_totals": {
+                    "labels": [],
+                    "weight": [],
+                    "qty": [],
+                    "unique_sku": [],
+                },
                 "empty_state": {
                     "hint": "Выберите регион в фильтре выше — здесь появится анализ по клиентам"
                 },
@@ -185,6 +192,10 @@ def client_analysis_page(
         for t in types
     }
 
+    summary_totals = get_summary_totals(
+        db, city=city, months=selected_months, clients=selected_clients
+    )
+
     first_type = types[0]["type"] if types else None
     first_type_segment_id = (
         type_default_segment_id.get(first_type) if first_type else None
@@ -219,6 +230,7 @@ def client_analysis_page(
             "first_type_clients": first_type_clients,
             "first_type_segment_id": first_type_segment_id,
             "type_default_segment_id": type_default_segment_id,
+            "summary_totals": summary_totals,
         },
     )
 
