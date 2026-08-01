@@ -1,5 +1,5 @@
 import hashlib
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
 from .auth_models import (
+    LoginAttempt,
     PasswordToken,
     SessionModel,
     User,
@@ -18,6 +19,9 @@ from .database import get_db
 from .templating import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+LOGIN_ATTEMPT_LIMIT = 5
+LOGIN_ATTEMPT_WINDOW_MINUTES = 15
 
 
 def sha256_hex(value: str) -> str:
@@ -44,14 +48,33 @@ def login(
 ):
     email = email.strip().lower()
 
+    window_start = datetime.now(UTC) - timedelta(minutes=LOGIN_ATTEMPT_WINDOW_MINUTES)
+    recent_attempts = (
+        db.query(LoginAttempt)
+        .filter(LoginAttempt.email == email, LoginAttempt.created_at >= window_start)
+        .count()
+    )
+    if recent_attempts >= LOGIN_ATTEMPT_LIMIT:
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {
+                "request": request,
+                "error": "Слишком много попыток входа. Попробуйте позже.",
+            },
+        )
+
     user = db.query(User).filter(User.email == email).first()
     if not user or not user.is_active or not user.password_hash:
+        db.add(LoginAttempt(email=email))
+        db.commit()
         return templates.TemplateResponse(
             "auth/login.html",
             {"request": request, "error": "Неверный логин или пароль"},
         )
 
     if not verify_password(password, user.password_hash):
+        db.add(LoginAttempt(email=email))
+        db.commit()
         return templates.TemplateResponse(
             "auth/login.html",
             {"request": request, "error": "Неверный логин или пароль"},

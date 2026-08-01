@@ -37,6 +37,17 @@ class SessionModel(Base):
     user = relationship("User")
 
 
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    email = Column(String, index=True, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+
 class PasswordToken(Base):
     __tablename__ = "password_tokens"
 
