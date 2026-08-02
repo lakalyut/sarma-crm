@@ -138,6 +138,27 @@
         text-overflow: ellipsis;
     }
 
+.sidebar-nav-badge {
+        margin-left: auto;
+        flex-shrink: 0;
+        background: var(--primary);
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 3px 6px;
+        border-radius: var(--radius-full);
+    }
+
+.sidebar-nav-link.active .sidebar-nav-badge {
+        background: #ffffff;
+        color: var(--primary);
+    }
+
+html.sidebar-collapsed .sidebar-nav-badge {
+        display: none;
+    }
+
 .sidebar-footer {
         margin-top: auto;
         padding-top: 12px;

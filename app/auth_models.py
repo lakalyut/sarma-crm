@@ -22,6 +22,8 @@ class User(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
+    events_last_seen_at = Column(DateTime(timezone=True), nullable=True)
+
 
 class SessionModel(Base):
     __tablename__ = "sessions"

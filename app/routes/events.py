@@ -5,7 +5,11 @@ from ..auth_deps import require_user
 from ..auth_models import User
 from ..database import get_db
 from ..render import render
-from ..services.event_log_service import list_events
+from ..services.event_log_service import (
+    list_events,
+    mark_events_seen,
+    relative_day_label,
+)
 from ..services.sales_options_service import get_cities
 from ..templating import format_month_list
 
@@ -17,13 +21,16 @@ def event_log_page(
     request: Request,
     city: str = "",
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    user: User = Depends(require_user),
 ):
+    mark_events_seen(db, user)
+
     cities = get_cities(db)
 
     events = [
         {
-            "created_at": e.created_at,
+            "day_label": relative_day_label(e.created_at),
+            "time_label": e.created_at.strftime("%H:%M"),
             "user_email": e.user.email if e.user else "—",
             "city": e.city,
             "months_display": (
