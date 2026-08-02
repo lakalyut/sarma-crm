@@ -12,6 +12,11 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.database import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 
+# Мидлварь CSRF (app/csrf.py) сверяет cookie csrf_token с одноимённым полем
+# формы на каждом POST/PUT/PATCH/DELETE. Фикстуры сразу выставляют cookie —
+# тесты, которые шлют POST, обязаны передавать data={"csrf_token": CSRF_TOKEN, ...}.
+CSRF_TOKEN = "test-csrf-token"
+
 
 @pytest.fixture()
 def db_session():
@@ -27,7 +32,9 @@ def db_session():
 
 @pytest.fixture()
 def client(db_session):
-    return TestClient(app)
+    c = TestClient(app)
+    c.cookies.set("csrf_token", CSRF_TOKEN)
+    return c
 
 
 @pytest.fixture()

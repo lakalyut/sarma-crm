@@ -3,13 +3,14 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.status import HTTP_302_FOUND
 
 from .auth_deps import get_current_user
 from .auth_routes import router as auth_router
+from .csrf import csrf_guard
 from .database import Base, SessionLocal, engine
 from .routes.admin_abc import router as admin_abc_router
 from .routes.admin_imports import router as admin_imports_router
@@ -42,7 +43,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Пульс", lifespan=lifespan)
+app = FastAPI(title="Пульс", lifespan=lifespan, dependencies=[Depends(csrf_guard)])
 
 app.include_router(auth_router)
 app.include_router(admin_users_router)

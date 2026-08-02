@@ -21,6 +21,8 @@ from ..templating import format_month
 
 router = APIRouter()
 
+MAX_IMPORT_FILE_SIZE = 20 * 1024 * 1024
+
 
 @router.get("/api/imports/delete-options")
 def import_delete_options(
@@ -53,7 +55,28 @@ async def import_xlsx(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        return render(
+            request,
+            "imports/import_xlsx.html",
+            {
+                "title": "Импорт XLSX — Пульс",
+                "error": "Файл должен быть в формате .xlsx",
+            },
+        )
+
     content = await file.read()
+    if len(content) > MAX_IMPORT_FILE_SIZE:
+        size_mb = len(content) / (1024 * 1024)
+        return render(
+            request,
+            "imports/import_xlsx.html",
+            {
+                "title": "Импорт XLSX — Пульс",
+                "error": f"Файл слишком большой ({size_mb:.1f} МБ) — лимит 20 МБ.",
+            },
+        )
+
     try:
         df = pd.read_excel(io.BytesIO(content))
     except Exception as e:

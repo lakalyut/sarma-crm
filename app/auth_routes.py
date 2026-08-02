@@ -15,6 +15,7 @@ from .auth_models import (
     new_session_id,
 )
 from .auth_security import hash_password, verify_password
+from .csrf import attach_csrf_cookie, get_csrf_token
 from .database import get_db
 from .templating import templates
 
@@ -34,9 +35,18 @@ def _as_utc_aware(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
+def _render(request: Request, template_name: str, context: dict):
+    csrf_token = get_csrf_token(request)
+    response = templates.TemplateResponse(
+        template_name, {**context, "csrf_token": csrf_token}
+    )
+    attach_csrf_cookie(response, request, csrf_token)
+    return response
+
+
 @router.get("/login")
 def login_form(request: Request):
-    return templates.TemplateResponse("auth/login.html", {"request": request})
+    return _render(request, "auth/login.html", {"request": request})
 
 
 @router.post("/login")
@@ -55,7 +65,8 @@ def login(
         .count()
     )
     if recent_attempts >= LOGIN_ATTEMPT_LIMIT:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/login.html",
             {
                 "request": request,
@@ -67,7 +78,8 @@ def login(
     if not user or not user.is_active or not user.password_hash:
         db.add(LoginAttempt(email=email))
         db.commit()
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/login.html",
             {"request": request, "error": "Неверный логин или пароль"},
         )
@@ -75,7 +87,8 @@ def login(
     if not verify_password(password, user.password_hash):
         db.add(LoginAttempt(email=email))
         db.commit()
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/login.html",
             {"request": request, "error": "Неверный логин или пароль"},
         )
@@ -114,8 +127,8 @@ def logout(db: Session = Depends(get_db), request: Request = None):
 
 @router.get("/set-password")
 def set_password_form(request: Request, token: str):
-    return templates.TemplateResponse(
-        "auth/set_password.html", {"request": request, "token": token}
+    return _render(
+        request, "auth/set_password.html", {"request": request, "token": token}
     )
 
 
@@ -128,12 +141,14 @@ def set_password(
     db: Session = Depends(get_db),
 ):
     if password != password2:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/set_password.html",
             {"request": request, "token": token, "error": "Пароли не совпадают"},
         )
     if len(password) < 8:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/set_password.html",
             {"request": request, "token": token, "error": "Пароль слишком короткий"},
         )
@@ -145,7 +160,8 @@ def set_password(
         .first()
     )
     if not pt:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/set_password.html",
             {
                 "request": request,
@@ -156,7 +172,8 @@ def set_password(
 
     expires_at = _as_utc_aware(pt.expires_at)
     if expires_at < datetime.now(UTC):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/set_password.html",
             {
                 "request": request,
@@ -167,7 +184,8 @@ def set_password(
 
     user = db.query(User).filter(User.id == pt.user_id).first()
     if not user or not user.is_active:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "auth/set_password.html",
             {"request": request, "token": token, "error": "Пользователь не найден"},
         )
@@ -177,7 +195,8 @@ def set_password(
 
     db.commit()
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "auth/login.html",
         {"request": request, "message": "Пароль установлен. Теперь войдите."},
     )

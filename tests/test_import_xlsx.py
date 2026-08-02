@@ -6,6 +6,7 @@ from app.models import EventLog, Product, Sale
 from app.product_parser import normalize_text
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+CSRF_TOKEN = "test-csrf-token"  # см. tests/conftest.py
 
 
 def make_product(db_session, brand, flavor, category="Табак для кальяна", weight_g=120):
@@ -73,7 +74,7 @@ def test_import_matches_known_product_and_flags_unknown(
 
     resp = admin_client.post(
         "/import-xlsx",
-        data={"city": "Тестоград"},
+        data={"city": "Тестоград", "csrf_token": CSRF_TOKEN},
         files={"file": ("import.xlsx", build_xlsx(rows), XLSX_MIME)},
     )
 
@@ -120,7 +121,7 @@ def test_import_requires_admin(client):
 
     resp = client.post(
         "/import-xlsx",
-        data={"city": "Тестоград"},
+        data={"city": "Тестоград", "csrf_token": CSRF_TOKEN},
         files={"file": ("import.xlsx", build_xlsx(rows), XLSX_MIME)},
         follow_redirects=False,
     )
@@ -146,7 +147,7 @@ def test_import_missing_required_column_shows_error(admin_client, db_session):
 
     resp = admin_client.post(
         "/import-xlsx",
-        data={"city": "Тестоград"},
+        data={"city": "Тестоград", "csrf_token": CSRF_TOKEN},
         files={"file": ("import.xlsx", buf, XLSX_MIME)},
     )
 
@@ -159,10 +160,37 @@ def test_import_missing_required_column_shows_error(admin_client, db_session):
 def test_import_invalid_file_shows_error(admin_client, db_session):
     resp = admin_client.post(
         "/import-xlsx",
-        data={"city": "Тестоград"},
+        data={"city": "Тестоград", "csrf_token": CSRF_TOKEN},
         files={"file": ("import.xlsx", io.BytesIO(b"not an excel file"), XLSX_MIME)},
     )
 
     assert resp.status_code == 200
     assert "Ошибка чтения XLSX" in resp.text
+    assert db_session.query(Sale).count() == 0
+
+
+def test_import_rejects_non_xlsx_extension(admin_client, db_session):
+    resp = admin_client.post(
+        "/import-xlsx",
+        data={"city": "Тестоград", "csrf_token": CSRF_TOKEN},
+        files={"file": ("import.csv", io.BytesIO(b"month,type\n"), "text/csv")},
+    )
+
+    assert resp.status_code == 200
+    assert "должен быть в формате .xlsx" in resp.text
+    assert db_session.query(Sale).count() == 0
+
+
+def test_import_rejects_oversized_file(admin_client, db_session):
+    oversized = io.BytesIO(b"x" * (21 * 1024 * 1024))
+
+    resp = admin_client.post(
+        "/import-xlsx",
+        data={"city": "Тестоград", "csrf_token": CSRF_TOKEN},
+        files={"file": ("import.xlsx", oversized, XLSX_MIME)},
+    )
+
+    assert resp.status_code == 200
+    assert "слишком большой" in resp.text
+    assert "лимит 20 МБ" in resp.text
     assert db_session.query(Sale).count() == 0

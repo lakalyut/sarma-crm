@@ -1,5 +1,7 @@
 from app.models import Sale
 
+CSRF_TOKEN = "test-csrf-token"  # см. tests/conftest.py
+
 
 def make_sale(db_session, city, month, sale_type, client="Клиент", **overrides):
     sale = Sale(
@@ -34,7 +36,9 @@ def seed_mixed_sales(db_session):
 def test_preview_without_filters_shows_error(admin_client, db_session):
     seed_mixed_sales(db_session)
 
-    resp = admin_client.post("/admin/imports/delete/preview", data={})
+    resp = admin_client.post(
+        "/admin/imports/delete/preview", data={"csrf_token": CSRF_TOKEN}
+    )
 
     assert resp.status_code == 200
     assert "Укажи хотя бы один фильтр" in resp.text
@@ -46,7 +50,7 @@ def test_preview_counts_only_matching_rows(admin_client, db_session):
 
     resp = admin_client.post(
         "/admin/imports/delete/preview",
-        data={"city": "Москва", "months": ["2026-01-01"]},
+        data={"city": "Москва", "months": ["2026-01-01"], "csrf_token": CSRF_TOKEN},
     )
 
     assert resp.status_code == 200
@@ -58,7 +62,9 @@ def test_preview_counts_only_matching_rows(admin_client, db_session):
 def test_confirm_without_filters_is_rejected(admin_client, db_session):
     seed_mixed_sales(db_session)
 
-    resp = admin_client.post("/admin/imports/delete/confirm", data={})
+    resp = admin_client.post(
+        "/admin/imports/delete/confirm", data={"csrf_token": CSRF_TOKEN}
+    )
 
     assert resp.status_code == 200
     assert "Удаление без фильтров запрещено" in resp.text
@@ -70,7 +76,7 @@ def test_confirm_with_no_matches_reports_zero(admin_client, db_session):
 
     resp = admin_client.post(
         "/admin/imports/delete/confirm",
-        data={"city": "Новосибирск"},
+        data={"city": "Новосибирск", "csrf_token": CSRF_TOKEN},
     )
 
     assert resp.status_code == 200
@@ -85,7 +91,12 @@ def test_confirm_deletes_only_matching_rows(admin_client, db_session):
 
     resp = admin_client.post(
         "/admin/imports/delete/confirm",
-        data={"city": "Москва", "months": ["2026-01-01"], "sale_type": "HoReCa"},
+        data={
+            "city": "Москва",
+            "months": ["2026-01-01"],
+            "sale_type": "HoReCa",
+            "csrf_token": CSRF_TOKEN,
+        },
     )
 
     assert resp.status_code == 200
@@ -102,7 +113,7 @@ def test_delete_confirm_requires_admin(client, db_session):
 
     resp = client.post(
         "/admin/imports/delete/confirm",
-        data={"city": "Москва"},
+        data={"city": "Москва", "csrf_token": CSRF_TOKEN},
         follow_redirects=False,
     )
 
