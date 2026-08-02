@@ -562,7 +562,10 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     let activeMetric = "qty";
 
-    const METRIC_FIELD = { qty: "qty", weight: "weight", sku: "sku_count" };
+    // data-monthly теперь несёт позиционные триплеты [qty, weight, sku_count]
+    // (не {month, qty, weight, sku_count} — см. _get_monthly_by_client в
+    // clients_service.py), поэтому здесь индексы массива, не имена ключей.
+    const METRIC_FIELD = { qty: 0, weight: 1, sku: 2 };
     const METRIC_LABEL = { qty: "Кол-во", weight: "Вес", sku: "SKU" };
     const dynamicsMetricLabel = document.getElementById("dynamics-metric-label");
     const deltaMetricLabel = document.getElementById("delta-metric-label");
@@ -733,7 +736,7 @@ document.addEventListener("DOMContentLoaded", function () {
             th.addEventListener("click", function () {
                 const field = th.dataset.sort;
 
-                if (METRIC_FIELD[field] && activeMetric !== field) {
+                if (field in METRIC_FIELD && activeMetric !== field) {
                     activeMetric = field;
                     renderMetrics();
                 }

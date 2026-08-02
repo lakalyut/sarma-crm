@@ -83,6 +83,15 @@ def get_clients_summary_data(
 
 
 def _get_monthly_by_client(db: Session, filters: list) -> dict:
+    """Помесячные qty/вес/SKU на клиента — для спарклайна и Δ на «Клиентах».
+
+    Отдаётся клиенту как позиционные триплеты [qty, weight, sku_count], не
+    словари с ключами month/qty/weight/sku_count: этот JSON зашивается в
+    data-monthly каждой строки таблицы (тег-embed), а строк может быть
+    1000+ — повторение полных имён ключей в каждой из них раздувало страницу
+    на сотни КБ впустую. `month` в позиционном варианте не нужен: сортировка
+    уже сделана здесь (см. ниже), JS использует только порядок значений.
+    """
     q = db.query(
         Sale.type.label("type"),
         Sale.client.label("client"),
@@ -98,25 +107,23 @@ def _get_monthly_by_client(db: Session, filters: list) -> dict:
     q = q.group_by(Sale.type, Sale.client, Sale.month)
     rows = q.all()
 
-    monthly_by_client = defaultdict(list)
+    raw_by_client = defaultdict(list)
     for row in rows:
         if not row.month:
             continue
 
         key = f"{row.type}|{row.client}"
-        monthly_by_client[key].append(
-            {
-                "month": row.month,
-                "qty": float(row.qty or 0),
-                "weight": float(row.weight or 0),
-                "sku_count": int(row.sku_count or 0),
-            }
-        )
+        raw_by_client[key].append(row)
 
-    for months in monthly_by_client.values():
-        months.sort(key=lambda m: month_sort_key(m["month"]))
+    monthly_by_client = {}
+    for key, months in raw_by_client.items():
+        months.sort(key=lambda row: month_sort_key(row.month))
+        monthly_by_client[key] = [
+            [float(row.qty or 0), float(row.weight or 0), int(row.sku_count or 0)]
+            for row in months
+        ]
 
-    return dict(monthly_by_client)
+    return monthly_by_client
 
 
 def get_client_detail_data(

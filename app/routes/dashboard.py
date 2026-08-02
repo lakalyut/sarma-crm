@@ -66,7 +66,18 @@ def dashboard_page(
     )
 
     data = svc.get_regions_overview(db, query_cities, months, city_to_region_name)
-    detail_data = svc.get_regions_overview(db, query_cities, months)
+    # Без выбранного макро-региона схлопывать нечего — city_to_region_name
+    # пустой в обоих вызовах, detail_data вышел бы побайтово идентичен data
+    # (сам get_regions_overview это подтверждает: CASE по пустому словарю
+    # не меняет Sale.city). Второй проход по ~39к строк без индекса добавлял
+    # почти секунду на пустом месте — держали в голове, что «Общий график»
+    # и «По регионам отдельно» для отдельных городов и так совпадают
+    # (см. CLAUDE.md, раздел «Дашборд»), просто не переиспользовали расчёт.
+    detail_data = (
+        data
+        if not city_to_region_name
+        else svc.get_regions_overview(db, query_cities, months)
+    )
 
     return render(
         request,

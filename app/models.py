@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -104,6 +105,19 @@ class Sale(Base):
     weight = Column(Float)
 
     matched = Column(Boolean, default=False)
+
+    __table_args__ = (
+        # Почти вся аналитика фильтрует по городу (build_sale_filters, всегда
+        # первым) и часто сразу сужает по месяцам — префикс (city) покрывает
+        # и просто "WHERE city = ...", составной индекс закрывает обе формы
+        # одним индексом вместо двух.
+        Index("ix_sales_city_month", "city", "month"),
+        # Детализация клиента (get_client_detail_data) и «Свод»/«Анализ по
+        # клиентам» фильтруют по этой тройке точным совпадением (без
+        # диапазонов) — отдельный индекс, т.к. порядок колонок другой и
+        # (city, month) для него бесполезен.
+        Index("ix_sales_city_client_type", "city", "client", "type"),
+    )
 
 
 class EventLog(Base):

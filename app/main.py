@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.status import HTTP_302_FOUND
 
 from .auth_deps import get_current_user
@@ -44,6 +45,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Пульс", lifespan=lifespan, dependencies=[Depends(csrf_guard)])
+
+# Большие аналитические страницы (напр. «Клиенты» на крупном городе — тысячи
+# строк таблицы) отдают HTML в единицы МБ из-за повторяющейся разметки/атрибутов
+# на каждой строке; такой текст сжимается gzip'ом в 15-20 раз почти бесплатно по
+# CPU — сильно сокращает время загрузки на реальном канале (заметно на localhost
+# незначительно, но ощутимо на бою). min_size — не сжимать мелкие ответы (JSON API,
+# небольшие страницы), там оверхед gzip-заголовка не окупается.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(auth_router)
 app.include_router(admin_users_router)
