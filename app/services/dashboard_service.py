@@ -24,7 +24,14 @@ def _aggregate(db: Session, filters: list, dims: list[tuple[str, object]]) -> di
     total_sku — сумма по клиентам количества различных SKU у каждого (не
     сворачивается из готовой (city, month)-сетки простым суммированием, иначе
     задвоятся клиенты, повторившиеся в нескольких месяцах/городах) — поэтому
-    считается отдельным запросом на тех же dims + client.
+    считается отдельным запросом на тех же dims + client, но сама сумма —
+    подзапросом в SQL (SUM по sku_per_client), не Python-циклом. При широком
+    выборе (например, выбраны сразу все макро-регионы) промежуточная
+    (dims, client)-группировка может дать десятки тысяч строк — раньше все
+    они по одной прилетали в Python и суммировались там же в словаре, это
+    и было основным тормозом при выборе всех регионов разом (горизонт 12
+    ROADMAP.md, доп. заход). Теперь наружу уходит уже готовая сумма на
+    уровне dims — строк ровно столько же, сколько в base_rows.
     """
     group_cols = [col for _, col in dims]
     labels = [name for name, _ in dims]
@@ -53,7 +60,7 @@ def _aggregate(db: Session, filters: list, dims: list[tuple[str, object]]) -> di
         ]
     )
 
-    sku_rows = (
+    sku_per_client = (
         db.query(
             *[col.label(name) for name, col in dims],
             Sale.client.label("client"),
@@ -61,13 +68,28 @@ def _aggregate(db: Session, filters: list, dims: list[tuple[str, object]]) -> di
         )
         .filter(*filters)
         .group_by(*group_cols, Sale.client)
-        .all()
+        .subquery()
     )
 
-    total_sku_map: dict[tuple, int] = {}
-    for row in sku_rows:
-        key = tuple(getattr(row, name) for name in labels)
-        total_sku_map[key] = total_sku_map.get(key, 0) + int(row.sku_count or 0)
+    if dims:
+        total_sku_cols = [sku_per_client.c[name] for name in labels]
+        total_sku_rows = (
+            db.query(
+                *total_sku_cols,
+                func.sum(sku_per_client.c.sku_count).label("total_sku"),
+            )
+            .group_by(*total_sku_cols)
+            .all()
+        )
+    else:
+        total_sku_rows = [
+            db.query(func.sum(sku_per_client.c.sku_count).label("total_sku")).one()
+        ]
+
+    total_sku_map: dict[tuple, int] = {
+        tuple(getattr(row, name) for name in labels): int(row.total_sku or 0)
+        for row in total_sku_rows
+    }
 
     result: dict[tuple, dict] = {}
     for row in base_rows:
