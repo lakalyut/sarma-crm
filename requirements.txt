@@ -1,18 +1,17 @@
 fastapi==0.111.0
-uvicorn[standard]==0.30.1
+uvicorn[standard]==0.52.1
 
-sqlalchemy==2.0.30
-alembic==1.13.2
+sqlalchemy==2.0.51
+alembic==1.18.5
 
 jinja2==3.1.4
-python-multipart==0.0.9
+python-multipart==0.0.32
 
-passlib[bcrypt]==1.7.4
-bcrypt==4.1.2
+bcrypt==5.0.0
 
 pandas==2.2.2
 openpyxl==3.1.5
 rapidfuzz==3.9.6
-psycopg[binary]
+psycopg[binary]==3.3.4
 
 python-dotenv==1.0.1

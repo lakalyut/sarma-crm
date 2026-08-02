@@ -1,11 +1,15 @@
-from passlib.context import CryptContext
+import bcrypt
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_MAX_BCRYPT_BYTES = 72
+
+
+def _truncate(password: str) -> bytes:
+    return password.encode("utf-8")[:_MAX_BCRYPT_BYTES]
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_truncate(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    return bcrypt.checkpw(_truncate(password), password_hash.encode("utf-8"))
