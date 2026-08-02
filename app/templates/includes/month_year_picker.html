@@ -11,7 +11,7 @@
             {% for year, year_months, sel_count in year_groups %}
                 <div class="mp-year-grid{% if not loop.first %} is-hidden{% endif %}" data-year="{{ year }}">
                     {% for m in year_months %}
-                        <label class="mp-month-chip">
+                        <label class="mp-month-chip" style="order: {{ loop.length - 1 - loop.index0 }};">
                             <input type="checkbox" name="{{ input_name }}" value="{{ m }}" data-label="{{ m|format_month }}" {% if m in selected_months %}checked{% endif %}>
                             <span>{{ m|format_month_short }}</span>
                         </label>
