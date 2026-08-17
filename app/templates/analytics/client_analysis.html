@@ -13,10 +13,16 @@
         href="/analytics/client-analysis?tab=ambassadors&city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}"
         class="chart-tab {% if active_tab == 'ambassadors' %}active{% endif %}"
     >Амбассадорский отчёт</a>
+    <a
+        href="/analytics/client-analysis?tab=visit_effectiveness&city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}"
+        class="chart-tab {% if active_tab == 'visit_effectiveness' %}active{% endif %}"
+    >Эффективность визита</a>
 </div>
 
 {% if active_tab == "ambassadors" %}
 {% include "analytics/_client_analysis_ambassadors.html" %}
+{% elif active_tab == "visit_effectiveness" %}
+{% include "analytics/_client_analysis_visit_effectiveness.html" %}
 {% else %}
 
 <div class="filters-card">
