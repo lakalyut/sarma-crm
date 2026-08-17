@@ -1,27 +1,6 @@
-import hashlib
-import hmac
-import json
-import os
-import time
-from urllib.parse import urlencode
+from conftest import signed_init_data
 
 BASE_URL = "https://pulse.test"
-
-
-def _signed_init_data(telegram_id: int, first_name: str = "Тест") -> str:
-    token = os.environ["TELEGRAM_TOKEN"]
-    data = {
-        "auth_date": str(int(time.time())),
-        "user": json.dumps(
-            {"id": telegram_id, "first_name": first_name}, ensure_ascii=False
-        ),
-    }
-    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
-    secret_key = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
-    data["hash"] = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256
-    ).hexdigest()
-    return urlencode(data)
 
 
 def test_unknown_telegram_id_is_denied(db_session, monkeypatch):
@@ -169,7 +148,7 @@ def test_ambassador_app_verify_requires_completed_registration(db_session, clien
     db_session.add(user)
     db_session.commit()
 
-    init_data = _signed_init_data(777888)
+    init_data = signed_init_data(777888)
     resp = client.post(
         "/ambassador/app/verify", headers={"Authorization": f"tma {init_data}"}
     )
@@ -197,7 +176,7 @@ def test_ambassador_app_verify_ok(db_session, client):
     db_session.add(user)
     db_session.commit()
 
-    init_data = _signed_init_data(222333)
+    init_data = signed_init_data(222333)
     resp = client.post(
         "/ambassador/app/verify", headers={"Authorization": f"tma {init_data}"}
     )

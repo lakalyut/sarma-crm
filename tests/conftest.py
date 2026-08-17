@@ -1,4 +1,9 @@
+import hashlib
+import hmac
+import json
 import os
+import time
+from urllib.parse import urlencode
 
 # app/render.py и app/main.py создают свои собственные SessionLocal() в обход
 # FastAPI Depends(get_db) — переопределить зависимость на роуте недостаточно,
@@ -52,6 +57,26 @@ def admin_user(db_session):
     db_session.commit()
     db_session.refresh(user)
     return user
+
+
+def signed_init_data(telegram_id: int, first_name: str = "Тест") -> str:
+    """Собирает валидно подписанную Telegram WebApp initData тем же алгоритмом,
+    что app/telegram_auth.py::verify_init_data — подписывает TELEGRAM_TOKEN из
+    окружения (грузится из .env через load_dotenv() при импорте app.main выше,
+    тот же тестовый бот, что и на Этапе 0)."""
+    token = os.environ["TELEGRAM_TOKEN"]
+    data = {
+        "auth_date": str(int(time.time())),
+        "user": json.dumps(
+            {"id": telegram_id, "first_name": first_name}, ensure_ascii=False
+        ),
+    }
+    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
+    secret_key = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+    data["hash"] = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256
+    ).hexdigest()
+    return urlencode(data)
 
 
 @pytest.fixture()

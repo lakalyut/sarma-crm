@@ -25,6 +25,93 @@
     .row span:first-child { color: #737373; }
     .hint { font-size: 13px; color: #737373; }
     .fail { color: #e7000b; font-weight: 600; }
+    .ok { color: #16a34a; font-weight: 600; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; color: #737373; margin-bottom: 6px; }
+    select, input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border: 1px solid #d4d4d4;
+        border-radius: 10px;
+        font-size: 15px;
+        background: #fff;
+        color: #0a0a0a;
+    }
+    .client-list {
+        border: 1px solid #e5e5e5;
+        border-radius: 10px;
+        margin-top: 6px;
+        max-height: 180px;
+        overflow-y: auto;
+    }
+    .client-list-item {
+        padding: 9px 12px;
+        font-size: 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .client-list-item:last-child { border-bottom: none; }
+    .client-list-item:active, .client-list-item.selected { background: #f0eeff; }
+    .selected-client {
+        margin-top: 6px;
+        font-size: 13px;
+        color: #16a34a;
+        font-weight: 600;
+    }
+    .category-group { margin-bottom: 10px; }
+    .category-title { font-size: 12px; color: #737373; margin: 10px 0 4px; text-transform: uppercase; }
+    .product-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 14px;
+    }
+    .product-row:last-child { border-bottom: none; }
+    .product-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #6d5ef8; flex-shrink: 0; }
+    .product-flavor { flex: 1; }
+    .abc-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .abc-badge-a { background: #dcfce7; color: #16a34a; }
+    .abc-badge-b { background: #e5e1ff; color: #6d5ef8; }
+    .abc-badge-c { background: #f1f5f9; color: #737373; }
+    button.primary {
+        width: 100%;
+        padding: 13px;
+        border: none;
+        border-radius: 10px;
+        background: #6d5ef8;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    button.primary:disabled { background: #c4bfff; cursor: default; }
+    button.secondary {
+        width: 100%;
+        padding: 13px;
+        border: 1px solid #d4d4d4;
+        border-radius: 10px;
+        background: #fff;
+        color: #0a0a0a;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 8px;
+    }
+    .is-hidden { display: none; }
 </style>
 </head>
 <body>
@@ -32,13 +119,213 @@
 
 <div class="card" id="content">Проверяю...</div>
 
+<div class="card is-hidden" id="visit-card">
+    <div class="field is-hidden" id="city-field">
+        <label>Город</label>
+        <select id="city-select"></select>
+    </div>
+
+    <div class="field is-hidden" id="client-field">
+        <label>Клиент</label>
+        <input type="text" id="client-input" placeholder="Начните вводить название" autocomplete="off">
+        <div class="client-list is-hidden" id="client-list"></div>
+        <div class="selected-client is-hidden" id="selected-client"></div>
+    </div>
+
+    <div class="field is-hidden" id="type-field">
+        <label>Тип точки</label>
+        <select id="type-select"></select>
+    </div>
+
+    <div class="field is-hidden" id="products-field">
+        <label>Ароматы</label>
+        <div id="products-list"></div>
+    </div>
+
+    <button class="primary" id="submit-btn" disabled>Записать визит</button>
+    <div id="submit-result" class="hint" style="margin-top: 10px;"></div>
+</div>
+
+<div class="card is-hidden" id="success-card">
+    <div class="ok">Визит записан ✅</div>
+    <button class="secondary" id="again-btn">Записать ещё</button>
+</div>
+
 <script>
 const tg = window.Telegram && window.Telegram.WebApp;
 const contentEl = document.getElementById('content');
+const visitCard = document.getElementById('visit-card');
+const successCard = document.getElementById('success-card');
 
 function line(label, value) {
     return '<div class="row"><span>' + label + '</span><span>' + (value ?? '—') + '</span></div>';
 }
+
+function authHeader() {
+    return { 'Authorization': 'tma ' + tg.initData };
+}
+
+let options = null;
+let selectedClient = '';
+
+function populateCity() {
+    const citySelect = document.getElementById('city-select');
+    const cities = options.cities;
+    citySelect.innerHTML = cities.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+
+    if (cities.length > 1) {
+        document.getElementById('city-field').classList.remove('is-hidden');
+    }
+    onCityChange();
+}
+
+function onCityChange() {
+    const city = document.getElementById('city-select').value;
+    document.getElementById('client-field').classList.remove('is-hidden');
+    document.getElementById('type-field').classList.remove('is-hidden');
+    document.getElementById('products-field').classList.add('is-hidden');
+
+    selectedClient = '';
+    document.getElementById('client-input').value = '';
+    document.getElementById('selected-client').classList.add('is-hidden');
+    document.getElementById('client-list').classList.add('is-hidden');
+
+    const typeSelect = document.getElementById('type-select');
+    const types = options.types_by_city[city] || [];
+    typeSelect.innerHTML = types.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+    onTypeChange();
+    updateSubmitEnabled();
+}
+
+function renderClientList(filterText) {
+    const city = document.getElementById('city-select').value;
+    const clients = options.clients_by_city[city] || [];
+    const q = filterText.trim().toLowerCase();
+    const matches = q ? clients.filter(c => c.toLowerCase().includes(q)) : clients;
+
+    const listEl = document.getElementById('client-list');
+    if (!matches.length) {
+        listEl.classList.add('is-hidden');
+        listEl.innerHTML = '';
+        return;
+    }
+    listEl.innerHTML = matches.slice(0, 30).map(c =>
+        '<div class="client-list-item" data-client="' + c.replace(/"/g, '&quot;') + '">' + c + '</div>'
+    ).join('');
+    listEl.classList.remove('is-hidden');
+}
+
+function onTypeChange() {
+    const city = document.getElementById('city-select').value;
+    const type = document.getElementById('type-select').value;
+    const segmentId = options.guessed_segment_by_type[type];
+    const ratings = (segmentId !== undefined && options.abc_by_segment[segmentId]) || {};
+
+    const byCategory = {};
+    for (const p of options.products) {
+        (byCategory[p.category] = byCategory[p.category] || []).push(p);
+    }
+
+    let html = '';
+    for (const category of Object.keys(byCategory).sort()) {
+        html += '<div class="category-group"><div class="category-title">' + category + '</div>';
+        for (const p of byCategory[category]) {
+            const abc = ratings[p.id];
+            const badge = abc ? '<span class="abc-badge abc-badge-' + abc.toLowerCase() + '">' + abc + '</span>' : '';
+            html += '<label class="product-row"><input type="checkbox" value="' + p.id + '">' +
+                '<span class="product-flavor">' + p.brand + ' — ' + p.flavor + '</span>' + badge + '</label>';
+        }
+        html += '</div>';
+    }
+    document.getElementById('products-list').innerHTML = html;
+    document.getElementById('products-field').classList.remove('is-hidden');
+
+    document.getElementById('products-list').querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updateSubmitEnabled);
+    });
+    updateSubmitEnabled();
+}
+
+function updateSubmitEnabled() {
+    const hasProducts = document.querySelectorAll('#products-list input[type="checkbox"]:checked').length > 0;
+    document.getElementById('submit-btn').disabled = !(selectedClient && hasProducts);
+}
+
+function resetForm() {
+    selectedClient = '';
+    document.getElementById('client-input').value = '';
+    document.getElementById('selected-client').classList.add('is-hidden');
+    document.getElementById('client-list').classList.add('is-hidden');
+    onTypeChange();
+    document.getElementById('submit-result').textContent = '';
+    updateSubmitEnabled();
+}
+
+document.getElementById('client-input').addEventListener('input', (e) => {
+    selectedClient = '';
+    document.getElementById('selected-client').classList.add('is-hidden');
+    renderClientList(e.target.value);
+    updateSubmitEnabled();
+});
+
+document.getElementById('client-list').addEventListener('click', (e) => {
+    const item = e.target.closest('.client-list-item');
+    if (!item) return;
+    selectedClient = item.dataset.client;
+    document.getElementById('client-input').value = selectedClient;
+    document.getElementById('client-list').classList.add('is-hidden');
+    const selEl = document.getElementById('selected-client');
+    selEl.textContent = 'Выбрано: ' + selectedClient;
+    selEl.classList.remove('is-hidden');
+    updateSubmitEnabled();
+});
+
+document.getElementById('city-select').addEventListener('change', onCityChange);
+document.getElementById('type-select').addEventListener('change', onTypeChange);
+
+document.getElementById('submit-btn').addEventListener('click', () => {
+    const city = document.getElementById('city-select').value;
+    const saleType = document.getElementById('type-select').value;
+    const productIds = Array.from(
+        document.querySelectorAll('#products-list input[type="checkbox"]:checked')
+    ).map(cb => parseInt(cb.value, 10));
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    document.getElementById('submit-result').textContent = 'Отправляю...';
+
+    fetch('/ambassador/app/visits', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader()),
+        body: JSON.stringify({
+            city: city,
+            client: selectedClient,
+            sale_type: saleType,
+            product_ids: productIds,
+        }),
+    })
+        .then(async (res) => {
+            const body = await res.json();
+            if (res.ok) {
+                visitCard.classList.add('is-hidden');
+                successCard.classList.remove('is-hidden');
+            } else {
+                document.getElementById('submit-result').innerHTML =
+                    '<span class="fail">' + (body.detail || res.status) + '</span>';
+                updateSubmitEnabled();
+            }
+        })
+        .catch((err) => {
+            document.getElementById('submit-result').innerHTML = '<span class="fail">Сеть/сервер: ' + err + '</span>';
+            updateSubmitEnabled();
+        });
+});
+
+document.getElementById('again-btn').addEventListener('click', () => {
+    successCard.classList.add('is-hidden');
+    visitCard.classList.remove('is-hidden');
+    resetForm();
+});
 
 if (!tg || !tg.initData) {
     contentEl.innerHTML = '<p>Страница открыта не из Telegram. Откройте её кнопкой меню в боте.</p>';
@@ -48,18 +335,26 @@ if (!tg || !tg.initData) {
 
     fetch('/ambassador/app/verify', {
         method: 'POST',
-        headers: { 'Authorization': 'tma ' + tg.initData }
+        headers: authHeader()
     })
         .then(async (res) => {
             const body = await res.json();
             if (res.ok) {
                 contentEl.innerHTML =
                     line('Имя', (body.first_name || '') + ' ' + (body.last_name || '')) +
-                    line('Регион', body.region) +
-                    '<p class="hint">Функция визитов появится на следующем этапе.</p>';
+                    line('Регион', body.region);
+
+                return fetch('/ambassador/app/options', { headers: authHeader() });
             } else {
                 contentEl.innerHTML = '<div class="fail">Ошибка: ' + (body.detail || res.status) + '</div>';
+                return null;
             }
+        })
+        .then(async (res) => {
+            if (!res) return;
+            options = await res.json();
+            visitCard.classList.remove('is-hidden');
+            populateCity();
         })
         .catch((err) => {
             contentEl.innerHTML = '<div class="fail">Сеть/сервер: ' + err + '</div>';

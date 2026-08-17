@@ -19,6 +19,7 @@ CSRF_EXEMPT_PATHS = {
     "/poc/telegram/verify",
     "/telegram/webhook",
     "/ambassador/app/verify",
+    "/ambassador/app/visits",
 }
 
 
