@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telegram PoC — Пульс</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    body {
+        margin: 0;
+        padding: 20px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #f5f5f5;
+        color: #0a0a0a;
+    }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+    }
+    .label { font-size: 12px; color: #737373; margin-bottom: 4px; }
+    .row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0; }
+    .row span:first-child { color: #737373; }
+    pre {
+        white-space: pre-wrap;
+        word-break: break-all;
+        font-size: 12px;
+        background: #f5f5f5;
+        padding: 10px;
+        border-radius: 8px;
+        margin: 0;
+    }
+    .ok { color: #16a34a; font-weight: 600; }
+    .fail { color: #e7000b; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>PoC: Telegram WebApp initData</h1>
+
+<div class="card" id="env-card">
+    <div class="label">Окружение</div>
+    <div id="env-content">проверяю...</div>
+</div>
+
+<div class="card" id="result-card" style="display:none;">
+    <div class="label">Результат проверки подписи (сервер)</div>
+    <div id="result-content">...</div>
+</div>
+
+<script>
+function line(label, value) {
+    return '<div class="row"><span>' + label + '</span><span>' + (value ?? '—') + '</span></div>';
+}
+
+const tg = window.Telegram && window.Telegram.WebApp;
+const envEl = document.getElementById('env-content');
+
+if (!tg || !tg.initData) {
+    envEl.innerHTML = '<p>Страница открыта не из Telegram (нет <code>initData</code>) — ' +
+        'это ожидаемо в обычном браузере. Открой через кнопку в тестовом боте.</p>';
+} else {
+    tg.ready();
+    tg.expand();
+
+    envEl.innerHTML =
+        line('platform', tg.platform) +
+        line('version', tg.version) +
+        line('colorScheme', tg.colorScheme) +
+        line('viewportHeight', tg.viewportHeight) +
+        line('isExpanded', tg.isExpanded);
+
+    const resultCard = document.getElementById('result-card');
+    const resultEl = document.getElementById('result-content');
+    resultCard.style.display = 'block';
+    resultEl.textContent = 'отправляю initData на сервер...';
+
+    fetch('/poc/telegram/verify', {
+        method: 'POST',
+        headers: { 'Authorization': 'tma ' + tg.initData }
+    })
+        .then(async (res) => {
+            const body = await res.json();
+            if (res.ok) {
+                resultEl.innerHTML = '<div class="ok">Подпись верна ✓</div>' +
+                    line('telegram_id', body.telegram_id) +
+                    line('first_name', body.first_name) +
+                    line('last_name', body.last_name) +
+                    line('username', body.username) +
+                    line('auth_date', body.auth_date);
+            } else {
+                resultEl.innerHTML = '<div class="fail">Ошибка: ' + (body.detail || res.status) + '</div>';
+            }
+        })
+        .catch((err) => {
+            resultEl.innerHTML = '<div class="fail">Сеть/сервер: ' + err + '</div>';
+        });
+}
+</script>
+</body>
+</html>

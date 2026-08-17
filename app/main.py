@@ -24,6 +24,7 @@ from .routes.events import router as events_router
 from .routes.imports import router as imports_router
 from .routes.misc import router as misc_router
 from .routes.products import router as products_router
+from .routes.telegram_poc import router as telegram_poc_router
 from .startup import ensure_admin
 from .templating import templates
 
@@ -66,6 +67,7 @@ app.include_router(client_analysis_router)
 app.include_router(admin_abc_router)
 app.include_router(admin_regions_router)
 app.include_router(events_router)
+app.include_router(telegram_poc_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 

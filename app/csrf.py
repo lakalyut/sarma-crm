@@ -8,6 +8,13 @@ CSRF_COOKIE_NAME = "csrf_token"
 CSRF_COOKIE_MAX_AGE = 60 * 60 * 24 * 14
 CSRF_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 
+# Эндпоинты, аутентифицирующиеся не через cookie-сессию, а через собственную
+# подпись в заголовке (Telegram initData — HMAC секретом бота) — обычный
+# CSRF тут неприменим по построению: подделать заголовок с валидной подписью
+# без знания токена бота нельзя, ambient-cookie тут вообще не участвует в
+# аутентификации. Горизонт 13, Этап 0 (см. ROADMAP.md).
+CSRF_EXEMPT_PATHS = {"/poc/telegram/verify"}
+
 
 def get_csrf_token(request: Request) -> str:
     return request.cookies.get(CSRF_COOKIE_NAME) or secrets.token_urlsafe(32)
@@ -47,6 +54,9 @@ async def csrf_guard(request: Request) -> None:
     значения). Зависимость работает с тем же объектом Request, что и Form(...)
     у роута — request.form() кеширует результат, повторное чтение безопасно."""
     if request.method not in CSRF_METHODS:
+        return
+
+    if request.url.path in CSRF_EXEMPT_PATHS:
         return
 
     try:
