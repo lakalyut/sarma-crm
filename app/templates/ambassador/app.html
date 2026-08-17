@@ -112,6 +112,30 @@
         margin-top: 8px;
     }
     .is-hidden { display: none; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .tab-btn {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #d4d4d4;
+        border-radius: 10px;
+        background: #fff;
+        color: #737373;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .tab-btn.active { background: #6d5ef8; border-color: #6d5ef8; color: #fff; }
+    .lb-row {
+        border-bottom: 1px solid #f0f0f0;
+        padding: 10px 0;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-top { display: flex; justify-content: space-between; align-items: baseline; }
+    .lb-name { font-weight: 600; font-size: 14px; }
+    .lb-region { font-size: 12px; color: #737373; }
+    .lb-stats { display: flex; gap: 14px; margin-top: 4px; font-size: 13px; color: #737373; }
+    .lb-stats b { color: #0a0a0a; }
+    .lb-aromas { margin-top: 4px; font-size: 12px; color: #737373; }
 </style>
 </head>
 <body>
@@ -119,36 +143,47 @@
 
 <div class="card" id="content">Проверяю...</div>
 
-<div class="card is-hidden" id="visit-card">
-    <div class="field is-hidden" id="city-field">
-        <label>Город</label>
-        <select id="city-select"></select>
-    </div>
-
-    <div class="field is-hidden" id="client-field">
-        <label>Клиент</label>
-        <input type="text" id="client-input" placeholder="Начните вводить название" autocomplete="off">
-        <div class="client-list is-hidden" id="client-list"></div>
-        <div class="selected-client is-hidden" id="selected-client"></div>
-    </div>
-
-    <div class="field is-hidden" id="type-field">
-        <label>Тип точки</label>
-        <select id="type-select"></select>
-    </div>
-
-    <div class="field is-hidden" id="products-field">
-        <label>Ароматы</label>
-        <div id="products-list"></div>
-    </div>
-
-    <button class="primary" id="submit-btn" disabled>Записать визит</button>
-    <div id="submit-result" class="hint" style="margin-top: 10px;"></div>
+<div class="tabs is-hidden" id="tabs">
+    <button type="button" class="tab-btn active" id="tab-btn-visit">Визит</button>
+    <button type="button" class="tab-btn" id="tab-btn-leaderboard">Лидерборд</button>
 </div>
 
-<div class="card is-hidden" id="success-card">
-    <div class="ok">Визит записан ✅</div>
-    <button class="secondary" id="again-btn">Записать ещё</button>
+<div id="tab-visit">
+    <div class="card is-hidden" id="visit-card">
+        <div class="field is-hidden" id="city-field">
+            <label>Город</label>
+            <select id="city-select"></select>
+        </div>
+
+        <div class="field is-hidden" id="client-field">
+            <label>Клиент</label>
+            <input type="text" id="client-input" placeholder="Начните вводить название" autocomplete="off">
+            <div class="client-list is-hidden" id="client-list"></div>
+            <div class="selected-client is-hidden" id="selected-client"></div>
+        </div>
+
+        <div class="field is-hidden" id="type-field">
+            <label>Тип точки</label>
+            <select id="type-select"></select>
+        </div>
+
+        <div class="field is-hidden" id="products-field">
+            <label>Ароматы</label>
+            <div id="products-list"></div>
+        </div>
+
+        <button class="primary" id="submit-btn" disabled>Записать визит</button>
+        <div id="submit-result" class="hint" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="card is-hidden" id="success-card">
+        <div class="ok">Визит записан ✅</div>
+        <button class="secondary" id="again-btn">Записать ещё</button>
+    </div>
+</div>
+
+<div class="card is-hidden" id="tab-leaderboard">
+    <div id="leaderboard-content" class="hint">Загружаю...</div>
 </div>
 
 <script>
@@ -327,6 +362,58 @@ document.getElementById('again-btn').addEventListener('click', () => {
     resetForm();
 });
 
+let leaderboardLoaded = false;
+
+function renderLeaderboard(rows) {
+    const el = document.getElementById('leaderboard-content');
+    if (!rows.length) {
+        el.innerHTML = 'Пока нет ни одного визита.';
+        return;
+    }
+    el.innerHTML = rows.map(r =>
+        '<div class="lb-row">' +
+            '<div class="lb-top"><span class="lb-name">' + r.ambassador + '</span>' +
+            '<span class="lb-region">' + r.region + '</span></div>' +
+            '<div class="lb-stats"><span>Визиты: <b>' + r.visits + '</b></span>' +
+            '<span>Категория А: <b>' + r.category_a + '</b></span></div>' +
+            '<div class="lb-aromas">' + (r.aromas.length ? r.aromas.join(', ') : '—') + '</div>' +
+        '</div>'
+    ).join('');
+}
+
+function showTab(tab) {
+    const visitTab = document.getElementById('tab-visit');
+    const leaderboardTab = document.getElementById('tab-leaderboard');
+    const btnVisit = document.getElementById('tab-btn-visit');
+    const btnLeaderboard = document.getElementById('tab-btn-leaderboard');
+
+    if (tab === 'visit') {
+        visitTab.classList.remove('is-hidden');
+        leaderboardTab.classList.add('is-hidden');
+        btnVisit.classList.add('active');
+        btnLeaderboard.classList.remove('active');
+    } else {
+        visitTab.classList.add('is-hidden');
+        leaderboardTab.classList.remove('is-hidden');
+        btnVisit.classList.remove('active');
+        btnLeaderboard.classList.add('active');
+
+        if (!leaderboardLoaded) {
+            leaderboardLoaded = true;
+            fetch('/ambassador/app/leaderboard', { headers: authHeader() })
+                .then(res => res.json())
+                .then(body => renderLeaderboard(body.rows))
+                .catch((err) => {
+                    document.getElementById('leaderboard-content').innerHTML =
+                        '<span class="fail">Сеть/сервер: ' + err + '</span>';
+                });
+        }
+    }
+}
+
+document.getElementById('tab-btn-visit').addEventListener('click', () => showTab('visit'));
+document.getElementById('tab-btn-leaderboard').addEventListener('click', () => showTab('leaderboard'));
+
 if (!tg || !tg.initData) {
     contentEl.innerHTML = '<p>Страница открыта не из Telegram. Откройте её кнопкой меню в боте.</p>';
 } else {
@@ -343,6 +430,7 @@ if (!tg || !tg.initData) {
                 contentEl.innerHTML =
                     line('Имя', (body.first_name || '') + ' ' + (body.last_name || '')) +
                     line('Регион', body.region);
+                document.getElementById('tabs').classList.remove('is-hidden');
 
                 return fetch('/ambassador/app/options', { headers: authHeader() });
             } else {

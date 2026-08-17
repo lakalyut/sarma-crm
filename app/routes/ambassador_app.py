@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..auth_models import User
 from ..database import get_db
 from ..services.ambassador_service import create_visit, get_visit_options
+from ..services.leaderboard_service import get_leaderboard
 from ..telegram_auth import get_current_ambassador
 from ..templating import templates
 
@@ -27,6 +28,14 @@ def ambassador_app_verify(user: User = Depends(get_current_ambassador)):
         "last_name": user.last_name,
         "region": user.region.name if user.region else None,
     }
+
+
+@router.get("/ambassador/app/leaderboard")
+def ambassador_app_leaderboard(
+    _user: User = Depends(get_current_ambassador),
+    db: Session = Depends(get_db),
+):
+    return {"rows": get_leaderboard(db)}
 
 
 @router.get("/ambassador/app/options")

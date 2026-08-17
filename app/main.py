@@ -23,6 +23,7 @@ from .routes.client_analysis import router as client_analysis_router
 from .routes.dashboard import router as dashboard_router
 from .routes.events import router as events_router
 from .routes.imports import router as imports_router
+from .routes.leaderboard import router as leaderboard_router
 from .routes.misc import router as misc_router
 from .routes.products import router as products_router
 from .routes.telegram_bot import router as telegram_bot_router
@@ -69,6 +70,7 @@ app.include_router(client_analysis_router)
 app.include_router(admin_abc_router)
 app.include_router(admin_regions_router)
 app.include_router(events_router)
+app.include_router(leaderboard_router)
 app.include_router(telegram_poc_router)
 app.include_router(telegram_bot_router)
 app.include_router(ambassador_app_router)

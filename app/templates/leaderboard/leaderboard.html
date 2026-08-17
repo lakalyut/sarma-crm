@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Лидерборд амбассадоров</h1>
+
+<div class="page-subtitle" style="margin-bottom: 12px;">
+  Визиты и продемонстрированные ароматы по всем амбассадорам
+</div>
+
+{% if not rows %}
+  {% include "includes/empty_state.html" %}
+{% else %}
+<div class="sheet-wrapper">
+  <div class="sheet-scroller">
+    <table class="sheet-table" id="leaderboard-table">
+      <thead>
+        <tr>
+          <th>Регион</th>
+          <th>Амбассадор</th>
+          <th>Визиты</th>
+          <th>Ароматов категории А</th>
+          <th>Ароматы</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.region }}</td>
+          <td>{{ row.ambassador }}</td>
+          <td>{{ row.visits }}</td>
+          <td>{{ row.category_a }}</td>
+          <td>{{ row.aromas|join(", ") if row.aromas else "—" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
