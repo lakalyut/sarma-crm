@@ -21,6 +21,8 @@ services:
       APP_SECRET_KEY: ${APP_SECRET_KEY}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
     depends_on:
       db:
         condition: service_healthy
