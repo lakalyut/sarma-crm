@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Пульс — амбассадор</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    body {
+        margin: 0;
+        padding: 20px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #f5f5f5;
+        color: #0a0a0a;
+    }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+    }
+    .row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0; }
+    .row span:first-child { color: #737373; }
+    .hint { font-size: 13px; color: #737373; }
+    .fail { color: #e7000b; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Пульс — амбассадор</h1>
+
+<div class="card" id="content">Проверяю...</div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+const contentEl = document.getElementById('content');
+
+function line(label, value) {
+    return '<div class="row"><span>' + label + '</span><span>' + (value ?? '—') + '</span></div>';
+}
+
+if (!tg || !tg.initData) {
+    contentEl.innerHTML = '<p>Страница открыта не из Telegram. Откройте её кнопкой меню в боте.</p>';
+} else {
+    tg.ready();
+    tg.expand();
+
+    fetch('/ambassador/app/verify', {
+        method: 'POST',
+        headers: { 'Authorization': 'tma ' + tg.initData }
+    })
+        .then(async (res) => {
+            const body = await res.json();
+            if (res.ok) {
+                contentEl.innerHTML =
+                    line('Имя', (body.first_name || '') + ' ' + (body.last_name || '')) +
+                    line('Регион', body.region) +
+                    '<p class="hint">Функция визитов появится на следующем этапе.</p>';
+            } else {
+                contentEl.innerHTML = '<div class="fail">Ошибка: ' + (body.detail || res.status) + '</div>';
+            }
+        })
+        .catch((err) => {
+            contentEl.innerHTML = '<div class="fail">Сеть/сервер: ' + err + '</div>';
+        });
+}
+</script>
+</body>
+</html>

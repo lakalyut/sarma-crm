@@ -12,8 +12,14 @@ CSRF_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 # подпись в заголовке (Telegram initData — HMAC секретом бота) — обычный
 # CSRF тут неприменим по построению: подделать заголовок с валидной подписью
 # без знания токена бота нельзя, ambient-cookie тут вообще не участвует в
-# аутентификации. Горизонт 13, Этап 0 (см. ROADMAP.md).
-CSRF_EXEMPT_PATHS = {"/poc/telegram/verify"}
+# аутентификации. Горизонт 13, Этапы 0/2 (см. ROADMAP.md). /telegram/webhook —
+# отдельный случай: вызывающий не браузер вообще, а сервер Telegram, проверка
+# подлинности через X-Telegram-Bot-Api-Secret-Token в самом роуте.
+CSRF_EXEMPT_PATHS = {
+    "/poc/telegram/verify",
+    "/telegram/webhook",
+    "/ambassador/app/verify",
+}
 
 
 def get_csrf_token(request: Request) -> str:
