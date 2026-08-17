@@ -18,6 +18,13 @@ class User(Base):
     role = Column(String, nullable=False, default="user")
     is_active = Column(Boolean, default=True, nullable=False)
 
+    telegram_id = Column(Integer, unique=True, nullable=True)
+    region_id = Column(Integer, ForeignKey("regions.id"), nullable=True)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+
+    region = relationship("Region")
+
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

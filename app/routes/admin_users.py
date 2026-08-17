@@ -45,11 +45,12 @@ def user_new_submit(
     request: Request,
     email: str = Form(...),
     role: str = Form("user"),
+    telegram_id: str = Form(""),
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
     email = email.strip().lower()
-    if role not in ("user", "admin"):
+    if role not in ("user", "admin", "ambassador"):
         return render(
             request,
             "admin/user_new.html",
@@ -64,6 +65,50 @@ def user_new_submit(
             {
                 "title": "Пользователи — Пульс",
                 "error": "Пользователь с таким email уже существует",
+            },
+        )
+
+    if role == "ambassador":
+        # Амбассадор — без пароля, без ссылки установки: доступ через Telegram
+        # initData (Этап 2 горизонта 13), сюда попадает только известный
+        # заранее telegram_id. Имя/регион остаются пустыми до саморегистрации
+        # в боте.
+        telegram_id = telegram_id.strip()
+        if not telegram_id.isdigit():
+            return render(
+                request,
+                "admin/user_new.html",
+                {
+                    "title": "Пользователи — Пульс",
+                    "error": "Для роли ambassador нужен Telegram ID (число)",
+                },
+            )
+
+        telegram_id_int = int(telegram_id)
+        existing_tg = db.query(User).filter(User.telegram_id == telegram_id_int).first()
+        if existing_tg:
+            return render(
+                request,
+                "admin/user_new.html",
+                {
+                    "title": "Пользователи — Пульс",
+                    "error": "Этот Telegram ID уже привязан к другому пользователю",
+                },
+            )
+
+        user = User(email=email, role=role, is_active=True, telegram_id=telegram_id_int)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        return render(
+            request,
+            "admin/user_created.html",
+            {
+                "title": "Пользователи — Пульс",
+                "email": email,
+                "role": role,
+                "link": None,
             },
         )
 
@@ -188,7 +233,7 @@ def user_change_role(
     if not user:
         return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 
-    if role not in ("admin", "user"):
+    if role not in ("admin", "user", "ambassador"):
         return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 
     if user.id == admin.id and role != "admin":

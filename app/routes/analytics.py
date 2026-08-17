@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from ..auth_deps import require_admin, require_user
+from ..auth_deps import require_admin, require_analyst
 from ..auth_models import User
 from ..database import get_db
 from ..models import AbcSegment, Sale
@@ -36,7 +36,7 @@ def analytics_clients(
     sale_types: list[str] = Query(default=None),
     matched: str | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     if _user.role != "admin":
         matched = None
@@ -137,7 +137,7 @@ def analytics_charts(
     matched: str | None = None,
     group: str = "total",
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     if _user.role != "admin":
         matched = None
@@ -209,7 +209,7 @@ def api_charts_metrics(
     client: str | None = None,
     sale_type: str | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     if _user.role != "admin":
         matched = None
@@ -247,7 +247,7 @@ def analytics_client_detail(
     matched: str | None = None,
     abc_segment: int | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     if _user.role != "admin":
         matched = None

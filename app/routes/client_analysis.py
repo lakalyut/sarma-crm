@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from ..auth_deps import require_user
+from ..auth_deps import require_analyst
 from ..auth_models import User
 from ..database import get_db
 from ..models import AbcSegment, ProductAbcRating, Sale
@@ -39,7 +39,7 @@ def client_analysis_page(
     new_skus: list[str] = Query(default=None),
     abc_segment: list[int] = Query(default=[]),
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     active_tab = tab if tab in ("summary", "ambassadors") else "summary"
 
@@ -243,7 +243,7 @@ def api_client_analysis_clients(
     clients: list[str] = Query(default=None),
     segment_id: int | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     rows = get_clients_rollup(
         db,
@@ -263,7 +263,7 @@ def api_client_analysis_nomenclature(
     sale_type: str,
     months: list[str] = Query(default=None),
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     rows = get_nomenclature_rollup(
         db, city=city, client=client, sale_type=sale_type, months=months
@@ -278,7 +278,7 @@ def api_client_analysis_missing(
     sale_type: str,
     segment_id: int,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     overview = get_client_abc_overview(
         db, city=city, client=client, sale_type=sale_type, segment_id=segment_id

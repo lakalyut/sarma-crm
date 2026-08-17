@@ -19,6 +19,7 @@
           <th>ID</th>
           <th>Email</th>
           <th>Роль</th>
+          <th>Telegram ID / Регион</th>
           <th>Статус</th>
           <th>Создан</th>
           <th>Действия</th>
@@ -34,10 +35,12 @@
               <select name="role" class="js-custom-select" style="min-width:120px;">
                 <option value="user" {% if u.role == "user" %}selected{% endif %}>user</option>
                 <option value="admin" {% if u.role == "admin" %}selected{% endif %}>admin</option>
+                <option value="ambassador" {% if u.role == "ambassador" %}selected{% endif %}>ambassador</option>
               </select>
               <button type="submit" class="btn-secondary" style="padding:6px 12px;">Сохранить</button>
             </form>
           </td>
+          <td>{{ u.telegram_id or "—" }} / {{ u.region.name if u.region else "—" }}</td>
           <td>
             {% if u.is_active %}
               <span class="message ok" style="display:inline-block; margin:0; padding:4px 8px;">active</span>

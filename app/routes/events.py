@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from ..auth_deps import require_user
+from ..auth_deps import require_analyst
 from ..auth_models import User
 from ..database import get_db
 from ..render import render
@@ -21,7 +21,7 @@ def event_log_page(
     request: Request,
     city: str = "",
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_analyst),
 ):
     mark_events_seen(db, user)
 

@@ -120,6 +120,39 @@ class Sale(Base):
     )
 
 
+class Visit(Base):
+    __tablename__ = "visits"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    ambassador_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    city = Column(String, nullable=False)
+    client = Column(String, nullable=False)
+    sale_type = Column(String, nullable=False)
+
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+    ambassador = relationship("User")
+
+
+class VisitProduct(Base):
+    __tablename__ = "visit_products"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    visit_id = Column(Integer, ForeignKey("visits.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+
+    visit = relationship("Visit")
+    product = relationship("Product")
+
+    __table_args__ = (
+        UniqueConstraint("visit_id", "product_id", name="uq_visit_product"),
+    )
+
+
 class EventLog(Base):
     __tablename__ = "event_log"
 

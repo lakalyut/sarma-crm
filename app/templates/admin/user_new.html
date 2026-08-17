@@ -16,7 +16,17 @@
       <select name="role" class="js-custom-select">
         <option value="user" selected>user (клиенты + графики)</option>
         <option value="admin">admin (полный доступ)</option>
+        <option value="ambassador">ambassador (визиты через Telegram-бота)</option>
       </select>
+    </div>
+
+    <div class="field">
+      <label>Telegram ID</label>
+      <input type="text" name="telegram_id" placeholder="Только для роли ambassador">
+      <div class="field-hint">
+        Нужен только для ambassador — узнать заранее у самого амбассадора
+        (например через @userinfobot). Для остальных ролей поле игнорируется.
+      </div>
     </div>
 
     <div class="flex-row actions-split">

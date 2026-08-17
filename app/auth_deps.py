@@ -51,3 +51,18 @@ def require_admin(user: User = Depends(require_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user
+
+
+def require_analyst(user: User = Depends(require_user)) -> User:
+    if user.role not in ("admin", "user"):
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+    return user
+
+
+def require_ambassador(user: User = Depends(require_user)) -> User:
+    # Пока без реального вызывающего кода — Telegram-сессия (webhook,
+    # initData → cookie-сессия) появится на Этапе 2 горизонта 13. Роль/проверка
+    # заводятся сейчас как часть модели доступа, а не мёртвый код.
+    if user.role not in ("admin", "ambassador"):
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+    return user

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
-from ..auth_deps import require_user
+from ..auth_deps import require_analyst
 from ..auth_models import User
 from ..database import get_db
 from ..render import render
@@ -19,7 +19,7 @@ def dashboard_page(
     regions: list[str] = Query(default=[]),
     months: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
-    _user: User = Depends(require_user),
+    _user: User = Depends(require_analyst),
 ):
     all_cities = get_cities(db)
     all_regions = regions_svc.get_regions(db)

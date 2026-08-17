@@ -8,11 +8,17 @@
     Роль: <b>{{ role }}</b>
   </div>
 
+  {% if link %}
   <div class="field" style="margin-top: 12px;">
     <label>Ссылка для установки пароля (отправь пользователю)</label>
     <input type="text" value="{{ link }}" readonly onclick="this.select()">
     <div class="filter-summary">Кликни по полю — выделится вся ссылка.</div>
   </div>
+  {% else %}
+  <div class="message ok" style="margin-top: 12px;">
+    Ссылка не нужна — доступ откроется, когда амбассадор нажмёт «Старт» в боте.
+  </div>
+  {% endif %}
 
   <div class="flex-row actions-split">
     <a class="btn btn-secondary" href="/admin/users">К списку пользователей</a>
