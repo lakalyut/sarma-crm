@@ -11,6 +11,14 @@ from urllib.parse import urlencode
 # app.database. Тот же sqlite-файл, что уже использует CI (ci.yml).
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 
+# Локально .env даёт реальный (тестовый) токен бота через load_dotenv() в
+# app.main — в CI никакого .env нет (в .gitignore), поэтому без дефолта здесь
+# tests/test_telegram_bot.py и все, кто зовёт signed_init_data(), падали в CI
+# с KeyError. Значение не обязано быть настоящим токеном — verify_init_data()
+# и signed_init_data() всегда читают один и тот же TELEGRAM_TOKEN и подписывают/
+# проверяют им же, так что любая фиксированная строка работает как HMAC-секрет.
+os.environ.setdefault("TELEGRAM_TOKEN", "test-telegram-token-for-ci")
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
