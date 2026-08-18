@@ -169,6 +169,7 @@
 
         <div class="field is-hidden" id="products-field">
             <label>Ароматы</label>
+            <input type="text" id="product-search" placeholder="Поиск по названию или SKU" autocomplete="off" style="margin-bottom: 8px;">
             <div id="products-list"></div>
         </div>
 
@@ -267,7 +268,8 @@ function onTypeChange() {
         for (const p of byCategory[category]) {
             const abc = ratings[p.id];
             const badge = abc ? '<span class="abc-badge abc-badge-' + abc.toLowerCase() + '">' + abc + '</span>' : '';
-            html += '<label class="product-row"><input type="checkbox" value="' + p.id + '">' +
+            const searchKey = (p.brand + ' ' + p.flavor + ' ' + (p.sku || '')).toLowerCase();
+            html += '<label class="product-row" data-search="' + searchKey.replace(/"/g, '&quot;') + '"><input type="checkbox" value="' + p.id + '">' +
                 '<span class="product-flavor">' + p.brand + ' — ' + p.flavor + '</span>' + badge + '</label>';
         }
         html += '</div>';
@@ -278,7 +280,21 @@ function onTypeChange() {
     document.getElementById('products-list').querySelectorAll('input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', updateSubmitEnabled);
     });
+    document.getElementById('product-search').value = '';
     updateSubmitEnabled();
+}
+
+function filterProducts() {
+    const q = document.getElementById('product-search').value.trim().toLowerCase();
+    document.querySelectorAll('#products-list .category-group').forEach(group => {
+        let hasMatch = false;
+        group.querySelectorAll('.product-row').forEach(row => {
+            const visible = !q || row.dataset.search.includes(q);
+            row.style.display = visible ? '' : 'none';
+            if (visible) hasMatch = true;
+        });
+        group.style.display = hasMatch ? '' : 'none';
+    });
 }
 
 function updateSubmitEnabled() {
@@ -317,6 +333,7 @@ document.getElementById('client-list').addEventListener('click', (e) => {
 
 document.getElementById('city-select').addEventListener('change', onCityChange);
 document.getElementById('type-select').addEventListener('change', onTypeChange);
+document.getElementById('product-search').addEventListener('input', filterProducts);
 
 document.getElementById('submit-btn').addEventListener('click', () => {
     const city = document.getElementById('city-select').value;

@@ -32,6 +32,7 @@
 
   <div class="field">
     <label>Ароматы</label>
+    <input type="text" id="product-search" placeholder="Поиск по названию или SKU" autocomplete="off" style="margin-bottom: 8px;">
     <div id="products-list"></div>
   </div>
 
@@ -49,6 +50,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const selectedClientEl = document.getElementById("selected-client");
     const typeSelect = document.getElementById("type-select");
     const productsList = document.getElementById("products-list");
+    const productSearch = document.getElementById("product-search");
     const submitBtn = document.getElementById("submit-btn");
 
     citySelect.innerHTML = options.cities.map(c => '<option value="' + c + '">' + c + '</option>').join("");
@@ -93,11 +95,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let html = "";
         for (const category of Object.keys(byCategory).sort()) {
-            html += '<div class="field-hint" style="margin-top:8px;">' + category + "</div>";
+            html += '<div class="field-hint category-heading" style="margin-top:8px;">' + category + "</div>";
             for (const p of byCategory[category]) {
                 const abc = ratings[p.id];
                 const badge = abc ? '<span class="abc-badge abc-badge-' + abc.toLowerCase() + '">' + abc + "</span>" : "";
-                html += '<label style="display:flex; align-items:center; gap:8px; padding:6px 0;">' +
+                const searchKey = (p.brand + " " + p.flavor + " " + (p.sku || "")).toLowerCase();
+                html += '<label class="product-row" data-search="' + searchKey.replace(/"/g, "&quot;") + '" style="display:flex; align-items:center; gap:8px; padding:6px 0;">' +
                     '<input type="checkbox" name="product_ids" value="' + p.id + '">' +
                     "<span>" + p.brand + " — " + p.flavor + "</span>" + badge + "</label>";
             }
@@ -106,7 +109,31 @@ document.addEventListener("DOMContentLoaded", function () {
         productsList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             cb.addEventListener("change", updateSubmitEnabled);
         });
+        productSearch.value = "";
         updateSubmitEnabled();
+    }
+
+    function filterProducts() {
+        const q = productSearch.value.trim().toLowerCase();
+        let currentCategoryHeading = null;
+        let currentCategoryHasMatch = false;
+
+        productsList.querySelectorAll(".category-heading, .product-row").forEach(el => {
+            if (el.classList.contains("category-heading")) {
+                if (currentCategoryHeading) {
+                    currentCategoryHeading.style.display = currentCategoryHasMatch ? "" : "none";
+                }
+                currentCategoryHeading = el;
+                currentCategoryHasMatch = false;
+                return;
+            }
+            const visible = !q || el.dataset.search.includes(q);
+            el.style.display = visible ? "" : "none";
+            if (visible) currentCategoryHasMatch = true;
+        });
+        if (currentCategoryHeading) {
+            currentCategoryHeading.style.display = currentCategoryHasMatch ? "" : "none";
+        }
     }
 
     function onCityChange() {
@@ -148,6 +175,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     citySelect.addEventListener("change", onCityChange);
     typeSelect.addEventListener("change", renderProducts);
+    productSearch.addEventListener("input", filterProducts);
 
     onCityChange();
 });

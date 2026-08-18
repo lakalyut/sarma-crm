@@ -1,6 +1,57 @@
 {% extends "base_ambassador.html" %}
+{% from "includes/month_year_picker.html" import month_year_grid %}
 {% block content %}
 <h1>Лидерборд</h1>
+
+<div class="filters-card">
+  <form method="get" class="filters-grid">
+    <div class="field filter-field">
+      <label>Период</label>
+      <div class="multiselect" id="lb-months-multiselect">
+        <div class="multiselect-display">
+          <span class="multiselect-text">
+            {% if selected_months %}
+              {% for m in selected_months %}
+                {{ m|format_month }}{% if not loop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              Всё время
+            {% endif %}
+          </span>
+          <span class="multiselect-arrow">▾</span>
+        </div>
+        <div class="multiselect-dropdown">
+          <label class="month-checkbox month-checkbox-all">
+            <input type="checkbox" class="multiselect-select-all-checkbox">
+            <span>Выбрать все</span>
+          </label>
+          <div class="month-checkboxes">
+            {{ month_year_grid(all_months, selected_months, "months") }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field filter-field filter-actions-row">
+      <label>&nbsp;</label>
+      <div class="filters-actions">
+        <button type="submit">Показать</button>
+        <a href="/ambassador/leaderboard" class="btn btn-secondary">Сбросить</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initCheckboxMultiselect({
+        id: "lb-months-multiselect",
+        inputName: "months",
+        emptyText: "Всё время",
+        dateRange: true
+    });
+});
+</script>
 
 {% if not rows %}
   {% include "includes/empty_state.html" %}

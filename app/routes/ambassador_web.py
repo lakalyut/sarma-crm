@@ -3,7 +3,7 @@ Telegram-боту, см. ROADMAP.md: VPS не может достучаться 
 по исходящему HTTPS). Обычные cookie-сессии и обычный CSRF — не путать с
 app/routes/ambassador_app.py (Telegram Mini App, initData-заголовок)."""
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
@@ -15,7 +15,7 @@ from ..models import Region
 from ..render import render
 from ..services.ambassador_service import create_visit, get_visit_options
 from ..services.city_regions_service import get_regions
-from ..services.leaderboard_service import get_leaderboard
+from ..services.leaderboard_service import get_leaderboard, get_leaderboard_months
 
 router = APIRouter(prefix="/ambassador")
 
@@ -153,18 +153,24 @@ def ambassador_visit_submit(
 @router.get("/leaderboard")
 def ambassador_leaderboard_page(
     request: Request,
+    months: list[str] = Query(default=None),
     db: Session = Depends(get_db),
     user: User = Depends(require_ambassador),
 ):
     if not _profile_complete(user):
         return RedirectResponse("/ambassador/profile", status_code=HTTP_302_FOUND)
 
+    all_months = get_leaderboard_months(db)
+    selected_months = [m for m in (months or []) if m in all_months]
+
     return render(
         request,
         "ambassador/leaderboard.html",
         {
             "title": "Лидерборд — Пульс",
-            "rows": get_leaderboard(db),
+            "all_months": all_months,
+            "selected_months": selected_months,
+            "rows": get_leaderboard(db, selected_months=selected_months or None),
             "empty_state": {
                 "title": "Пока нет ни одного визита",
                 "hint": "Запишите первый визит — он появится здесь и в общем лидерборде.",

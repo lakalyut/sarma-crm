@@ -82,6 +82,8 @@ def test_get_visit_options_scoped_to_region(db_session):
     assert options["clients_by_city"]["Тестгород"] == ["Клиент А"]
     assert options["types_by_city"]["Тестгород"] == ["Кальянная"]
     assert any(p["id"] == product.id for p in options["products"])
+    matched = next(p for p in options["products"] if p["id"] == product.id)
+    assert matched["sku"] == "TEST-SKU"
 
 
 def test_create_visit_happy_path(db_session):

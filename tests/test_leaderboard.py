@@ -96,6 +96,49 @@ def test_get_leaderboard_counts_visits_and_category_a(db_session):
     assert row["aromas"] == ["Лимон", "Мята"]
 
 
+def test_get_leaderboard_months_and_filtering(db_session):
+    from datetime import UTC, datetime
+
+    from app.models import Region, Visit
+    from app.services.leaderboard_service import get_leaderboard, get_leaderboard_months
+
+    region = Region(name="Регион месяцев", sort_order=0)
+    db_session.add(region)
+    db_session.commit()
+    db_session.refresh(region)
+
+    ambassador = _make_ambassador(db_session, region, 333, "Анна", "Смирнова")
+
+    db_session.add(
+        Visit(
+            ambassador_id=ambassador.id,
+            city="Город",
+            client="Клиент А",
+            sale_type="Кальянная",
+            created_at=datetime(2026, 5, 10, tzinfo=UTC),
+        )
+    )
+    db_session.add(
+        Visit(
+            ambassador_id=ambassador.id,
+            city="Город",
+            client="Клиент Б",
+            sale_type="Кальянная",
+            created_at=datetime(2026, 6, 5, tzinfo=UTC),
+        )
+    )
+    db_session.commit()
+
+    months = get_leaderboard_months(db_session)
+    assert months == ["2026-06-01", "2026-05-01"]
+
+    rows_all = get_leaderboard(db_session)
+    assert rows_all[0]["visits"] == 2
+
+    rows_may = get_leaderboard(db_session, selected_months=["2026-05-01"])
+    assert rows_may[0]["visits"] == 1
+
+
 def test_leaderboard_page_rejects_anonymous(client):
     resp = client.get("/leaderboard", follow_redirects=False)
     assert resp.status_code in (302, 401)
@@ -104,6 +147,59 @@ def test_leaderboard_page_rejects_anonymous(client):
 def test_leaderboard_page_allows_admin(admin_client):
     resp = admin_client.get("/leaderboard")
     assert resp.status_code == 200
+
+
+def test_leaderboard_page_filters_by_month(admin_client, db_session):
+    from datetime import UTC, datetime
+
+    from app.models import Region, Visit
+
+    region = Region(name="Регион фильтра", sort_order=0)
+    db_session.add(region)
+    db_session.commit()
+    db_session.refresh(region)
+
+    oleg = _make_ambassador(db_session, region, 444, "Олег", "Олегов")
+    irina = _make_ambassador(db_session, region, 555, "Ирина", "Иринина")
+
+    db_session.add(
+        Visit(
+            ambassador_id=oleg.id,
+            city="Город",
+            client="Клиент",
+            sale_type="Кальянная",
+            created_at=datetime(2026, 5, 1, tzinfo=UTC),
+        )
+    )
+    db_session.add(
+        Visit(
+            ambassador_id=irina.id,
+            city="Город",
+            client="Клиент",
+            sale_type="Кальянная",
+            created_at=datetime(2026, 6, 1, tzinfo=UTC),
+        )
+    )
+    db_session.commit()
+
+    # Оба месяца реально есть в all_months (иначе пикер их и не предложит) —
+    # фильтр должен по-настоящему сужать счётчики визитов. Список амбассадоров
+    # в лидерборде не сокращается фильтром (показаны все, даже с 0 визитами
+    # за период — тот же принцип, что и в get_leaderboard без фильтра), важна
+    # именно цифра «Визиты» у каждого.
+    resp = admin_client.get("/leaderboard?months=2026-05-01")
+    assert resp.status_code == 200
+    oleg_idx = resp.text.index("Олег Олегов")
+    irina_idx = resp.text.index("Ирина Иринина")
+    assert "<td>1</td>" in resp.text[oleg_idx : oleg_idx + 200]
+    assert "<td>0</td>" in resp.text[irina_idx : irina_idx + 200]
+
+    resp = admin_client.get("/leaderboard?months=2026-06-01")
+    assert resp.status_code == 200
+    oleg_idx = resp.text.index("Олег Олегов")
+    irina_idx = resp.text.index("Ирина Иринина")
+    assert "<td>0</td>" in resp.text[oleg_idx : oleg_idx + 200]
+    assert "<td>1</td>" in resp.text[irina_idx : irina_idx + 200]
 
 
 def test_ambassador_app_leaderboard_matches_service(db_session, client):

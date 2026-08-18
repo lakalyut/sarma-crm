@@ -1,18 +1,33 @@
 """Горизонт 13, Этап 4 — лидерборд амбассадоров.
 
-Один сервис на два фронтенда (веб-страница /leaderboard и вкладка в мини-аппе
-/ambassador/app/leaderboard) — без фильтра по региону, это агрегированная
-статистика, не список клиентов конкретного региона (той чувствительности,
-из-за которой на Этапе 3 резали клиентов по региону амбассадора, здесь нет)."""
+Один сервис на два веб-фронтенда (/leaderboard и /ambassador/leaderboard —
+вкладка в Telegram-мини-аппе фильтр по месяцам пока не получила, см.
+ROADMAP.md) — без фильтра по региону, это агрегированная статистика, не
+список клиентов конкретного региона (той чувствительности, из-за которой на
+Этапе 3 резали клиентов по региону амбассадора, здесь нет).
+
+Месяц берётся из Visit.created_at (настоящий datetime, не Sale.month) —
+в отличие от Sale, тут нет унаследованного двух-форматного наследия, формат
+всегда один и тот же ISO 'YYYY-MM-01', потому что колонку заполняет только
+код этого проекта, не сторонний импорт."""
 
 from sqlalchemy.orm import Session
 
 from ..auth_models import User
 from ..models import AbcSegment, Product, ProductAbcRating, Visit, VisitProduct
+from ..utils.dates import month_sort_key, parse_month
 from .abc_service import guess_default_segment
 
 
-def get_leaderboard(db: Session) -> list[dict]:
+def get_leaderboard_months(db: Session) -> list[str]:
+    rows = db.query(Visit.created_at).all()
+    months = {row[0].strftime("%Y-%m-01") for row in rows if row[0]}
+    return sorted(months, key=month_sort_key, reverse=True)
+
+
+def get_leaderboard(
+    db: Session, selected_months: list[str] | None = None
+) -> list[dict]:
     ambassadors = db.query(User).filter(User.role == "ambassador").all()
     if not ambassadors:
         return []
@@ -27,6 +42,12 @@ def get_leaderboard(db: Session) -> list[dict]:
         ] = rating.category
 
     visits = db.query(Visit).filter(Visit.ambassador_id.in_(ambassador_ids)).all()
+    if selected_months:
+        wanted = {parse_month(m) for m in selected_months}
+        wanted.discard(None)
+        visits = [
+            v for v in visits if (v.created_at.year, v.created_at.month) in wanted
+        ]
     visit_by_id = {v.id: v for v in visits}
 
     visit_products = (

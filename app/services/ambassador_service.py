@@ -74,6 +74,7 @@ def get_visit_options(db: Session, region_id: int) -> dict:
                 "brand": p.brand,
                 "flavor": p.flavor,
                 "name": p.canonical_name,
+                "sku": p.canonical_sku,
             }
             for p in products
         ],
