@@ -94,6 +94,93 @@ def test_change_role_to_ambassador(admin_client, db_session):
     assert user.role == "ambassador"
 
 
+def test_admin_can_delete_user(admin_client, db_session):
+    from app.auth_models import PasswordToken, SessionModel, User, default_expiry
+
+    user = User(email="to-delete@example.com", role="user", is_active=True)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    db_session.add(
+        SessionModel(id="sess-1", user_id=user.id, expires_at=default_expiry(hours=1))
+    )
+    db_session.add(
+        PasswordToken(
+            token_hash="abc",
+            user_id=user.id,
+            purpose="set_password",
+            expires_at=default_expiry(hours=1),
+        )
+    )
+    db_session.commit()
+
+    resp = admin_client.post(
+        f"/admin/users/{user.id}/delete",
+        data={"csrf_token": CSRF_TOKEN},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 302
+    assert db_session.query(User).filter(User.id == user.id).first() is None
+    assert (
+        db_session.query(SessionModel).filter(SessionModel.user_id == user.id).count()
+        == 0
+    )
+    assert (
+        db_session.query(PasswordToken).filter(PasswordToken.user_id == user.id).count()
+        == 0
+    )
+
+
+def test_admin_cannot_delete_self(admin_client, admin_user, db_session):
+    from app.auth_models import User
+
+    resp = admin_client.post(
+        f"/admin/users/{admin_user.id}/delete",
+        data={"csrf_token": CSRF_TOKEN},
+    )
+
+    assert resp.status_code == 200
+    assert db_session.query(User).filter(User.id == admin_user.id).first() is not None
+
+
+def test_cannot_delete_ambassador_with_visit_history(admin_client, db_session):
+    from app.auth_models import User
+    from app.models import Visit
+
+    ambassador = User(
+        email="amb-with-visits@example.com",
+        role="ambassador",
+        is_active=True,
+        telegram_id=777001,
+        first_name="Иван",
+        last_name="Иванов",
+    )
+    db_session.add(ambassador)
+    db_session.commit()
+    db_session.refresh(ambassador)
+
+    db_session.add(
+        Visit(
+            ambassador_id=ambassador.id,
+            city="Город",
+            client="Клиент",
+            sale_type="Кальянная",
+        )
+    )
+    db_session.commit()
+
+    resp = admin_client.post(
+        f"/admin/users/{ambassador.id}/delete",
+        data={"csrf_token": CSRF_TOKEN},
+    )
+
+    assert resp.status_code == 200
+    assert "история визитов" in resp.text
+    assert db_session.query(User).filter(User.id == ambassador.id).first() is not None
+
+
 def test_regular_user_still_has_analytics_access(client, db_session):
     from app.auth_models import SessionModel, User, default_expiry, new_session_id
     from app.auth_security import hash_password

@@ -61,6 +61,17 @@
                 <button type="submit" style="padding:6px 12px;">Включить</button>
               {% endif %}
             </form>
+
+            {% if not current_user or u.id != current_user.id %}
+            <form
+              method="post"
+              action="/admin/users/{{u.id}}/delete"
+              style="display:inline;"
+              onsubmit="return confirm('Удалить пользователя {{ u.email }}? Это необратимо.');"
+            >
+              <button type="submit" class="btn-secondary" style="padding:6px 12px; color: var(--danger); border-color: var(--danger-border);">Удалить</button>
+            </form>
+            {% endif %}
           </td>
         </tr>
       {% endfor %}

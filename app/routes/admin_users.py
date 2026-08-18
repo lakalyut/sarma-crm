@@ -7,8 +7,15 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
 from ..auth_deps import require_admin
-from ..auth_models import PasswordToken, User, default_expiry, new_password_token
+from ..auth_models import (
+    PasswordToken,
+    SessionModel,
+    User,
+    default_expiry,
+    new_password_token,
+)
 from ..database import get_db
+from ..models import EventLog, Visit
 from ..render import render
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
@@ -239,4 +246,54 @@ def user_change_role(
 
     user.role = role
     db.commit()
+    return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
+
+
+@router.post("/{user_id}/delete")
+def user_delete(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin=Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
+
+    if user.id == admin.id:
+        return render(
+            request,
+            "admin/users_list.html",
+            {
+                "title": "Пользователи — Пульс",
+                "users": db.query(User).order_by(User.id.desc()).all(),
+                "error": "Нельзя удалить самого себя.",
+            },
+        )
+
+    # Visit — реальная бизнес-история (лидерборд, эффективность визитов), а не
+    # служебная запись вроде сессии/токена — удалять её вместе с амбассадором
+    # молча нельзя. Отключение (toggle-active) остаётся штатным способом
+    # убрать доступ, не теряя данные.
+    has_visits = db.query(Visit).filter(Visit.ambassador_id == user.id).count() > 0
+    if has_visits:
+        return render(
+            request,
+            "admin/users_list.html",
+            {
+                "title": "Пользователи — Пульс",
+                "users": db.query(User).order_by(User.id.desc()).all(),
+                "error": (
+                    f"Нельзя удалить {user.email} — есть история визитов. "
+                    "Отключите пользователя вместо удаления."
+                ),
+            },
+        )
+
+    db.query(SessionModel).filter(SessionModel.user_id == user.id).delete()
+    db.query(PasswordToken).filter(PasswordToken.user_id == user.id).delete()
+    db.query(EventLog).filter(EventLog.user_id == user.id).update({"user_id": None})
+    db.delete(user)
+    db.commit()
+
     return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
