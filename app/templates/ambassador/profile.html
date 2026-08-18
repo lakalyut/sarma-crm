@@ -1,0 +1,35 @@
+{% extends "base_ambassador.html" %}
+{% block content %}
+<div class="card-narrow">
+  <h1>Заполните анкету</h1>
+  <div class="page-subtitle" style="margin-bottom: 16px;">
+    Имя и регион — увидите только своих клиентов и записи визитов по этому региону.
+  </div>
+
+  {% include "includes/messages.html" %}
+
+  <form method="post" action="/ambassador/profile">
+    <div class="field">
+      <label>Имя</label>
+      <input type="text" name="first_name" required value="{{ user.first_name or '' }}">
+    </div>
+
+    <div class="field">
+      <label>Фамилия</label>
+      <input type="text" name="last_name" value="{{ user.last_name or '' }}">
+    </div>
+
+    <div class="field">
+      <label>Регион</label>
+      <select name="region_id" class="js-custom-select" required>
+        <option value="" disabled selected>Выберите регион</option>
+        {% for region in regions %}
+          <option value="{{ region.id }}" {% if user.region_id == region.id %}selected{% endif %}>{{ region.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit">Продолжить</button>
+  </form>
+</div>
+{% endblock %}

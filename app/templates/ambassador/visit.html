@@ -1,0 +1,155 @@
+{% extends "base_ambassador.html" %}
+{% block content %}
+<h1>Записать визит</h1>
+
+{% if error %}
+  <div class="message error">{{ error }}</div>
+{% endif %}
+{% if message %}
+  <div class="message ok">{{ message }}</div>
+{% endif %}
+
+<form method="post" action="/ambassador/visit" id="visit-form">
+  <div id="visit-options" data-options="{{ options|tojson }}"></div>
+
+  <div class="field is-hidden" id="city-field">
+    <label>Город</label>
+    <select name="city" id="city-select" class="js-custom-select"></select>
+  </div>
+
+  <div class="field">
+    <label>Клиент</label>
+    <input type="text" id="client-input" placeholder="Начните вводить название" autocomplete="off">
+    <input type="hidden" name="client" id="client-hidden">
+    <div class="search-dropdown" id="client-dropdown" style="display:none;"></div>
+    <div class="field-hint" id="selected-client" style="display:none;"></div>
+  </div>
+
+  <div class="field">
+    <label>Тип точки</label>
+    <select name="sale_type" id="type-select" class="js-custom-select"></select>
+  </div>
+
+  <div class="field">
+    <label>Ароматы</label>
+    <div id="products-list"></div>
+  </div>
+
+  <button type="submit" id="submit-btn" disabled>Записать визит</button>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const options = JSON.parse(document.getElementById("visit-options").dataset.options);
+
+    const citySelect = document.getElementById("city-select");
+    const clientInput = document.getElementById("client-input");
+    const clientHidden = document.getElementById("client-hidden");
+    const clientDropdown = document.getElementById("client-dropdown");
+    const selectedClientEl = document.getElementById("selected-client");
+    const typeSelect = document.getElementById("type-select");
+    const productsList = document.getElementById("products-list");
+    const submitBtn = document.getElementById("submit-btn");
+
+    citySelect.innerHTML = options.cities.map(c => '<option value="' + c + '">' + c + '</option>').join("");
+    if (options.cities.length > 1) {
+        document.getElementById("city-field").classList.remove("is-hidden");
+    }
+
+    function currentCity() {
+        return citySelect.value || options.cities[0] || "";
+    }
+
+    function renderClientList(filterText) {
+        const clients = options.clients_by_city[currentCity()] || [];
+        const q = filterText.trim().toLowerCase();
+        const matches = q ? clients.filter(c => c.toLowerCase().includes(q)) : clients;
+
+        if (!matches.length) {
+            clientDropdown.style.display = "none";
+            clientDropdown.innerHTML = "";
+            return;
+        }
+        clientDropdown.innerHTML = matches.slice(0, 30).map(c =>
+            '<div class="search-dropdown-item" data-client="' + c.replace(/"/g, "&quot;") + '">' + c + "</div>"
+        ).join("");
+        clientDropdown.style.display = "block";
+    }
+
+    function updateSubmitEnabled() {
+        const hasProducts = document.querySelectorAll('#products-list input[type="checkbox"]:checked').length > 0;
+        submitBtn.disabled = !(clientHidden.value && hasProducts);
+    }
+
+    function renderProducts() {
+        const type = typeSelect.value;
+        const segmentId = options.guessed_segment_by_type[type];
+        const ratings = (segmentId !== undefined && options.abc_by_segment[segmentId]) || {};
+
+        const byCategory = {};
+        for (const p of options.products) {
+            (byCategory[p.category] = byCategory[p.category] || []).push(p);
+        }
+
+        let html = "";
+        for (const category of Object.keys(byCategory).sort()) {
+            html += '<div class="field-hint" style="margin-top:8px;">' + category + "</div>";
+            for (const p of byCategory[category]) {
+                const abc = ratings[p.id];
+                const badge = abc ? '<span class="abc-badge abc-badge-' + abc.toLowerCase() + '">' + abc + "</span>" : "";
+                html += '<label style="display:flex; align-items:center; gap:8px; padding:6px 0;">' +
+                    '<input type="checkbox" name="product_ids" value="' + p.id + '">' +
+                    "<span>" + p.brand + " — " + p.flavor + "</span>" + badge + "</label>";
+            }
+        }
+        productsList.innerHTML = html;
+        productsList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener("change", updateSubmitEnabled);
+        });
+        updateSubmitEnabled();
+    }
+
+    function onCityChange() {
+        clientHidden.value = "";
+        clientInput.value = "";
+        selectedClientEl.style.display = "none";
+        clientDropdown.style.display = "none";
+
+        typeSelect.innerHTML = (options.types_by_city[currentCity()] || [])
+            .map(t => '<option value="' + t + '">' + t + "</option>").join("");
+        renderProducts();
+        updateSubmitEnabled();
+    }
+
+    clientInput.addEventListener("input", function (e) {
+        clientHidden.value = "";
+        selectedClientEl.style.display = "none";
+        renderClientList(e.target.value);
+        updateSubmitEnabled();
+    });
+
+    clientDropdown.addEventListener("click", function (e) {
+        const item = e.target.closest(".search-dropdown-item");
+        if (!item) return;
+        const value = item.dataset.client;
+        clientHidden.value = value;
+        clientInput.value = value;
+        clientDropdown.style.display = "none";
+        selectedClientEl.textContent = "Выбрано: " + value;
+        selectedClientEl.style.display = "block";
+        updateSubmitEnabled();
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!clientDropdown.contains(e.target) && e.target !== clientInput) {
+            clientDropdown.style.display = "none";
+        }
+    });
+
+    citySelect.addEventListener("change", onCityChange);
+    typeSelect.addEventListener("change", renderProducts);
+
+    onCityChange();
+});
+</script>
+{% endblock %}

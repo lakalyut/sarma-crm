@@ -100,7 +100,8 @@ def login(
     db.add(sess)
     db.commit()
 
-    resp = RedirectResponse(url="/", status_code=HTTP_302_FOUND)
+    landing = "/ambassador" if user.role == "ambassador" else "/"
+    resp = RedirectResponse(url=landing, status_code=HTTP_302_FOUND)
     resp.set_cookie(
         "session_id",
         sid,

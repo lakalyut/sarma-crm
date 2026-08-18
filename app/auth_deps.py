@@ -60,9 +60,9 @@ def require_analyst(user: User = Depends(require_user)) -> User:
 
 
 def require_ambassador(user: User = Depends(require_user)) -> User:
-    # Пока без реального вызывающего кода — Telegram-сессия (webhook,
-    # initData → cookie-сессия) появится на Этапе 2 горизонта 13. Роль/проверка
-    # заводятся сейчас как часть модели доступа, а не мёртвый код.
+    # cookie-сессия — обычный /auth/login (браузерный путь, горизонт 13.1);
+    # Telegram-мини-апп аутентифицируется отдельно, заголовком, см.
+    # app/telegram_auth.py::get_current_ambassador.
     if user.role not in ("admin", "ambassador"):
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user

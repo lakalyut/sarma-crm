@@ -19,11 +19,14 @@ def test_create_ambassador_via_admin_users_new(admin_client, db_session):
     user = db_session.query(User).filter(User.email == "amb@example.com").first()
     assert user is not None
     assert user.role == "ambassador"
-    assert user.password_hash is None
+    # Горизонт 13.1 — амбассадор всегда получает ссылку установки пароля
+    # (браузерный путь), telegram_id — опциональная надстройка сверху, не
+    # альтернатива паролю.
+    assert user.password_hash is None  # пароль появится только после /auth/set-password
     assert user.telegram_id == 555444333
 
 
-def test_ambassador_needs_telegram_id(admin_client, db_session):
+def test_ambassador_without_telegram_id_gets_password_link(admin_client, db_session):
     from app.auth_models import User
 
     resp = admin_client.post(
@@ -36,10 +39,11 @@ def test_ambassador_needs_telegram_id(admin_client, db_session):
     )
 
     assert resp.status_code == 200
-    assert (
-        db_session.query(User).filter(User.email == "amb-no-id@example.com").first()
-        is None
-    )
+    assert "auth/set-password" in resp.text
+
+    user = db_session.query(User).filter(User.email == "amb-no-id@example.com").first()
+    assert user is not None
+    assert user.telegram_id is None
 
 
 def test_duplicate_telegram_id_is_rejected_cleanly(admin_client, db_session):

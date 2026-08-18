@@ -18,6 +18,7 @@ from .routes.admin_imports import router as admin_imports_router
 from .routes.admin_regions import router as admin_regions_router
 from .routes.admin_users import router as admin_users_router
 from .routes.ambassador_app import router as ambassador_app_router
+from .routes.ambassador_web import router as ambassador_web_router
 from .routes.analytics import router as analytics_router
 from .routes.client_analysis import router as client_analysis_router
 from .routes.dashboard import router as dashboard_router
@@ -74,6 +75,7 @@ app.include_router(leaderboard_router)
 app.include_router(telegram_poc_router)
 app.include_router(telegram_bot_router)
 app.include_router(ambassador_app_router)
+app.include_router(ambassador_web_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 

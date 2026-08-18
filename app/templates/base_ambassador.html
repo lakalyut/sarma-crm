@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title or "Пульс — амбассадор" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {% include "_styles.html" %}
+  <style>
+    .amb-web-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .amb-web-brand {
+      font-weight: 700;
+      color: var(--text-strong);
+    }
+    .amb-web-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .amb-web-nav a {
+      padding: 7px 14px;
+      border-radius: var(--radius-md, 8px);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .amb-web-nav a.active,
+    .amb-web-nav a:hover {
+      background: var(--primary-tint);
+      color: var(--primary);
+    }
+    .amb-web-logout {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 7px 14px;
+    }
+    .amb-web-logout:hover { color: var(--danger); }
+    .amb-web-content {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header class="amb-web-header">
+    <span class="amb-web-brand">Пульс — амбассадор</span>
+    <nav class="amb-web-nav">
+      <a href="/ambassador/visit" class="{% if request.url.path == '/ambassador/visit' %}active{% endif %}">Визит</a>
+      <a href="/ambassador/leaderboard" class="{% if request.url.path == '/ambassador/leaderboard' %}active{% endif %}">Лидерборд</a>
+      <form method="post" action="/auth/logout" style="display:inline;">
+        <button type="submit" class="amb-web-logout">Выйти</button>
+      </form>
+    </nav>
+  </header>
+
+  <div class="amb-web-content">
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="/static/js/csrf.js"></script>
+</body>
+</html>

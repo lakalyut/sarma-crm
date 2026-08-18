@@ -68,51 +68,41 @@ def user_new_submit(
             },
         )
 
+    telegram_id_int = None
     if role == "ambassador":
-        # Амбассадор — без пароля, без ссылки установки: доступ через Telegram
-        # initData (Этап 2 горизонта 13), сюда попадает только известный
-        # заранее telegram_id. Имя/регион остаются пустыми до саморегистрации
-        # в боте.
+        # telegram_id — опционально: доступ у ambassador теперь двумя путями
+        # (Telegram-бот с initData, горизонт 13 Этап 2, и обычный пароль +
+        # браузер, горизонт 13.1) — можно завести сразу с telegram_id, можно
+        # без него и привязать позже сменой роли/полей. Имя/регион в любом
+        # случае заполняются самим амбассадором при первом входе (в боте или
+        # в браузере) — тут не задаются.
         telegram_id = telegram_id.strip()
-        if not telegram_id.isdigit():
-            return render(
-                request,
-                "admin/user_new.html",
-                {
-                    "title": "Пользователи — Пульс",
-                    "error": "Для роли ambassador нужен Telegram ID (число)",
-                },
+        if telegram_id:
+            if not telegram_id.isdigit():
+                return render(
+                    request,
+                    "admin/user_new.html",
+                    {
+                        "title": "Пользователи — Пульс",
+                        "error": "Telegram ID должен быть числом",
+                    },
+                )
+
+            telegram_id_int = int(telegram_id)
+            existing_tg = (
+                db.query(User).filter(User.telegram_id == telegram_id_int).first()
             )
+            if existing_tg:
+                return render(
+                    request,
+                    "admin/user_new.html",
+                    {
+                        "title": "Пользователи — Пульс",
+                        "error": "Этот Telegram ID уже привязан к другому пользователю",
+                    },
+                )
 
-        telegram_id_int = int(telegram_id)
-        existing_tg = db.query(User).filter(User.telegram_id == telegram_id_int).first()
-        if existing_tg:
-            return render(
-                request,
-                "admin/user_new.html",
-                {
-                    "title": "Пользователи — Пульс",
-                    "error": "Этот Telegram ID уже привязан к другому пользователю",
-                },
-            )
-
-        user = User(email=email, role=role, is_active=True, telegram_id=telegram_id_int)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-        return render(
-            request,
-            "admin/user_created.html",
-            {
-                "title": "Пользователи — Пульс",
-                "email": email,
-                "role": role,
-                "link": None,
-            },
-        )
-
-    user = User(email=email, role=role, is_active=True)
+    user = User(email=email, role=role, is_active=True, telegram_id=telegram_id_int)
     db.add(user)
     db.commit()
     db.refresh(user)
