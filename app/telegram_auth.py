@@ -110,7 +110,7 @@ def get_current_ambassador(
     if not user:
         raise HTTPException(status_code=403, detail="Амбассадор не найден")
 
-    if not user.first_name or not user.region_id:
+    if not user.first_name or not user.city:
         raise HTTPException(
             status_code=403, detail="Регистрация в боте ещё не завершена"
         )

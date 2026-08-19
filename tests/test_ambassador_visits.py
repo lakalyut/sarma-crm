@@ -2,18 +2,12 @@ import pytest
 from conftest import signed_init_data
 
 
-def _make_region_with_sales(db_session):
-    from app.models import CityRegion, Region, Sale
+def _make_sales(db_session, city="Тестгород"):
+    from app.models import Sale
 
-    region = Region(name="Тестовый регион", sort_order=0)
-    db_session.add(region)
-    db_session.commit()
-    db_session.refresh(region)
-
-    db_session.add(CityRegion(city="Тестгород", region_id=region.id))
     db_session.add(
         Sale(
-            city="Тестгород",
+            city=city,
             month="2026-01-01",
             type="Кальянная",
             client="Клиент А",
@@ -23,7 +17,7 @@ def _make_region_with_sales(db_session):
         )
     )
     db_session.commit()
-    return region
+    return city
 
 
 def _make_product(db_session, category="Табак", flavor="Мята"):
@@ -45,7 +39,7 @@ def _make_product(db_session, category="Табак", flavor="Мята"):
     return product
 
 
-def _make_ambassador(db_session, region_id, telegram_id=999111):
+def _make_ambassador(db_session, city, telegram_id=999111):
     from app.auth_models import User
 
     user = User(
@@ -55,7 +49,7 @@ def _make_ambassador(db_session, region_id, telegram_id=999111):
         telegram_id=telegram_id,
         first_name="Виз",
         last_name="Итов",
-        region_id=region_id,
+        city=city,
     )
     db_session.add(user)
     db_session.commit()
@@ -63,20 +57,13 @@ def _make_ambassador(db_session, region_id, telegram_id=999111):
     return user
 
 
-def test_get_cities_for_region(db_session):
-    from app.services.ambassador_service import get_cities_for_region
-
-    region = _make_region_with_sales(db_session)
-    assert get_cities_for_region(db_session, region.id) == ["Тестгород"]
-
-
-def test_get_visit_options_scoped_to_region(db_session):
+def test_get_visit_options_scoped_to_city(db_session):
     from app.services.ambassador_service import get_visit_options
 
-    region = _make_region_with_sales(db_session)
+    city = _make_sales(db_session)
     product = _make_product(db_session)
 
-    options = get_visit_options(db_session, region.id)
+    options = get_visit_options(db_session, city)
 
     assert options["cities"] == ["Тестгород"]
     assert options["clients_by_city"]["Тестгород"] == ["Клиент А"]
@@ -90,9 +77,9 @@ def test_create_visit_happy_path(db_session):
     from app.models import Visit, VisitProduct
     from app.services.ambassador_service import create_visit
 
-    region = _make_region_with_sales(db_session)
+    city = _make_sales(db_session)
     product = _make_product(db_session)
-    ambassador = _make_ambassador(db_session, region.id)
+    ambassador = _make_ambassador(db_session, city)
 
     visit = create_visit(
         db_session,
@@ -114,12 +101,12 @@ def test_create_visit_happy_path(db_session):
     )
 
 
-def test_create_visit_rejects_city_outside_region(db_session):
+def test_create_visit_rejects_wrong_city(db_session):
     from app.services.ambassador_service import create_visit
 
-    region = _make_region_with_sales(db_session)
+    city = _make_sales(db_session)
     product = _make_product(db_session)
-    ambassador = _make_ambassador(db_session, region.id)
+    ambassador = _make_ambassador(db_session, city)
 
     with pytest.raises(ValueError):
         create_visit(
@@ -135,9 +122,9 @@ def test_create_visit_rejects_city_outside_region(db_session):
 def test_create_visit_rejects_unknown_client(db_session):
     from app.services.ambassador_service import create_visit
 
-    region = _make_region_with_sales(db_session)
+    city = _make_sales(db_session)
     product = _make_product(db_session)
-    ambassador = _make_ambassador(db_session, region.id)
+    ambassador = _make_ambassador(db_session, city)
 
     with pytest.raises(ValueError):
         create_visit(
@@ -153,8 +140,8 @@ def test_create_visit_rejects_unknown_client(db_session):
 def test_create_visit_rejects_empty_products(db_session):
     from app.services.ambassador_service import create_visit
 
-    region = _make_region_with_sales(db_session)
-    ambassador = _make_ambassador(db_session, region.id)
+    city = _make_sales(db_session)
+    ambassador = _make_ambassador(db_session, city)
 
     with pytest.raises(ValueError):
         create_visit(
@@ -170,9 +157,9 @@ def test_create_visit_rejects_empty_products(db_session):
 def test_post_visits_happy_path(db_session, client):
     from app.models import Visit
 
-    region = _make_region_with_sales(db_session)
+    city = _make_sales(db_session)
     product = _make_product(db_session)
-    ambassador = _make_ambassador(db_session, region.id)
+    ambassador = _make_ambassador(db_session, city)
 
     init_data = signed_init_data(ambassador.telegram_id)
     resp = client.post(
@@ -192,9 +179,9 @@ def test_post_visits_happy_path(db_session, client):
 
 
 def test_post_visits_rejects_invalid_city(db_session, client):
-    region = _make_region_with_sales(db_session)
+    city = _make_sales(db_session)
     product = _make_product(db_session)
-    ambassador = _make_ambassador(db_session, region.id)
+    ambassador = _make_ambassador(db_session, city)
 
     init_data = signed_init_data(ambassador.telegram_id)
     resp = client.post(

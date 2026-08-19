@@ -26,7 +26,7 @@ def ambassador_app_verify(user: User = Depends(get_current_ambassador)):
         "ok": True,
         "first_name": user.first_name,
         "last_name": user.last_name,
-        "region": user.region.name if user.region else None,
+        "city": user.city,
     }
 
 
@@ -43,7 +43,7 @@ def ambassador_app_options(
     user: User = Depends(get_current_ambassador),
     db: Session = Depends(get_db),
 ):
-    return get_visit_options(db, user.region_id)
+    return get_visit_options(db, user.city)
 
 
 @router.post("/ambassador/app/visits")

@@ -19,7 +19,7 @@ def test_unknown_telegram_id_is_denied(db_session, monkeypatch):
     assert sent[0][0][1] == svc.DENY_TEXT
 
 
-def test_text_message_saves_name_and_asks_region(db_session, monkeypatch):
+def test_text_message_saves_name_and_asks_city(db_session, monkeypatch):
     from app.auth_models import User
     from app.services import telegram_bot_service as svc
 
@@ -47,18 +47,26 @@ def test_text_message_saves_name_and_asks_region(db_session, monkeypatch):
     db_session.refresh(user)
     assert user.first_name == "Иван"
     assert user.last_name == "Иванов"
-    assert user.region_id is None
+    assert user.city is None
     assert len(sent) == 1
     assert "reply_markup" in sent[0][1]
 
 
-def test_region_callback_saves_region(db_session, monkeypatch):
+def test_city_callback_saves_city(db_session, monkeypatch):
     from app.auth_models import User
-    from app.models import Region
+    from app.models import Sale
     from app.services import telegram_bot_service as svc
 
-    region = Region(name="Москва", sort_order=0)
-    db_session.add(region)
+    db_session.add(
+        Sale(
+            city="Москва",
+            month="2026-01-01",
+            type="Кальянная",
+            client="Клиент",
+            qty=1,
+            weight=1,
+        )
+    )
     user = User(
         email="amb2@example.com",
         role="ambassador",
@@ -69,7 +77,6 @@ def test_region_callback_saves_region(db_session, monkeypatch):
     )
     db_session.add(user)
     db_session.commit()
-    db_session.refresh(region)
 
     answered = []
     sent = []
@@ -89,14 +96,14 @@ def test_region_callback_saves_region(db_session, monkeypatch):
                 "id": "cbq1",
                 "from": {"id": 54321},
                 "message": {"chat": {"id": 777}},
-                "data": f"region:{region.id}",
+                "data": "city:Москва",
             }
         },
         BASE_URL,
     )
 
     db_session.refresh(user)
-    assert user.region_id == region.id
+    assert user.city == "Москва"
     assert len(answered) == 1
     assert len(sent) == 1
     assert len(menu) == 1
@@ -109,13 +116,13 @@ def test_region_callback_saves_region(db_session, monkeypatch):
                 "id": "cbq2",
                 "from": {"id": 54321},
                 "message": {"chat": {"id": 777}},
-                "data": f"region:{region.id}",
+                "data": "city:Москва",
             }
         },
         BASE_URL,
     )
     db_session.refresh(user)
-    assert user.region_id == region.id
+    assert user.city == "Москва"
     assert len(answered) == 2
     assert len(sent) == 1  # не выросло
 
@@ -157,12 +164,6 @@ def test_ambassador_app_verify_requires_completed_registration(db_session, clien
 
 def test_ambassador_app_verify_ok(db_session, client):
     from app.auth_models import User
-    from app.models import Region
-
-    region = Region(name="Юг", sort_order=0)
-    db_session.add(region)
-    db_session.commit()
-    db_session.refresh(region)
 
     user = User(
         email="amb4@example.com",
@@ -171,7 +172,7 @@ def test_ambassador_app_verify_ok(db_session, client):
         telegram_id=222333,
         first_name="Анна",
         last_name="Смирнова",
-        region_id=region.id,
+        city="Юг",
     )
     db_session.add(user)
     db_session.commit()
@@ -183,4 +184,4 @@ def test_ambassador_app_verify_ok(db_session, client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["first_name"] == "Анна"
-    assert body["region"] == "Юг"
+    assert body["city"] == "Юг"

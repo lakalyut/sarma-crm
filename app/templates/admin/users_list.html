@@ -19,7 +19,7 @@
           <th>ID</th>
           <th>Email</th>
           <th>Роль</th>
-          <th>Telegram ID / Регион</th>
+          <th>Telegram ID / Город</th>
           <th>Статус</th>
           <th>Создан</th>
           <th>Действия</th>
@@ -40,7 +40,7 @@
               <button type="submit" class="btn-secondary" style="padding:6px 12px;">Сохранить</button>
             </form>
           </td>
-          <td>{{ u.telegram_id or "—" }} / {{ u.region.name if u.region else "—" }}</td>
+          <td>{{ u.telegram_id or "—" }} / {{ u.city or "—" }}</td>
           <td>
             {% if u.is_active %}
               <span class="message ok" style="display:inline-block; margin:0; padding:4px 8px;">active</span>

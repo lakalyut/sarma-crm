@@ -2,43 +2,46 @@
 
 Состояние диалога не хранится отдельно (без aiogram/FSM — короткий, ровно
 двухшаговый диалог не оправдывает отдельную библиотеку/таблицу): читается из
-самих nullable-полей User — first_name IS NULL → ждём имя, region_id IS NULL
-(при заполненном имени) → ждём регион, оба заполнены → зарегистрирован.
+самих nullable-полей User — first_name IS NULL → ждём имя, city IS NULL
+(при заполненном имени) → ждём город, оба заполнены → зарегистрирован.
 Whitelist — сама таблица users (амбассадор заводится админом заранее на
 Этапе 1 с известным telegram_id), отдельной таблицы allowed_users, в отличие
 от guide_bot, не нужно — это одна и та же сущность.
-"""
+
+Амбассадор привязан к одному конкретному городу (User.city — та же природа
+поле, что Sale.city/Visit.city), не к макро-региону — выбор всё ещё через
+инлайн-кнопки, не свободный текст (та же причина, что была у региона: город
+— граница доступа к списку клиентов, опечатка не должна давать несуществующий
+город)."""
 
 from sqlalchemy.orm import Session
 
 from ..auth_models import User
-from ..models import Region
+from ..services.sales_options_service import get_cities
 from ..telegram_client import answer_callback_query, send_message, set_chat_menu_button
 
 DENY_TEXT = "🚫 У вас нет доступа к этому боту. Обратитесь к администратору."
 ASK_NAME_TEXT = (
     "Добро пожаловать! Отправьте, пожалуйста, имя и фамилию одним сообщением."
 )
-ASK_REGION_AGAIN_TEXT = "Пожалуйста, выберите регион кнопкой ниже."
+ASK_CITY_AGAIN_TEXT = "Пожалуйста, выберите город кнопкой ниже."
 ALREADY_REGISTERED_TEXT = (
     "Вы уже зарегистрированы. Открыть мини-апп можно кнопкой меню рядом с полем ввода."
 )
-REGION_SAVED_TEXT = (
-    "Регион сохранён ✅. Открыть мини-апп можно кнопкой меню рядом с полем ввода."
+CITY_SAVED_TEXT = (
+    "Город сохранён ✅. Открыть мини-апп можно кнопкой меню рядом с полем ввода."
 )
-REGION_ALREADY_SET_TEXT = "Уже сохранено."
+CITY_ALREADY_SET_TEXT = "Уже сохранено."
 
 
 def _ambassador_app_url(base_url: str) -> str:
     return f"{base_url}/ambassador/app"
 
 
-def _region_keyboard(db: Session) -> dict:
-    regions = db.query(Region).order_by(Region.sort_order, Region.id).all()
+def _city_keyboard(db: Session) -> dict:
+    cities = get_cities(db)
     return {
-        "inline_keyboard": [
-            [{"text": r.name, "callback_data": f"region:{r.id}"}] for r in regions
-        ]
+        "inline_keyboard": [[{"text": c, "callback_data": f"city:{c}"}] for c in cities]
     }
 
 
@@ -81,11 +84,11 @@ def _handle_message(db: Session, message: dict, base_url: str) -> None:
         user.first_name = parts[0]
         user.last_name = parts[1] if len(parts) > 1 else ""
         db.commit()
-        send_message(chat_id, "Регион:", reply_markup=_region_keyboard(db))
+        send_message(chat_id, "Город:", reply_markup=_city_keyboard(db))
         return
 
-    if not user.region_id:
-        send_message(chat_id, ASK_REGION_AGAIN_TEXT, reply_markup=_region_keyboard(db))
+    if not user.city:
+        send_message(chat_id, ASK_CITY_AGAIN_TEXT, reply_markup=_city_keyboard(db))
         return
 
     if text == "/start":
@@ -105,28 +108,22 @@ def _handle_callback_query(db: Session, callback_query: dict, base_url: str) -> 
         answer_callback_query(callback_id, DENY_TEXT, show_alert=True)
         return
 
-    if user.region_id:
-        answer_callback_query(callback_id, REGION_ALREADY_SET_TEXT)
+    if user.city:
+        answer_callback_query(callback_id, CITY_ALREADY_SET_TEXT)
         return
 
-    if not data.startswith("region:"):
+    if not data.startswith("city:"):
         answer_callback_query(callback_id)
         return
 
-    try:
-        region_id = int(data.split(":", 1)[1])
-    except ValueError:
-        answer_callback_query(callback_id)
+    city = data.split(":", 1)[1]
+    if city not in get_cities(db):
+        answer_callback_query(callback_id, "Такого города больше нет, обновите список")
         return
 
-    region = db.query(Region).filter(Region.id == region_id).first()
-    if not region:
-        answer_callback_query(callback_id, "Такого региона больше нет, обновите список")
-        return
-
-    user.region_id = region.id
+    user.city = city
     db.commit()
     answer_callback_query(callback_id, "Сохранено ✅")
     if chat_id is not None:
-        send_message(chat_id, REGION_SAVED_TEXT)
+        send_message(chat_id, CITY_SAVED_TEXT)
         set_chat_menu_button(chat_id, _ambassador_app_url(base_url))

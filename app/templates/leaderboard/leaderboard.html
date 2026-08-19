@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
     <table class="sheet-table" id="leaderboard-table">
       <thead>
         <tr>
-          <th>Регион</th>
+          <th>Город</th>
           <th>Амбассадор</th>
           <th>Визиты</th>
           <th>Ароматов категории А</th>
@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
       <tbody>
       {% for row in rows %}
         <tr>
-          <td>{{ row.region }}</td>
+          <td>{{ row.city }}</td>
           <td>{{ row.ambassador }}</td>
           <td>{{ row.visits }}</td>
           <td>{{ row.category_a }}</td>

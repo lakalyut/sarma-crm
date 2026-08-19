@@ -2,9 +2,9 @@
 
 Один сервис на два веб-фронтенда (/leaderboard и /ambassador/leaderboard —
 вкладка в Telegram-мини-аппе фильтр по месяцам пока не получила, см.
-ROADMAP.md) — без фильтра по региону, это агрегированная статистика, не
-список клиентов конкретного региона (той чувствительности, из-за которой на
-Этапе 3 резали клиентов по региону амбассадора, здесь нет).
+ROADMAP.md) — без фильтра по городу, это агрегированная статистика, не
+список клиентов конкретного города (той чувствительности, из-за которой на
+Этапе 3 резали клиентов по городу амбассадора, здесь нет).
 
 Месяц берётся из Visit.created_at (настоящий datetime, не Sale.month) —
 в отличие от Sale, тут нет унаследованного двух-форматного наследия, формат
@@ -89,7 +89,7 @@ def get_leaderboard(
         rows.append(
             {
                 "ambassador": name or ambassador.email,
-                "region": ambassador.region.name if ambassador.region else "—",
+                "city": ambassador.city or "—",
                 "visits": row["visits"],
                 "category_a": row["category_a"],
                 "aromas": sorted(row["aromas"]),

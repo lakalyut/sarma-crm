@@ -1,7 +1,7 @@
 from conftest import signed_init_data
 
 
-def _make_ambassador(db_session, region, telegram_id, first_name, last_name):
+def _make_ambassador(db_session, city, telegram_id, first_name, last_name):
     from app.auth_models import User
 
     user = User(
@@ -11,7 +11,7 @@ def _make_ambassador(db_session, region, telegram_id, first_name, last_name):
         telegram_id=telegram_id,
         first_name=first_name,
         last_name=last_name,
-        region_id=region.id,
+        city=city,
     )
     db_session.add(user)
     db_session.commit()
@@ -45,15 +45,10 @@ def test_get_leaderboard_empty_when_no_ambassadors(db_session):
 
 
 def test_get_leaderboard_counts_visits_and_category_a(db_session):
-    from app.models import AbcSegment, ProductAbcRating, Region, Visit, VisitProduct
+    from app.models import AbcSegment, ProductAbcRating, Visit, VisitProduct
     from app.services.leaderboard_service import get_leaderboard
 
-    region = Region(name="Регион 1", sort_order=0)
-    db_session.add(region)
-    db_session.commit()
-    db_session.refresh(region)
-
-    ambassador = _make_ambassador(db_session, region, 111, "Иван", "Иванов")
+    ambassador = _make_ambassador(db_session, "Город 1", 111, "Иван", "Иванов")
 
     segment = AbcSegment(name="Кальянная", sort_order=0)
     db_session.add(segment)
@@ -90,7 +85,7 @@ def test_get_leaderboard_counts_visits_and_category_a(db_session):
     assert len(rows) == 1
     row = rows[0]
     assert row["ambassador"] == "Иван Иванов"
-    assert row["region"] == "Регион 1"
+    assert row["city"] == "Город 1"
     assert row["visits"] == 1
     assert row["category_a"] == 1
     assert row["aromas"] == ["Лимон", "Мята"]
@@ -99,15 +94,10 @@ def test_get_leaderboard_counts_visits_and_category_a(db_session):
 def test_get_leaderboard_months_and_filtering(db_session):
     from datetime import UTC, datetime
 
-    from app.models import Region, Visit
+    from app.models import Visit
     from app.services.leaderboard_service import get_leaderboard, get_leaderboard_months
 
-    region = Region(name="Регион месяцев", sort_order=0)
-    db_session.add(region)
-    db_session.commit()
-    db_session.refresh(region)
-
-    ambassador = _make_ambassador(db_session, region, 333, "Анна", "Смирнова")
+    ambassador = _make_ambassador(db_session, "Город месяцев", 333, "Анна", "Смирнова")
 
     db_session.add(
         Visit(
@@ -152,15 +142,10 @@ def test_leaderboard_page_allows_admin(admin_client):
 def test_leaderboard_page_filters_by_month(admin_client, db_session):
     from datetime import UTC, datetime
 
-    from app.models import Region, Visit
+    from app.models import Visit
 
-    region = Region(name="Регион фильтра", sort_order=0)
-    db_session.add(region)
-    db_session.commit()
-    db_session.refresh(region)
-
-    oleg = _make_ambassador(db_session, region, 444, "Олег", "Олегов")
-    irina = _make_ambassador(db_session, region, 555, "Ирина", "Иринина")
+    oleg = _make_ambassador(db_session, "Город фильтра", 444, "Олег", "Олегов")
+    irina = _make_ambassador(db_session, "Город фильтра", 555, "Ирина", "Иринина")
 
     db_session.add(
         Visit(
@@ -203,14 +188,7 @@ def test_leaderboard_page_filters_by_month(admin_client, db_session):
 
 
 def test_ambassador_app_leaderboard_matches_service(db_session, client):
-    from app.models import Region
-
-    region = Region(name="Регион 2", sort_order=0)
-    db_session.add(region)
-    db_session.commit()
-    db_session.refresh(region)
-
-    ambassador = _make_ambassador(db_session, region, 222, "Пётр", "Петров")
+    ambassador = _make_ambassador(db_session, "Город 2", 222, "Пётр", "Петров")
 
     init_data = signed_init_data(ambassador.telegram_id)
     resp = client.get(

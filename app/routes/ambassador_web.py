@@ -11,17 +11,16 @@ from starlette.status import HTTP_302_FOUND
 from ..auth_deps import require_ambassador
 from ..auth_models import User
 from ..database import get_db
-from ..models import Region
 from ..render import render
 from ..services.ambassador_service import create_visit, get_visit_options
-from ..services.city_regions_service import get_regions
 from ..services.leaderboard_service import get_leaderboard, get_leaderboard_months
+from ..services.sales_options_service import get_cities
 
 router = APIRouter(prefix="/ambassador")
 
 
 def _profile_complete(user: User) -> bool:
-    return bool(user.first_name and user.region_id)
+    return bool(user.first_name and user.city)
 
 
 @router.get("")
@@ -40,7 +39,7 @@ def ambassador_profile_form(
     return render(
         request,
         "ambassador/profile.html",
-        {"title": "Анкета — Пульс", "regions": get_regions(db), "user": user},
+        {"title": "Анкета — Пульс", "cities": get_cities(db), "user": user},
     )
 
 
@@ -49,12 +48,12 @@ def ambassador_profile_submit(
     request: Request,
     first_name: str = Form(""),
     last_name: str = Form(""),
-    region_id: int = Form(...),
+    city: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_ambassador),
 ):
     first_name = first_name.strip()
-    regions = get_regions(db)
+    cities = get_cities(db)
 
     if not first_name:
         return render(
@@ -62,28 +61,27 @@ def ambassador_profile_submit(
             "ambassador/profile.html",
             {
                 "title": "Анкета — Пульс",
-                "regions": regions,
+                "cities": cities,
                 "user": user,
                 "error": "Введите имя",
             },
         )
 
-    region = db.query(Region).filter(Region.id == region_id).first()
-    if not region:
+    if city not in cities:
         return render(
             request,
             "ambassador/profile.html",
             {
                 "title": "Анкета — Пульс",
-                "regions": regions,
+                "cities": cities,
                 "user": user,
-                "error": "Выберите регион из списка",
+                "error": "Выберите город из списка",
             },
         )
 
     user.first_name = first_name
     user.last_name = last_name.strip()
-    user.region_id = region.id
+    user.city = city
     db.commit()
 
     return RedirectResponse("/ambassador/visit", status_code=HTTP_302_FOUND)
@@ -103,7 +101,7 @@ def ambassador_visit_form(
         "ambassador/visit.html",
         {
             "title": "Визит — Пульс",
-            "options": get_visit_options(db, user.region_id),
+            "options": get_visit_options(db, user.city),
         },
     )
 
@@ -121,7 +119,7 @@ def ambassador_visit_submit(
     if not _profile_complete(user):
         return RedirectResponse("/ambassador/profile", status_code=HTTP_302_FOUND)
 
-    options = get_visit_options(db, user.region_id)
+    options = get_visit_options(db, user.city)
 
     try:
         create_visit(
@@ -144,7 +142,7 @@ def ambassador_visit_submit(
         "ambassador/visit.html",
         {
             "title": "Визит — Пульс",
-            "options": get_visit_options(db, user.region_id),
+            "options": get_visit_options(db, user.city),
             "message": "Визит записан",
         },
     )

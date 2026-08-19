@@ -390,7 +390,7 @@ function renderLeaderboard(rows) {
     el.innerHTML = rows.map(r =>
         '<div class="lb-row">' +
             '<div class="lb-top"><span class="lb-name">' + r.ambassador + '</span>' +
-            '<span class="lb-region">' + r.region + '</span></div>' +
+            '<span class="lb-region">' + r.city + '</span></div>' +
             '<div class="lb-stats"><span>Визиты: <b>' + r.visits + '</b></span>' +
             '<span>Категория А: <b>' + r.category_a + '</b></span></div>' +
             '<div class="lb-aromas">' + (r.aromas.length ? r.aromas.join(', ') : '—') + '</div>' +
@@ -446,7 +446,7 @@ if (!tg || !tg.initData) {
             if (res.ok) {
                 contentEl.innerHTML =
                     line('Имя', (body.first_name || '') + ' ' + (body.last_name || '')) +
-                    line('Регион', body.region);
+                    line('Город', body.city);
                 document.getElementById('tabs').classList.remove('is-hidden');
 
                 return fetch('/ambassador/app/options', { headers: authHeader() });

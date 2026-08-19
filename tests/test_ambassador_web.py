@@ -68,7 +68,7 @@ def test_ambassador_can_set_password_and_login(admin_client, client, db_session)
     assert "session_id" in resp.cookies
 
 
-def _login_ambassador(client, db_session, region_id=None, first_name=None):
+def _login_ambassador(client, db_session, city=None, first_name=None):
     from app.auth_models import SessionModel, User, default_expiry, new_session_id
     from app.auth_security import hash_password
 
@@ -78,7 +78,7 @@ def _login_ambassador(client, db_session, region_id=None, first_name=None):
         role="ambassador",
         is_active=True,
         first_name=first_name,
-        region_id=region_id,
+        city=city,
     )
     db_session.add(user)
     db_session.commit()
@@ -102,12 +102,19 @@ def test_visit_page_redirects_to_profile_when_incomplete(client, db_session):
 
 
 def test_profile_submit_completes_and_unlocks_visit_page(client, db_session):
-    from app.models import Region
+    from app.models import Sale
 
-    region = Region(name="Тестовый регион", sort_order=0)
-    db_session.add(region)
+    db_session.add(
+        Sale(
+            city="Тестгород",
+            month="2026-01-01",
+            type="Кальянная",
+            client="Клиент",
+            qty=1,
+            weight=1,
+        )
+    )
     db_session.commit()
-    db_session.refresh(region)
 
     _login_ambassador(client, db_session)
 
@@ -116,7 +123,7 @@ def test_profile_submit_completes_and_unlocks_visit_page(client, db_session):
         data={
             "first_name": "Иван",
             "last_name": "Иванов",
-            "region_id": region.id,
+            "city": "Тестгород",
             "csrf_token": CSRF_TOKEN,
         },
         follow_redirects=False,
@@ -128,15 +135,39 @@ def test_profile_submit_completes_and_unlocks_visit_page(client, db_session):
     assert resp.status_code == 200
 
 
-def test_visit_submit_happy_path_and_invalid_city(client, db_session):
-    from app.models import CityRegion, Product, Region, Sale, Visit
+def test_profile_submit_rejects_unknown_city(client, db_session):
+    from app.models import Sale
 
-    region = Region(name="Регион визита", sort_order=0)
-    db_session.add(region)
+    db_session.add(
+        Sale(
+            city="Тестгород",
+            month="2026-01-01",
+            type="Кальянная",
+            client="Клиент",
+            qty=1,
+            weight=1,
+        )
+    )
     db_session.commit()
-    db_session.refresh(region)
 
-    db_session.add(CityRegion(city="Город", region_id=region.id))
+    _login_ambassador(client, db_session)
+
+    resp = client.post(
+        "/ambassador/profile",
+        data={
+            "first_name": "Иван",
+            "last_name": "Иванов",
+            "city": "Город, которого нет",
+            "csrf_token": CSRF_TOKEN,
+        },
+    )
+    assert resp.status_code == 200
+    assert "Выберите город из списка" in resp.text
+
+
+def test_visit_submit_happy_path_and_invalid_city(client, db_session):
+    from app.models import Product, Sale, Visit
+
     db_session.add(
         Sale(
             city="Город",
@@ -161,7 +192,7 @@ def test_visit_submit_happy_path_and_invalid_city(client, db_session):
     db_session.commit()
     db_session.refresh(product)
 
-    _login_ambassador(client, db_session, region_id=region.id, first_name="Иван")
+    _login_ambassador(client, db_session, city="Город", first_name="Иван")
 
     resp = client.post(
         "/ambassador/visit",
@@ -193,14 +224,7 @@ def test_visit_submit_happy_path_and_invalid_city(client, db_session):
 
 
 def test_leaderboard_page_accessible_to_ambassador(client, db_session):
-    from app.models import Region
-
-    region = Region(name="Регион лидерборда", sort_order=0)
-    db_session.add(region)
-    db_session.commit()
-    db_session.refresh(region)
-
-    _login_ambassador(client, db_session, region_id=region.id, first_name="Иван")
+    _login_ambassador(client, db_session, city="Город лидерборда", first_name="Иван")
 
     resp = client.get("/ambassador/leaderboard")
     assert resp.status_code == 200

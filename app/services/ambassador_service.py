@@ -1,42 +1,25 @@
-"""Горизонт 13, Этап 3 — данные и создание визита в мини-аппе амбассадора."""
+"""Горизонт 13, Этап 3 — данные и создание визита в мини-аппе амбассадора.
+
+Амбассадор привязан к одному конкретному городу (User.city — та же природа
+поле, что Sale.city/Visit.city, не отдельная сущность), не к макро-региону —
+поэтому все данные визита берутся строго по этому одному городу, без
+разворачивания в список городов региона."""
 
 from sqlalchemy.orm import Session
 
 from ..auth_models import User
-from ..models import (
-    AbcSegment,
-    CityRegion,
-    Product,
-    ProductAbcRating,
-    Visit,
-    VisitProduct,
-)
+from ..models import AbcSegment, Product, ProductAbcRating, Visit, VisitProduct
 from . import sales_options_service
 from .abc_service import guess_default_segment
 
 
-def get_cities_for_region(db: Session, region_id: int) -> list[str]:
-    return sorted(
-        row[0]
-        for row in db.query(CityRegion.city).filter(CityRegion.region_id == region_id)
-    )
-
-
-def get_visit_options(db: Session, region_id: int) -> dict:
-    cities = get_cities_for_region(db, region_id)
-
-    clients_by_city = {
-        city: sales_options_service.get_clients(db, city=city) for city in cities
-    }
-    types_by_city = {
-        city: sales_options_service.get_types(db, city=city) for city in cities
-    }
-
-    all_types = sorted({t for types in types_by_city.values() for t in types})
+def get_visit_options(db: Session, city: str) -> dict:
+    clients = sales_options_service.get_clients(db, city=city)
+    types = sales_options_service.get_types(db, city=city)
 
     segments = db.query(AbcSegment).order_by(AbcSegment.sort_order, AbcSegment.id).all()
     guessed_segment_by_type: dict[str, int] = {}
-    for sale_type in all_types:
+    for sale_type in types:
         segment = guess_default_segment(segments, sale_type)
         if segment:
             guessed_segment_by_type[sale_type] = segment.id
@@ -62,9 +45,9 @@ def get_visit_options(db: Session, region_id: int) -> dict:
     )
 
     return {
-        "cities": cities,
-        "clients_by_city": clients_by_city,
-        "types_by_city": types_by_city,
+        "cities": [city],
+        "clients_by_city": {city: clients},
+        "types_by_city": {city: types},
         "guessed_segment_by_type": guessed_segment_by_type,
         "abc_by_segment": abc_by_segment,
         "products": [
@@ -89,8 +72,8 @@ def create_visit(
     sale_type: str,
     product_ids: list[int],
 ) -> Visit:
-    if city not in get_cities_for_region(db, ambassador.region_id):
-        raise ValueError("Город не входит в ваш регион")
+    if city != ambassador.city:
+        raise ValueError("Вы можете записывать визиты только в своём городе")
 
     if client not in sales_options_service.get_clients(db, city=city):
         raise ValueError("Такого клиента нет в списке для этого города")
