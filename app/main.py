@@ -11,7 +11,7 @@ from starlette.status import HTTP_302_FOUND
 
 from .auth_deps import get_current_user
 from .auth_routes import router as auth_router
-from .csrf import csrf_guard
+from .csrf import attach_csrf_cookie, csrf_guard, get_csrf_token
 from .database import Base, SessionLocal, engine
 from .routes.admin_abc import router as admin_abc_router
 from .routes.admin_imports import router as admin_imports_router
@@ -95,55 +95,39 @@ def _unauth(request: Request, exc):
     return RedirectResponse("/auth/login", status_code=HTTP_302_FOUND)
 
 
-@app.exception_handler(403)
-def _forbidden(request: Request, exc):
+def _render_error(request: Request, template_name: str, status_code: int):
+    # Страницы ошибок несут тот же сайдбар/форму логаута, что и обычные
+    # страницы (base.html) — им тоже нужен настоящий csrf_token в контексте
+    # и выставленная cookie, иначе csrf.js подставит в форму логаута пустое
+    # значение, оно не совпадёт с cookie, и сам POST /auth/logout получит
+    # свой собственный 403 — тупик без выхода со страницы ошибки (поймано
+    # вживую: залогинен под ролью с урезанным доступом, любой 403 подряд).
     db = SessionLocal()
     try:
         user = get_current_user(request, db)
     finally:
         db.close()
 
-    return templates.TemplateResponse(
-        "errors/403.html",
-        {
-            "request": request,
-            "current_user": user,
-        },
-        status_code=403,
+    csrf_token = get_csrf_token(request)
+    response = templates.TemplateResponse(
+        template_name,
+        {"request": request, "current_user": user, "csrf_token": csrf_token},
+        status_code=status_code,
     )
+    attach_csrf_cookie(response, request, csrf_token)
+    return response
+
+
+@app.exception_handler(403)
+def _forbidden(request: Request, exc):
+    return _render_error(request, "errors/403.html", 403)
 
 
 @app.exception_handler(404)
 def not_found_handler(request: Request, exc):
-    db = SessionLocal()
-    try:
-        user = get_current_user(request, db)
-    finally:
-        db.close()
-
-    return templates.TemplateResponse(
-        "errors/404.html",
-        {
-            "request": request,
-            "current_user": user,
-        },
-        status_code=404,
-    )
+    return _render_error(request, "errors/404.html", 404)
 
 
 @app.exception_handler(Exception)
 def server_error_handler(request: Request, exc):
-    db = SessionLocal()
-    try:
-        user = get_current_user(request, db)
-    finally:
-        db.close()
-
-    return templates.TemplateResponse(
-        "errors/500.html",
-        {
-            "request": request,
-            "current_user": user,
-        },
-        status_code=500,
-    )
+    return _render_error(request, "errors/500.html", 500)
