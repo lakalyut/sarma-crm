@@ -91,6 +91,40 @@ def test_get_leaderboard_counts_visits_and_category_a(db_session):
     assert row["aromas"] == ["Лимон", "Мята"]
 
 
+def test_get_leaderboard_hides_deactivated_ambassador(db_session):
+    from app.models import Visit
+    from app.services.leaderboard_service import get_leaderboard
+
+    active = _make_ambassador(db_session, "Город", 666, "Илья", "Активов")
+    inactive = _make_ambassador(db_session, "Город", 777, "Пётр", "Отключенов")
+    inactive.is_active = False
+    db_session.commit()
+
+    db_session.add(
+        Visit(
+            ambassador_id=active.id,
+            city="Город",
+            client="Клиент",
+            sale_type="Кальянная",
+        )
+    )
+    db_session.add(
+        Visit(
+            ambassador_id=inactive.id,
+            city="Город",
+            client="Клиент",
+            sale_type="Кальянная",
+        )
+    )
+    db_session.commit()
+
+    rows = get_leaderboard(db_session)
+
+    names = {r["ambassador"] for r in rows}
+    assert "Илья Активов" in names
+    assert "Пётр Отключенов" not in names
+
+
 def test_get_leaderboard_months_and_filtering(db_session):
     from datetime import UTC, datetime
 

@@ -28,7 +28,12 @@ def get_leaderboard_months(db: Session) -> list[str]:
 def get_leaderboard(
     db: Session, selected_months: list[str] | None = None
 ) -> list[dict]:
-    ambassadors = db.query(User).filter(User.role == "ambassador").all()
+    # Отключённый (is_active=False) амбассадор не попадает в лидерборд вообще
+    # — не строка с занулёнными визитами, а полное отсутствие: и сам визит,
+    # оставленный до отключения, больше не участвует в статистике.
+    ambassadors = (
+        db.query(User).filter(User.role == "ambassador", User.is_active.is_(True)).all()
+    )
     if not ambassadors:
         return []
 
