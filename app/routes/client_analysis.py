@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..auth_deps import require_analyst
 from ..auth_models import User
 from ..database import get_db
-from ..models import AbcSegment, ProductAbcRating, Sale
+from ..models import AbcSegment, ProductAbcRating
 from ..render import render
 from ..services.abc_service import (
     ensure_default_segments,
@@ -14,8 +14,8 @@ from ..services.abc_service import (
 )
 from ..services.ambassadors_service import (
     build_ambassadors_report,
+    get_distinct_skus,
     normalize_selected_months,
-    sku_expr,
 )
 from ..services.client_analysis_service import (
     get_clients_rollup,
@@ -113,14 +113,7 @@ def client_analysis_page(
         }
         selected_new_skus = new_skus or []
 
-        sku_rows = (
-            db.query(sku_expr().label("sku"))
-            .filter(Sale.city == city)
-            .distinct()
-            .order_by(sku_expr())
-            .all()
-        )
-        all_skus = [row.sku for row in sku_rows if row.sku]
+        all_skus = get_distinct_skus(db, city)
 
         report = build_ambassadors_report(
             db=db,

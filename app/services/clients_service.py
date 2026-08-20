@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Sale
 from ..utils.dates import month_sort_key
+from .sale_filters import build_sale_filters
 
 
 def get_clients_summary_data(
@@ -134,25 +135,17 @@ def get_client_detail_data(
     months: list[str] | None = None,
     matched: str | None = None,
 ) -> dict:
+    filters = build_sale_filters(
+        city=city, client=client, sale_type=sale_type, months=months, matched=matched
+    )
+
     q = db.query(
         Sale.name.label("name"),
         Sale.sku.label("sku"),
         func.max(Sale.product_id).label("product_id"),
         func.sum(Sale.qty).label("qty"),
         func.sum(Sale.weight).label("weight"),
-    ).filter(
-        Sale.city == city,
-        Sale.client == client,
-        Sale.type == sale_type,
-    )
-
-    if months:
-        q = q.filter(Sale.month.in_(months))
-
-    if matched == "1":
-        q = q.filter(Sale.matched.is_(True))
-    elif matched == "0":
-        q = q.filter(Sale.matched.is_(False))
+    ).filter(*filters)
 
     q = q.group_by(Sale.name, Sale.sku).order_by(Sale.name)
     rows = q.all()
@@ -167,26 +160,16 @@ def get_client_detail_data(
             "total_weight": float(sum(row.weight or 0 for row in rows)),
         }
 
-    monthly_q = db.query(
-        Sale.month.label("month"),
-        func.sum(Sale.qty).label("qty"),
-        func.sum(Sale.weight).label("weight"),
-        func.count(func.distinct(Sale.sku)).label("sku_count"),
-    ).filter(
-        Sale.city == city,
-        Sale.client == client,
-        Sale.type == sale_type,
+    monthly_q = (
+        db.query(
+            Sale.month.label("month"),
+            func.sum(Sale.qty).label("qty"),
+            func.sum(Sale.weight).label("weight"),
+            func.count(func.distinct(Sale.sku)).label("sku_count"),
+        )
+        .filter(*filters)
+        .group_by(Sale.month)
     )
-
-    if months:
-        monthly_q = monthly_q.filter(Sale.month.in_(months))
-
-    if matched == "1":
-        monthly_q = monthly_q.filter(Sale.matched.is_(True))
-    elif matched == "0":
-        monthly_q = monthly_q.filter(Sale.matched.is_(False))
-
-    monthly_q = monthly_q.group_by(Sale.month)
     monthly_rows = monthly_q.all()
 
     monthly = sorted(

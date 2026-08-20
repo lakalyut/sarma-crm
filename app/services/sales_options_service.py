@@ -41,7 +41,6 @@ def get_clients(
     db: Session,
     city: str | None = None,
     months: list[str] | None = None,
-    filters: list | None = None,
 ) -> list[str]:
     query = db.query(Sale.client).filter(Sale.client.isnot(None))
 
@@ -50,8 +49,5 @@ def get_clients(
 
     if months:
         query = query.filter(Sale.month.in_(months))
-
-    if filters:
-        query = query.filter(*filters)
 
     return [row[0] for row in query.distinct().order_by(Sale.client).all() if row[0]]

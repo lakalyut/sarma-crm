@@ -1,14 +1,21 @@
 from collections import defaultdict
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models import Sale
 from ..utils.dates import month_sort_key
+from .charts_service import sku_expr
 
 
-def sku_expr():
-    return func.coalesce(Sale.sku, Sale.raw_sku, Sale.name, Sale.raw_name)
+def get_distinct_skus(db: Session, city: str) -> list[str]:
+    rows = (
+        db.query(sku_expr().label("sku"))
+        .filter(Sale.city == city)
+        .distinct()
+        .order_by(sku_expr())
+        .all()
+    )
+    return [row.sku for row in rows if row.sku]
 
 
 def normalize_selected_months(
@@ -72,6 +79,43 @@ def detect_sku_status(
         return "unstable", "Нестабильный"
 
     return "existing", "Был с начала"
+
+
+def _build_sku_detail(
+    sku_name: str,
+    weight_by_month: dict[str, float],
+    selected_months: list[str],
+    status_settings: dict,
+    product_id_by_sku: dict[str, int],
+) -> dict:
+    months_data = []
+    total = 0.0
+    first_month = None
+
+    for month in selected_months:
+        value = round(weight_by_month.get(month, 0.0), 2)
+
+        if value > 0 and first_month is None:
+            first_month = month
+
+        months_data.append(value)
+        total += value
+
+    status, status_label = detect_sku_status(
+        months_data=months_data,
+        selected_months=selected_months,
+        status_settings=status_settings,
+    )
+
+    return {
+        "sku": sku_name,
+        "product_id": product_id_by_sku.get(sku_name),
+        "months_data": months_data,
+        "total": round(total, 2),
+        "first_month": first_month,
+        "status": status,
+        "status_label": status_label,
+    }
 
 
 def build_client_sku_status(
@@ -139,39 +183,18 @@ def build_client_sku_status(
     status_counts = {"new": 0, "lost": 0, "unstable": 0, "existing": 0}
 
     for sku_name in sorted(weight_by_sku_month.keys()):
-        months_data = []
-        total = 0.0
-        first_month = None
-
-        for month in selected_months:
-            value = round(weight_by_sku_month[sku_name].get(month, 0.0), 2)
-
-            if value > 0 and first_month is None:
-                first_month = month
-
-            months_data.append(value)
-            total += value
-
-        status, status_label = detect_sku_status(
-            months_data=months_data,
-            selected_months=selected_months,
-            status_settings=status_settings,
+        detail = _build_sku_detail(
+            sku_name,
+            weight_by_sku_month[sku_name],
+            selected_months,
+            status_settings,
+            product_id_by_sku,
         )
 
-        if status in status_counts:
-            status_counts[status] += 1
+        if detail["status"] in status_counts:
+            status_counts[detail["status"]] += 1
 
-        sku_details.append(
-            {
-                "sku": sku_name,
-                "product_id": product_id_by_sku.get(sku_name),
-                "months_data": months_data,
-                "total": round(total, 2),
-                "first_month": first_month,
-                "status": status,
-                "status_label": status_label,
-            }
-        )
+        sku_details.append(detail)
 
     return {
         "months": selected_months,
@@ -261,39 +284,18 @@ def build_ambassadors_report(
         client_skus = sorted(sku_weight_by_client[client].keys())
 
         for sku_name in client_skus:
-            months_data = []
-            total = 0.0
-            first_month = None
-
-            for month in selected_months:
-                value = round(sku_weight_by_client[client][sku_name].get(month, 0.0), 2)
-
-                if value > 0 and first_month is None:
-                    first_month = month
-
-                months_data.append(value)
-                total += value
-
-            status, status_label = detect_sku_status(
-                months_data=months_data,
-                selected_months=selected_months,
-                status_settings=status_settings,
+            detail = _build_sku_detail(
+                sku_name,
+                sku_weight_by_client[client][sku_name],
+                selected_months,
+                status_settings,
+                product_id_by_sku,
             )
+            detail["is_assortment_new"] = sku_name in selected_new_skus_set
+            detail["is_new"] = detail["status"] == "new"
+            detail["is_lost"] = detail["status"] == "lost"
 
-            sku_details.append(
-                {
-                    "sku": sku_name,
-                    "product_id": product_id_by_sku.get(sku_name),
-                    "months_data": months_data,
-                    "total": round(total, 2),
-                    "first_month": first_month,
-                    "status": status,
-                    "status_label": status_label,
-                    "is_assortment_new": sku_name in selected_new_skus_set,
-                    "is_new": status == "new",
-                    "is_lost": status == "lost",
-                }
-            )
+            sku_details.append(detail)
 
         report["clients"].append(
             {

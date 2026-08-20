@@ -25,6 +25,17 @@ def get_leaderboard_months(db: Session) -> list[str]:
     return sorted(months, key=month_sort_key, reverse=True)
 
 
+def get_leaderboard_page_data(db: Session, months: list[str] | None) -> dict:
+    all_months = get_leaderboard_months(db)
+    selected_months = [m for m in (months or []) if m in all_months]
+
+    return {
+        "all_months": all_months,
+        "selected_months": selected_months,
+        "rows": get_leaderboard(db, selected_months=selected_months or None),
+    }
+
+
 def get_leaderboard(
     db: Session, selected_months: list[str] | None = None
 ) -> list[dict]:

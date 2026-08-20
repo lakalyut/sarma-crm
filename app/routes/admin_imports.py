@@ -7,21 +7,10 @@ from ..auth_models import User
 from ..database import get_db
 from ..models import Sale
 from ..render import render
+from ..services.sale_filters import build_sale_filters
+from ..services.sales_options_service import get_cities, get_months, get_types
 
 router = APIRouter()
-
-
-def build_sales_filters(
-    city: str | None, months: list[str] | None, sale_type: str | None
-):
-    filters = []
-    if city:
-        filters.append(Sale.city == city)
-    if months:
-        filters.append(Sale.month.in_(months))
-    if sale_type:
-        filters.append(Sale.type == sale_type)
-    return filters
 
 
 @router.get("/admin/imports/delete")
@@ -30,11 +19,9 @@ def imports_delete_form(
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
-    cities = [r[0] for r in db.query(Sale.city).distinct().order_by(Sale.city) if r[0]]
-    all_months = [r[0] for r in db.query(Sale.month).distinct().all() if r[0]]
-    sale_types = [
-        r[0] for r in db.query(Sale.type).distinct().order_by(Sale.type) if r[0]
-    ]
+    cities = get_cities(db)
+    all_months = get_months(db)
+    sale_types = get_types(db)
 
     return render(
         request,
@@ -63,11 +50,9 @@ def imports_delete_preview(
 ):
     selected_months = months
 
-    cities = [r[0] for r in db.query(Sale.city).distinct().order_by(Sale.city) if r[0]]
-    all_months = [r[0] for r in db.query(Sale.month).distinct().all() if r[0]]
-    sale_types = [
-        r[0] for r in db.query(Sale.type).distinct().order_by(Sale.type) if r[0]
-    ]
+    cities = get_cities(db)
+    all_months = get_months(db)
+    sale_types = get_types(db)
 
     if not city and not selected_months and not sale_type:
         return render(
@@ -86,8 +71,8 @@ def imports_delete_preview(
             },
         )
 
-    filters = build_sales_filters(
-        city or None, selected_months or None, sale_type or None
+    filters = build_sale_filters(
+        city=city or None, months=selected_months or None, sale_type=sale_type or None
     )
 
     q = db.query(func.count(Sale.id))
@@ -123,11 +108,9 @@ def imports_delete_confirm(
 ):
     selected_months = months
 
-    cities = [r[0] for r in db.query(Sale.city).distinct().order_by(Sale.city) if r[0]]
-    all_months = [r[0] for r in db.query(Sale.month).distinct().all() if r[0]]
-    sale_types = [
-        r[0] for r in db.query(Sale.type).distinct().order_by(Sale.type) if r[0]
-    ]
+    cities = get_cities(db)
+    all_months = get_months(db)
+    sale_types = get_types(db)
 
     if not city and not selected_months and not sale_type:
         return render(
@@ -146,8 +129,8 @@ def imports_delete_confirm(
             },
         )
 
-    filters = build_sales_filters(
-        city or None, selected_months or None, sale_type or None
+    filters = build_sale_filters(
+        city=city or None, months=selected_months or None, sale_type=sale_type or None
     )
 
     preview_q = db.query(func.count(Sale.id))

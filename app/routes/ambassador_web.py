@@ -13,7 +13,7 @@ from ..auth_models import User
 from ..database import get_db
 from ..render import render
 from ..services.ambassador_service import create_visit, get_visit_options
-from ..services.leaderboard_service import get_leaderboard, get_leaderboard_months
+from ..services.leaderboard_service import get_leaderboard_page_data
 from ..services.sales_options_service import get_cities
 
 router = APIRouter(prefix="/ambassador")
@@ -158,17 +158,12 @@ def ambassador_leaderboard_page(
     if not _profile_complete(user):
         return RedirectResponse("/ambassador/profile", status_code=HTTP_302_FOUND)
 
-    all_months = get_leaderboard_months(db)
-    selected_months = [m for m in (months or []) if m in all_months]
-
     return render(
         request,
         "ambassador/leaderboard.html",
         {
             "title": "Лидерборд — Пульс",
-            "all_months": all_months,
-            "selected_months": selected_months,
-            "rows": get_leaderboard(db, selected_months=selected_months or None),
+            **get_leaderboard_page_data(db, months),
             "empty_state": {
                 "title": "Пока нет ни одного визита",
                 "hint": "Запишите первый визит — он появится здесь и в общем лидерборде.",

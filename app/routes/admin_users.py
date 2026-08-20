@@ -1,28 +1,16 @@
-import hashlib
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
 from ..auth_deps import require_admin
-from ..auth_models import (
-    PasswordToken,
-    SessionModel,
-    User,
-    default_expiry,
-    new_password_token,
-)
+from ..auth_models import PasswordToken, SessionModel, User
 from ..database import get_db
 from ..models import EventLog, Visit
 from ..render import render
+from ..services.admin_users_service import issue_password_reset_link
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
-
-
-def sha256_hex(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 @router.get("")
@@ -114,22 +102,7 @@ def user_new_submit(
     db.commit()
     db.refresh(user)
 
-    raw_token = new_password_token()
-    token_hash = sha256_hex(raw_token)
-
-    pt = PasswordToken(
-        token_hash=token_hash,
-        user_id=user.id,
-        purpose="set_password",
-        expires_at=default_expiry(hours=24 * 7),
-        used_at=None,
-        created_at=datetime.now(UTC),
-    )
-    db.add(pt)
-    db.commit()
-
-    base = str(request.base_url).rstrip("/")
-    link = f"{base}/auth/set-password?token={raw_token}"
+    link = issue_password_reset_link(db, user, str(request.base_url))
 
     return render(
         request,
@@ -176,35 +149,7 @@ def user_reset_link(
     if not user:
         return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 
-    old_tokens = (
-        db.query(PasswordToken)
-        .filter(
-            PasswordToken.user_id == user.id,
-            PasswordToken.purpose == "set_password",
-            PasswordToken.used_at.is_(None),
-        )
-        .all()
-    )
-    now = datetime.now(UTC)
-    for t in old_tokens:
-        t.used_at = now
-
-    raw_token = new_password_token()
-    token_hash = sha256_hex(raw_token)
-
-    pt = PasswordToken(
-        token_hash=token_hash,
-        user_id=user.id,
-        purpose="set_password",
-        expires_at=default_expiry(hours=24 * 7),
-        used_at=None,
-        created_at=now,
-    )
-    db.add(pt)
-    db.commit()
-
-    base = str(request.base_url).rstrip("/")
-    link = f"{base}/auth/set-password?token={raw_token}"
+    link = issue_password_reset_link(db, user, str(request.base_url))
 
     return render(
         request,
