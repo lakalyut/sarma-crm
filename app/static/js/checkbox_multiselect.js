@@ -162,6 +162,41 @@ function initCheckboxMultiselect(config) {
         renderPager();
     }
 
+    // Динамическая пересборка списка чекбоксов — для страниц, где список
+    // подгружается по AJAX после выбора другого фильтра (например, месяцы
+    // и типы по городу на «Удалении импорта»). Только для плоских списков
+    // без пейджера по годам (у пейджера чекбоксы вложены в .mp-year-grid
+    // внутри этого же list — setItems их тоже стёр бы).
+    function setItems(items) {
+        list.innerHTML = "";
+
+        items.forEach(item => {
+            const value = typeof item === "string" ? item : item.value;
+            const itemLabel = typeof item === "string" ? item : item.label;
+
+            const label = document.createElement("label");
+            label.className = "month-checkbox";
+
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.name = config.inputName;
+            input.value = value;
+
+            const span = document.createElement("span");
+            span.textContent = itemLabel;
+
+            label.appendChild(input);
+            label.appendChild(span);
+            list.appendChild(label);
+        });
+
+        updateText();
+        updateSelectAllState();
+        updatePager();
+    }
+
     updateText();
     updateSelectAllState();
+
+    return { setItems };
 }

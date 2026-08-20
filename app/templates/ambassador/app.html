@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Пульс — амбассадор</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/static/js/visit_products.js"></script>
 <style>
     body {
         margin: 0;
@@ -236,8 +237,7 @@ function onCityChange() {
 function renderClientList(filterText) {
     const city = document.getElementById('city-select').value;
     const clients = options.clients_by_city[city] || [];
-    const q = filterText.trim().toLowerCase();
-    const matches = q ? clients.filter(c => c.toLowerCase().includes(q)) : clients;
+    const matches = filterClientList(clients, filterText);
 
     const listEl = document.getElementById('client-list');
     if (!matches.length) {
@@ -245,31 +245,24 @@ function renderClientList(filterText) {
         listEl.innerHTML = '';
         return;
     }
-    listEl.innerHTML = matches.slice(0, 30).map(c =>
+    listEl.innerHTML = matches.map(c =>
         '<div class="client-list-item" data-client="' + c.replace(/"/g, '&quot;') + '">' + c + '</div>'
     ).join('');
     listEl.classList.remove('is-hidden');
 }
 
 function onTypeChange() {
-    const city = document.getElementById('city-select').value;
     const type = document.getElementById('type-select').value;
     const segmentId = options.guessed_segment_by_type[type];
-    const ratings = (segmentId !== undefined && options.abc_by_segment[segmentId]) || {};
-
-    const byCategory = {};
-    for (const p of options.products) {
-        (byCategory[p.category] = byCategory[p.category] || []).push(p);
-    }
+    const groups = groupProductsByCategory(options.products, segmentId, options.abc_by_segment);
 
     let html = '';
-    for (const category of Object.keys(byCategory).sort()) {
-        html += '<div class="category-group"><div class="category-title">' + category + '</div>';
-        for (const p of byCategory[category]) {
-            const abc = ratings[p.id];
-            const badge = abc ? '<span class="abc-badge abc-badge-' + abc.toLowerCase() + '">' + abc + '</span>' : '';
-            const searchKey = (p.brand + ' ' + p.flavor + ' ' + (p.sku || '')).toLowerCase();
-            html += '<label class="product-row" data-search="' + searchKey.replace(/"/g, '&quot;') + '"><input type="checkbox" value="' + p.id + '">' +
+    for (const group of groups) {
+        html += '<div class="category-group"><div class="category-title">' + group.category + '</div>';
+        for (const item of group.items) {
+            const p = item.product;
+            const badge = item.abc ? '<span class="abc-badge abc-badge-' + item.abc.toLowerCase() + '">' + item.abc + '</span>' : '';
+            html += '<label class="product-row" data-search="' + item.searchKey.replace(/"/g, '&quot;') + '"><input type="checkbox" value="' + p.id + '">' +
                 '<span class="product-flavor">' + p.brand + ' — ' + p.flavor + '</span>' + badge + '</label>';
         }
         html += '</div>';

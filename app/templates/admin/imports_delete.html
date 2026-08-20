@@ -52,7 +52,7 @@
 
                 <div class="multiselect-dropdown">
                     <label class="month-checkbox month-checkbox-all">
-                        <input type="checkbox" id="months-select-all">
+                        <input type="checkbox" id="months-select-all" class="multiselect-select-all-checkbox">
                         <span>Выбрать все</span>
                     </label>
 
@@ -90,7 +90,7 @@
                 <div class="multiselect-dropdown">
 
                     <label class="month-checkbox month-checkbox-all">
-                        <input type="checkbox" id="types-select-all">
+                        <input type="checkbox" id="types-select-all" class="multiselect-select-all-checkbox">
                         <span>Выбрать все</span>
                     </label>
 
@@ -144,156 +144,27 @@
 {% endif %}
 
 <script>
-(function() {
+document.addEventListener("DOMContentLoaded", function() {
     const citySelect = document.getElementById("delete-import-city");
-
     const monthsMs = document.getElementById("delete-months-multiselect");
-    const monthsList = document.getElementById("delete-import-months-list");
-    const monthsSelectAll = document.getElementById("months-select-all");
-
     const typesMs = document.getElementById("delete-types-multiselect");
-    const typesList = document.getElementById("delete-import-types-list");
-    const typesSelectAll = document.getElementById("types-select-all");
 
-    if (!citySelect || !monthsMs || !monthsList || !monthsSelectAll || !typesMs || !typesList || !typesSelectAll) return;
+    if (!citySelect || !monthsMs || !typesMs) return;
 
-    function initCheckboxMultiselect(ms, list, selectAll, inputName, dateRange) {
-        const display = ms.querySelector(".multiselect-display");
-        const dropdown = ms.querySelector(".multiselect-dropdown");
-        const textSpan = ms.querySelector(".multiselect-text");
+    const monthsFilter = initCheckboxMultiselect({
+        id: "delete-months-multiselect",
+        inputName: "months",
+        emptyText: "Не выбраны",
+        dateRange: true
+    });
 
-        function getCheckboxes() {
-            return Array.from(list.querySelectorAll(`input[type="checkbox"][name="${inputName}"]`));
-        }
+    const typesFilter = initCheckboxMultiselect({
+        id: "delete-types-multiselect",
+        inputName: "sale_types",
+        emptyText: "Не выбраны"
+    });
 
-        function getLabel(cb) {
-            const span = cb.parentElement && cb.parentElement.querySelector("span");
-            return span ? span.textContent.trim() : cb.value;
-        }
-
-        // Список приходит с сервера уже хронологически отсортированным —
-        // соседние по DOM чекбоксы формируют непрерывный диапазон месяцев
-        // без разбора самих дат, просто по позиции в списке.
-        function updateText() {
-            const all = getCheckboxes();
-            const checked = all.filter(cb => cb.checked);
-
-            if (checked.length === 0) {
-                textSpan.textContent = "Не выбраны";
-                return;
-            }
-
-            if (dateRange && checked.length > 1) {
-                const indices = checked.map(cb => all.indexOf(cb)).sort((a, b) => a - b);
-                const isContiguous = indices[indices.length - 1] - indices[0] === indices.length - 1;
-                // Значение чекбокса не всегда ISO-дата (см. app/utils/dates.py:parse_month) —
-                // сортировка по localeCompare(value) для "Месяц Год"-строк не хронологическая.
-                // DOM-порядок уже хронологический, просто разворачиваем его.
-                const byValue = [...checked].sort((a, b) => all.indexOf(b) - all.indexOf(a));
-
-                if (checked.length > 3) {
-                    if (isContiguous) {
-                        const first = byValue[0];
-                        const last = byValue[byValue.length - 1];
-                        textSpan.textContent = `${getLabel(first)} – ${getLabel(last)}`;
-                    } else {
-                        const labels = byValue.map(getLabel);
-                        textSpan.textContent = labels.slice(0, 3).join(", ") + " +" + (labels.length - 3);
-                    }
-                } else {
-                    textSpan.textContent = byValue.map(getLabel).join(", ");
-                }
-                return;
-            }
-
-            const labels = checked.map(getLabel);
-            if (labels.length <= 2) {
-                textSpan.textContent = labels.join(", ");
-            } else {
-                textSpan.textContent = labels.slice(0, 2).join(", ") + " +" + (labels.length - 2);
-            }
-        }
-
-        function updateSelectAllState() {
-            const checkboxes = getCheckboxes();
-            const checked = checkboxes.filter(cb => cb.checked);
-
-            selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
-            selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
-        }
-
-        function render(items) {
-            list.innerHTML = "";
-
-            items.forEach(item => {
-                const value = typeof item === "string" ? item : item.value;
-                const itemLabel = typeof item === "string" ? item : item.label;
-
-                const label = document.createElement("label");
-                label.className = "month-checkbox";
-
-                const input = document.createElement("input");
-                input.type = "checkbox";
-                input.name = inputName;
-                input.value = value;
-
-                const span = document.createElement("span");
-                span.textContent = itemLabel;
-
-                label.appendChild(input);
-                label.appendChild(span);
-                list.appendChild(label);
-            });
-
-            updateText();
-            updateSelectAllState();
-        }
-
-        display.addEventListener("click", function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            ms.classList.toggle("open");
-        });
-
-        dropdown.addEventListener("click", function(e) {
-            e.stopPropagation();
-        });
-
-        list.addEventListener("change", function() {
-            updateText();
-            updateSelectAllState();
-        });
-
-        selectAll.addEventListener("change", function() {
-            getCheckboxes().forEach(cb => {
-                cb.checked = selectAll.checked;
-            });
-
-            updateText();
-            updateSelectAllState();
-        });
-
-        updateText();
-        updateSelectAllState();
-
-        return { render };
-    }
-
-    const monthsFilter = initCheckboxMultiselect(
-        monthsMs,
-        monthsList,
-        monthsSelectAll,
-        "months",
-        true
-    );
-
-    const typesFilter = initCheckboxMultiselect(
-        typesMs,
-        typesList,
-        typesSelectAll,
-        "sale_types",
-        false
-    );
+    if (!monthsFilter || !typesFilter) return;
 
     document.addEventListener("click", function() {
         monthsMs.classList.remove("open");
@@ -302,8 +173,8 @@
     });
 
     async function loadOptionsForCity(city) {
-        monthsFilter.render([]);
-        typesFilter.render([]);
+        monthsFilter.setItems([]);
+        typesFilter.setItems([]);
 
         if (!city) return;
 
@@ -313,8 +184,8 @@
 
         const data = await response.json();
 
-        monthsFilter.render(data.months || []);
-        typesFilter.render(data.types || []);
+        monthsFilter.setItems(data.months || []);
+        typesFilter.setItems(data.types || []);
     }
 
     const cityInput = document.getElementById("delete-import-city-search");
@@ -325,17 +196,7 @@
         const cityItems = Array.from(cityDropdown.querySelectorAll(".search-dropdown-item"));
 
         function filterCityItems() {
-            const value = cityInput.value.trim().toLowerCase();
-            let visibleCount = 0;
-
-            cityItems.forEach(item => {
-                const text = item.dataset.value.toLowerCase();
-                const visible = !value || text.includes(value);
-                item.classList.toggle("hidden", !visible);
-                if (visible) visibleCount++;
-            });
-
-            cityDropdown.style.display = visibleCount > 0 ? "block" : "none";
+            filterSearchDropdown(cityInput, cityItems, cityDropdown);
         }
 
         function setCityCaption(value) {
@@ -373,7 +234,7 @@
             });
         });
     }
-})();
+});
 </script>
 
 {% endblock %}

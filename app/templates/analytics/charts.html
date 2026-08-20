@@ -214,6 +214,7 @@
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/js/metric_cards.js"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -233,137 +234,25 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script>
-(function() {
-    const form = document.getElementById("charts-filters-form");
-    if (!form) return;
-
-    const hiddenCityInput = document.getElementById("charts-city-hidden");
-    const currentCity = hiddenCityInput && hiddenCityInput.value;
-    if (!currentCity) return;
-
-    const storageKey = "charts_filters_" + currentCity;
-
-    form.addEventListener("submit", function() {
-        const months = Array.from(form.querySelectorAll('input[name="months"]:checked')).map(i => i.value);
-        const types = Array.from(form.querySelectorAll('input[name="sale_types"]:checked')).map(i => i.value);
-        const matched = (form.querySelector('select[name="matched"]') || {}).value || "";
-
-        const state = { months, types, matched };
-
-        try {
-            localStorage.setItem(storageKey, JSON.stringify(state));
-        } catch (e) {
-            console.warn("Не удалось сохранить фильтры графиков:", e);
-        }
+document.addEventListener("DOMContentLoaded", function () {
+    initFilterMemory({
+        formId: "charts-filters-form",
+        cityHiddenId: "charts-city-hidden",
+        storagePrefix: "charts_filters_"
     });
-})();
+});
 </script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById("charts-filters-form");
-    const input = document.getElementById("charts-city-search");
-    const hidden = document.getElementById("charts-city-hidden");
-    const dropdown = document.getElementById("charts-city-dropdown");
-    const selectedCityLabel = document.getElementById("charts-selected-city-label");
-    const selectedCityEmpty = document.getElementById("charts-selected-city-empty");
-
-    if (!form || !input || !hidden || !dropdown) return;
-
-    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
-
-    function filterItems() {
-        const value = input.value.trim().toLowerCase();
-        let visibleCount = 0;
-
-        items.forEach(item => {
-            const text = item.dataset.value.toLowerCase();
-            const visible = !value || text.includes(value);
-            item.classList.toggle("hidden", !visible);
-            if (visible) visibleCount++;
-        });
-
-        dropdown.style.display = visibleCount > 0 ? "block" : "none";
-    }
-
-    if (!hidden.value) {
-        const lastRegion = window.PulseRegionMemory && window.PulseRegionMemory.get();
-        if (lastRegion) {
-            window.location.replace(buildRegionUrl(lastRegion));
-            return;
-        }
-    }
-
-    function buildRegionUrl(cityValue) {
-        const url = new URL(window.location.origin + "/analytics/charts");
-        url.searchParams.set("city", cityValue);
-
-        const storageKey = "charts_filters_" + cityValue;
-
-        try {
-            const raw = localStorage.getItem(storageKey);
-            if (raw) {
-                const saved = JSON.parse(raw);
-
-                if (Array.isArray(saved.months)) {
-                    saved.months.forEach(m => url.searchParams.append("months", m));
-                }
-
-                if (Array.isArray(saved.types)) {
-                    saved.types.forEach(t => url.searchParams.append("sale_types", t));
-                }
-
-                if (saved.matched !== undefined && saved.matched !== null && saved.matched !== "") {
-                    url.searchParams.set("matched", saved.matched);
-                }
-            }
-        } catch (e) {
-            console.warn("Не удалось восстановить фильтры графиков:", cityValue, e);
-        }
-
-        return url.toString();
-    }
-
-    input.addEventListener("focus", filterItems);
-
-    input.addEventListener("input", function () {
-        filterItems();
-    });
-
-    items.forEach(item => {
-        item.addEventListener("click", function () {
-            const value = item.dataset.value;
-
-            hidden.value = value;
-
-            if (selectedCityLabel) {
-                selectedCityLabel.textContent = value;
-                selectedCityLabel.style.display = "";
-            }
-
-            if (selectedCityEmpty) {
-                selectedCityEmpty.style.display = "none";
-            }
-
-            input.value = "";
-            dropdown.style.display = "none";
-
-            if (window.PulseRegionMemory) window.PulseRegionMemory.save(value);
-            window.location.href = buildRegionUrl(value);
-        });
-    });
-
-    input.addEventListener("blur", function () {
-        setTimeout(() => {
-            input.value = "";
-            dropdown.style.display = "none";
-        }, 150);
-    });
-
-    document.addEventListener("click", function (e) {
-        if (!dropdown.contains(e.target) && e.target !== input) {
-            dropdown.style.display = "none";
-        }
+    initRegionSearch({
+        inputId: "charts-city-search",
+        hiddenId: "charts-city-hidden",
+        dropdownId: "charts-city-dropdown",
+        labelId: "charts-selected-city-label",
+        emptyId: "charts-selected-city-empty",
+        path: "/analytics/charts",
+        storagePrefix: "charts_filters_"
     });
 });
 </script>
@@ -438,10 +327,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function formatNumber(value, digits = 2) {
-        return Number(value || 0).toLocaleString("ru-RU", {
-            minimumFractionDigits: digits,
-            maximumFractionDigits: digits
-        });
+        return formatMetricNumber(value, digits);
     }
 
     function renderCards(data, labels) {
@@ -455,106 +341,11 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        const lastIndex = s.weight.length - 1;
-        const prevIndex = lastIndex - 1;
-
-        function calcDelta(current, base) {
-            current = Number(current || 0);
-            base = Number(base || 0);
-
-            if (!base) return null;
-
-            return ((current - base) / base) * 100;
-        }
-
-        function calcAverage(arr) {
-            const values = (arr || []).map(Number).filter(v => !Number.isNaN(v));
-
-            if (!values.length) return null;
-
-            const sum = values.reduce((acc, value) => acc + value, 0);
-            return sum / values.length;
-        }
-
-        function formatDelta(delta, label, diff, digits = 2, unit = "") {
-            if (delta === null || delta === undefined || Number.isNaN(delta)) {
-                return `
-                    <div class="metric-delta-row">
-                        <span class="metric-delta muted">нет сравнения</span>
-                        <span class="metric-delta-label">${label}</span>
-                    </div>
-                `;
-            }
-
-            const sign = delta > 0 ? "+" : "";
-            const cls = delta > 0 ? "delta-up" : (delta < 0 ? "delta-down" : "delta-neutral");
-            const diffSign = diff > 0 ? "+" : "";
-            const diffText = ` (${diffSign}${formatNumber(diff, digits)}${unit ? " " + unit : ""})`;
-
-            return `
-                <div class="metric-delta-row">
-                    <span class="metric-delta ${cls}">${sign}${delta.toFixed(0)}%${diffText}</span>
-                    <span class="metric-delta-label">${label}</span>
-                </div>
-            `;
-        }
-
-        function getCard(valueArr, label, digits = 2, unit = "") {
-            const current = Number(valueArr?.[lastIndex] ?? 0);
-            const prev = prevIndex >= 0 ? Number(valueArr?.[prevIndex] ?? 0) : null;
-            const first = Number(valueArr?.[0] ?? 0);
-            const average = calcAverage((valueArr || []).slice(0, lastIndex));
-
-            const prevDelta = calcDelta(current, prev);
-            const avgDelta = calcDelta(current, average);
-            const firstDelta = calcDelta(current, first);
-
-            const prevDiff = current - (prev || 0);
-            const avgDiff = current - (average || 0);
-            const firstDiff = current - first;
-
-            return `
-                <div class="metric-card">
-                    <div class="metric-label">${label}</div>
-                    <div class="metric-value">${formatNumber(current, digits)} ${unit}</div>
-                    <div class="metric-period">за ${labels[lastIndex]}</div>
-
-                    <div class="metric-delta-wrap">
-                        ${formatDelta(
-                            prevDelta,
-                            prevIndex >= 0
-                                ? `к прошлому месяцу (${labels[prevIndex]})`
-                                : "к прошлому месяцу",
-                            prevDiff,
-                            digits,
-                            unit
-                        )}
-
-                        ${formatDelta(
-                            avgDelta,
-                            `к среднему за период`,
-                            avgDiff,
-                            digits,
-                            unit
-                        )}
-
-                        ${formatDelta(
-                            firstDelta,
-                            `к началу периода (${labels[0]})`,
-                            firstDiff,
-                            digits,
-                            unit
-                        )}
-                    </div>
-                </div>
-            `;
-        }
-
         container.innerHTML = [
-            getCard(s.weight, "Вес", 2, "кг"),
-            getCard(s.unique_clients, "Клиенты", 0),
-            getCard(s.total_sku, "Всего SKU", 0),
-            getCard(s.sku_per_client, "SKU на клиента", 2),
+            buildMetricCard(labels, s.weight, "Вес", 2, "кг"),
+            buildMetricCard(labels, s.unique_clients, "Клиенты", 0),
+            buildMetricCard(labels, s.total_sku, "Всего SKU", 0),
+            buildMetricCard(labels, s.sku_per_client, "SKU на клиента", 2),
         ].join("");
     }
 

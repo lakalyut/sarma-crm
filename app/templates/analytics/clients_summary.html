@@ -353,29 +353,13 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script>
-(function() {
-    const form = document.getElementById("clients-filters-form");
-    if (!form) return;
-
-    const hiddenCityInput = form.querySelector('input[name="city"]');
-    const currentCity = hiddenCityInput && hiddenCityInput.value;
-    if (!currentCity) return;
-
-    const storageKey = "clients_filters_" + currentCity;
-
-    form.addEventListener("submit", function() {
-        const months = Array.from(form.querySelectorAll('input[name="months"]:checked')).map(i => i.value);
-        const types = Array.from(form.querySelectorAll('input[name="sale_types"]:checked')).map(i => i.value);
-        const matched = (form.querySelector('select[name="matched"]') || {}).value || "";
-
-        const state = { months, types, matched };
-        try {
-            localStorage.setItem(storageKey, JSON.stringify(state));
-        } catch (e) {
-            console.warn("Не удалось сохранить фильтры:", e);
-        }
+document.addEventListener("DOMContentLoaded", function () {
+    initFilterMemory({
+        formId: "clients-filters-form",
+        cityHiddenId: "city-hidden",
+        storagePrefix: "clients_filters_"
     });
-})();
+});
 </script>
 
 
@@ -396,109 +380,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById("clients-filters-form") || document.querySelector('form[method="get"]');
-    const input = document.getElementById("city-search");
-    const hidden = document.getElementById("city-hidden");
-    const dropdown = document.getElementById("city-dropdown");
-    const selectedCityLabel = document.getElementById("selected-city-label");
-    const selectedCityEmpty = document.getElementById("selected-city-empty");
-
-    if (!form || !input || !hidden || !dropdown) return;
-
-    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
-
-    function filterItems() {
-        const value = input.value.trim().toLowerCase();
-        let visibleCount = 0;
-
-        items.forEach(item => {
-            const text = item.dataset.value.toLowerCase();
-            const visible = !value || text.includes(value);
-            item.classList.toggle("hidden", !visible);
-            if (visible) visibleCount++;
-        });
-
-        dropdown.style.display = visibleCount > 0 ? "block" : "none";
-    }
-
-    if (!hidden.value) {
-        const lastRegion = window.PulseRegionMemory && window.PulseRegionMemory.get();
-        if (lastRegion) {
-            window.location.replace(buildRegionUrl(lastRegion));
-            return;
-        }
-    }
-
-    function buildRegionUrl(cityValue) {
-        const url = new URL(window.location.origin + "/analytics/clients");
-        url.searchParams.set("city", cityValue);
-
-        const storageKey = "clients_filters_" + cityValue;
-
-        try {
-            const raw = localStorage.getItem(storageKey);
-            if (raw) {
-                const saved = JSON.parse(raw);
-
-                if (Array.isArray(saved.months)) {
-                    saved.months.forEach(m => url.searchParams.append("months", m));
-                }
-
-                if (Array.isArray(saved.types)) {
-                    saved.types.forEach(t => url.searchParams.append("sale_types", t));
-                }
-
-                if (saved.matched !== undefined && saved.matched !== null && saved.matched !== "") {
-                    url.searchParams.set("matched", saved.matched);
-                }
-            }
-        } catch (e) {
-            console.warn("Не удалось восстановить фильтры региона:", cityValue, e);
-        }
-
-        return url.toString();
-    }
-
-    input.addEventListener("focus", filterItems);
-
-    input.addEventListener("input", function () {
-        filterItems();
-    });
-
-    items.forEach(item => {
-        item.addEventListener("click", function () {
-            const value = item.dataset.value;
-
-            hidden.value = value;
-
-            if (selectedCityLabel) {
-                selectedCityLabel.textContent = value;
-                selectedCityLabel.style.display = "";
-            }
-
-            if (selectedCityEmpty) {
-                selectedCityEmpty.style.display = "none";
-            }
-
-            input.value = "";
-            dropdown.style.display = "none";
-
-            if (window.PulseRegionMemory) window.PulseRegionMemory.save(value);
-            window.location.href = buildRegionUrl(value);
-        });
-    });
-
-    input.addEventListener("blur", function () {
-        setTimeout(() => {
-            input.value = "";
-            dropdown.style.display = "none";
-        }, 150);
-    });
-
-    document.addEventListener("click", function (e) {
-        if (!dropdown.contains(e.target) && e.target !== input) {
-            dropdown.style.display = "none";
-        }
+    initRegionSearch({
+        inputId: "city-search",
+        hiddenId: "city-hidden",
+        dropdownId: "city-dropdown",
+        labelId: "selected-city-label",
+        emptyId: "selected-city-empty",
+        path: "/analytics/clients",
+        storagePrefix: "clients_filters_"
     });
 });
 </script>
