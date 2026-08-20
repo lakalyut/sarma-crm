@@ -91,13 +91,25 @@ template, ctx)`, который сам достаёт `current_user` по cookie
 **Auth — самодельная, без сторонних auth-фреймворков**: `session_id` в httponly-cookie →
 строка в таблице `sessions` ([app/auth_models.py](app/auth_models.py)) с TTL 14 дней.
 [app/auth_deps.py](app/auth_deps.py) даёт FastAPI-зависимости `get_current_user` /
-`require_user` / `require_admin`. Пароли — прямой `bcrypt`
+`require_user` / `require_admin` / `require_analyst` (`role in ("admin", "user")` —
+блэнкет-доступ на аналитику) / `require_ambassador` (`role in ("admin", "ambassador")`,
+горизонт 13, см. ниже). Три роли на `User.role`: `admin`/`user`/`ambassador`. Пароли —
+прямой `bcrypt`
 ([app/auth_security.py](app/auth_security.py), `passlib` убран — был мёртв с 2020, роадмап
 давно планировал; существующие хеши в БД совместимы без миграции, оба формата `$2b$12$...`).
 Пароль усекается до 72 байт перед хешированием/проверкой — `bcrypt` 5.0 **бросает
 исключение** на более длинных, а не молча режет, как раньше делал `passlib`. Установка
 пароля новому пользователю — одноразовый токен (`PasswordToken`, SHA-256 хэш токена в БД),
 ссылку админ копирует вручную со страницы пользователей — SMTP-отправки нет.
+
+**Удаление пользователей** — `POST /admin/users/{id}/delete`
+([app/routes/admin_users.py](app/routes/admin_users.py)): нельзя удалить самого себя,
+нельзя удалить амбассадора с историей визитов (`Visit.ambassador_id`, `nullable=False` —
+реальные бизнес-данные для лидерборда, не служебная запись; отключение — штатный способ
+убрать доступ без потери данных). Сессии и `PasswordToken` пользователя удаляются,
+`EventLog.user_id` обнуляется (история импортов остаётся без привязки к автору). Кнопка в
+`users_list.html` — с `onsubmit="return confirm(...)"`, единственное место в проекте с этим
+паттерном (ни у одной другой формы подтверждения нет — здесь оправдано необратимостью).
 
 **Rate-limit на `/auth/login` — по email, не по IP.** Таблица `login_attempts`
 (`LoginAttempt` в `auth_models.py`) — строка на каждую неудачную попытку. Перед
@@ -125,6 +137,20 @@ template, ctx)`, который сам достаёт `current_user` по cookie
 роута — `request.form()` кеширует результат на самом объекте, повторное чтение безопасно.
 `verify_csrf()` сравнивает через `secrets.compare_digest()` **как bytes, не str** —
 голый `str`-вариант падает `TypeError` на не-ASCII токене вместо `False`.
+**Эндпоинты с header-based аутентификацией** (Telegram `initData`, не cookie-сессия —
+`app/telegram_auth.py::get_current_ambassador`, см. горизонт 13 ниже) собраны в
+`CSRF_EXEMPT_PATHS` (`app/csrf.py`) — обычный CSRF там неприменим по построению, подделать
+заголовок с валидной подписью без знания токена бота нельзя.
+**Обработчики ошибок (401/403/404/500 в `app/main.py`) — отдельная, третья точка рендеринга
+шаблонов** (не `render()`, не `_render()` из `auth_routes.py`): `_render_error()` в
+`main.py` дублирует их логику (`csrf_token` в контекст + `attach_csrf_cookie()`) для
+403/404/500 — раньше не дублировала, `templates.TemplateResponse` звался напрямую без
+`csrf_token` вообще, и `csrf.js` подставлял в любую форму на странице ошибки (включая
+логаут в сайдбаре — `errors/403.html` расширяет `base.html`) пустое значение, которое не
+совпадало с cookie: `POST /auth/logout` сам получал 403, тупик без выхода со страницы
+ошибки. Поймано вживую на роли с урезанным доступом (`ambassador`) — у `admin`/`user`
+почти нет страниц без доступа, баг был невидим до амбассадоров. `401` не задет — чистый
+редирект на `/auth/login`, шаблон не рендерится вообще.
 
 **Импорт и сопоставление номенклатуры** — сердце домена:
 [app/product_parser.py](app/product_parser.py) нормализует строки (нижний регистр, ё→е, чистка
@@ -442,6 +468,88 @@ FastAPI сжатием не занимались вообще — большие
 однотипных строк таблицы — одни и те же имена классов/атрибутов повторяются сотни
 раз) жмутся в 15-25×, добавлено горизонтом 12 ROADMAP.md после жалобы на скорость
 загрузки.
+
+**Амбассадорские визиты (горизонт 13)** — полевые амбассадоры демонстрируют
+клиентам ароматы, CRM считает лидерборд и сверяет продемонстрированное с
+заказанным. Данные: `Visit`/`VisitProduct` ([app/models.py](app/models.py),
+`ambassador_id`/`city`/`client`/`sale_type`/`created_at`, `created_at` —
+настоящий `datetime`, единственный формат, в отличие от `Sale.month`) и три
+новых поля на `User` ([app/auth_models.py](app/auth_models.py)):
+`telegram_id` (unique, nullable), `city` (обычная строка — той же природы,
+что `Sale.city`, не FK на справочник; заменил `region_id` в ходе сессии,
+см. ROADMAP.md «Горизонт 13.3» — амбассадор привязан к одному городу, не к
+макро-региону), `first_name`/`last_name`. `role` на `User` — третье
+значение, `"ambassador"`, помимо `"admin"`/`"user"`.
+
+**Два независимых, параллельных пути входа для амбассадора** — специально
+не единственный, из-за сетевой блокировки VPS→Telegram (см. Deploy ниже):
+- **Telegram-бот/мини-апп** — [app/routes/telegram_bot.py](app/routes/telegram_bot.py)
+  (`POST /telegram/webhook`, секрет в `X-Telegram-Bot-Api-Secret-Token`) +
+  [app/services/telegram_bot_service.py](app/services/telegram_bot_service.py)
+  (диалог саморегистрации: имя текстом → город инлайн-кнопками из
+  `sales_options_service.get_cities()`, без aiogram/FSM — состояние читается
+  из самих nullable-полей `User`, отдельная таблица под FSM для
+  двухшагового диалога избыточна) + [app/routes/ambassador_app.py](app/routes/ambassador_app.py)
+  (`/ambassador/app/*`, мини-апп внутри Telegram WebView). Аутентификация —
+  **header-based**, не cookie: `Authorization: tma <initData>`,
+  [app/telegram_auth.py](app/telegram_auth.py)`::get_current_ambassador`
+  проверяет HMAC-подпись initData секретом бота (`TELEGRAM_TOKEN`) и смотрит
+  `telegram_id`/`role` в `User`. Поэтому эти пути — в `CSRF_EXEMPT_PATHS`
+  (см. CSRF выше): обычный double-submit cookie тут неприменим по
+  построению, ambient-cookie не участвует в аутентификации вообще.
+- **Браузер** — [app/routes/ambassador_web.py](app/routes/ambassador_web.py)
+  (`/ambassador/*`: `/profile`, `/visit`, `/leaderboard`), обычная
+  cookie-сессия через `/auth/login` (тот же `PasswordToken`-флоу, что у
+  `user`/`admin` — `/auth/login`/`/auth/set-password` не смотрят на роль
+  вообще, изменений не потребовалось) и обычный CSRF (не в `CSRF_EXEMPT_PATHS`,
+  формы полагаются на глобальный `csrf.js`). `telegram_id` при создании
+  амбассадора в `/admin/users/new` теперь **опционален** — обязателен был
+  только исторически, до появления браузерного пути. Свой минимальный
+  layout [base_ambassador.html](app/templates/base_ambassador.html) (по
+  образцу `base_auth.html` — без сайдбара, амбассадору не должна быть видна
+  навигация по аналитике/админке, к которой у него всё равно нет доступа).
+  `require_ambassador` в [app/auth_deps.py](app/auth_deps.py) (`role in
+  ("admin", "ambassador")`) — только для этого, браузерного пути; Telegram
+  использует отдельный, header-based `get_current_ambassador`, не эту
+  зависимость.
+
+  Оба пути пишут в одни и те же поля `User` (`first_name`/`city`) — кто
+  раньше зарегистрируется (бот или браузер), у того и берутся данные,
+  второй путь просто видит «уже зарегистрирован»/анкета не показывается
+  повторно (`_profile_complete()` в `ambassador_web.py` — `first_name` и
+  `city` оба заполнены).
+
+**Бизнес-логика визита и лидерборда — в сервисах, не завязана на источник
+запроса**, поэтому у неё три вызывающих (Telegram, браузер, обычный веб)
+почти без дублирования:
+- [app/services/ambassador_service.py](app/services/ambassador_service.py)
+  — `get_visit_options(db, city)` (клиенты/типы точек/товары с ABC-бейджем
+  по сегменту, угаданному из типа точки — `abc_service.guess_default_segment()`)
+  и `create_visit(db, ambassador, city, client, sale_type, product_ids)`
+  (валидирует `city == ambassador.city`, `client`/`sale_type` — реальные
+  значения из `Sale` этого города, `product_ids` — активные товары).
+- [app/services/leaderboard_service.py](app/services/leaderboard_service.py)
+  — `get_leaderboard(db, selected_months=None)`: только **активные**
+  (`is_active=True`) амбассадоры — отключённый через `/admin/users`
+  пропадает из лидерборда целиком, вместе со своими визитами (не строка с
+  занулёнными цифрами), фильтр по месяцу — через `Visit.created_at`
+  (`parse_month()`, тот же парсер, что у `Sale.month`, хотя формат тут
+  всегда один). `get_leaderboard_months()` — список месяцев для пикера,
+  не учитывает активность амбассадора (можно выбрать месяц, где визиты
+  были только у отключённого — даст пустую таблицу, не ошибку). Вызывается
+  из `/leaderboard` (веб, `require_analyst`), `/ambassador/leaderboard`
+  (браузер) и `/ambassador/app/leaderboard` (Telegram, без фильтра по
+  месяцу — там нет `month_year_grid()`, чистый JS-фетч).
+- [app/services/visit_effectiveness_service.py](app/services/visit_effectiveness_service.py)
+  — третья вкладка на «Анализе по клиентам» (`?tab=visit_effectiveness`):
+  сверяет продемонстрированные визитом ароматы с тем, что клиент заказал
+  (`Sale`) в том же периоде. Причинность (заказ строго после визита) не
+  проверяется — `Sale.month` хранит только месяц, точность не позволяет.
+
+Удаление пользователей (`/admin/users/{id}/delete`) блокирует удаление
+амбассадора с историей визитов — детали в разделе Auth выше («Удаление
+пользователей»), тот же принцип, что и фильтр лидерборда по активности:
+`Visit` считается реальными бизнес-данными, не служебной записью.
 
 ## Deploy
 
