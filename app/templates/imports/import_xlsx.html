@@ -1,12 +1,27 @@
-
 {% extends 'base.html' %}
 {% block content %}
 <h1>Импорт XLSX → Нормализация → БД</h1>
+
+<div class="filters-card">
 <form method="post" enctype="multipart/form-data">
-    <div class="field">
-        <label>Город</label>
-        <input type="text" name="city" required placeholder="Иркутск">
+    <div class="field filter-field filter-field-region-search">
+        <label for="import-city">Город</label>
+        <input
+            type="text"
+            name="city"
+            id="import-city"
+            required
+            autocomplete="off"
+            placeholder="Выберите из списка или введите новый"
+        >
+        <div class="search-dropdown" id="import-city-dropdown" style="display:none;">
+            {% for c in cities %}
+                <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+            {% endfor %}
+        </div>
+        <div class="field-hint" id="import-city-hint">Продажи привяжутся к этому городу.</div>
     </div>
+
     <div class="field">
         <label>Файл XLSX</label>
 
@@ -22,6 +37,8 @@
         </div>
     </div>
 </form>
+</div>
+
 {% if error %}
     <div class="message error">{{ error }}</div>
 {% endif %}
@@ -31,12 +48,55 @@
 document.addEventListener("DOMContentLoaded", function () {
     const input = document.querySelector('input[type="file"][name="file"]');
     const label = document.getElementById("file-upload-name");
+    if (input && label) {
+        input.addEventListener("change", function () {
+            label.textContent = input.files.length ? input.files[0].name : "Файл не выбран";
+        });
+    }
 
-    if (!input || !label) return;
+    const cityInput = document.getElementById("import-city");
+    const dropdown = document.getElementById("import-city-dropdown");
+    const hint = document.getElementById("import-city-hint");
+    if (!cityInput || !dropdown) return;
 
-    input.addEventListener("change", function () {
-        label.textContent = input.files.length ? input.files[0].name : "Файл не выбран";
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+    const existing = items.map(i => i.dataset.value.toLowerCase());
+
+    function updateHint() {
+        const v = cityInput.value.trim();
+        if (!v) {
+            hint.textContent = "Продажи привяжутся к этому городу.";
+        } else if (existing.includes(v.toLowerCase())) {
+            hint.textContent = "Существующий город — продажи добавятся к уже загруженным.";
+        } else {
+            hint.textContent = "Новый город — будет создан при импорте.";
+        }
+    }
+
+    function showDropdown() {
+        filterSearchDropdown(cityInput, items, dropdown);
+    }
+
+    cityInput.addEventListener("focus", showDropdown);
+    cityInput.addEventListener("input", function () {
+        showDropdown();
+        updateHint();
     });
+    cityInput.addEventListener("click", e => e.stopPropagation());
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            cityInput.value = item.dataset.value;
+            dropdown.style.display = "none";
+            updateHint();
+        });
+    });
+
+    document.addEventListener("click", function () {
+        dropdown.style.display = "none";
+    });
+
+    updateHint();
 });
 </script>
 

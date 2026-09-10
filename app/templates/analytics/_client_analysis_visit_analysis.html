@@ -143,7 +143,7 @@
                             <td>{{ v.ambassador }}</td>
                             {% if va_is_admin %}
                             <td class="va-actions-cell">
-                                <a class="btn-secondary" href="/admin/visits/{{ v.id }}/edit" style="padding:5px 10px;">Изменить</a>
+                                <a class="btn btn-secondary btn-small" href="/admin/visits/{{ v.id }}/edit">Изменить</a>
                                 <form
                                     method="post"
                                     action="/admin/visits/{{ v.id }}/delete"
@@ -151,7 +151,7 @@
                                     onsubmit="return confirm('Удалить визит {{ v.client }} от {{ v.date }}? Это необратимо.');"
                                 >
                                     <input type="hidden" name="back_url" value="{{ va_back }}">
-                                    <button type="submit" class="btn-secondary" style="padding:5px 10px; color: var(--danger); border-color: var(--danger-border);">Удалить</button>
+                                    <button type="submit" class="btn-secondary btn-small btn-danger">Удалить</button>
                                 </form>
                             </td>
                             {% endif %}

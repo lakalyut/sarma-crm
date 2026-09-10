@@ -16,7 +16,7 @@ from ..product_parser import (
 )
 from ..render import render
 from ..services.event_log_service import log_import
-from ..services.sales_options_service import get_months, get_types
+from ..services.sales_options_service import get_cities, get_months, get_types
 from ..templating import format_month
 
 router = APIRouter()
@@ -39,12 +39,21 @@ def import_delete_options(
     )
 
 
+def _import_form(request: Request, db: Session, **extra):
+    return render(
+        request,
+        "imports/import_xlsx.html",
+        {"title": "Импорт XLSX — Пульс", "cities": get_cities(db), **extra},
+    )
+
+
 @router.get("/import-xlsx")
 def import_xlsx_form(
     request: Request,
+    db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
-    return render(request, "imports/import_xlsx.html", {"title": "Импорт XLSX — Пульс"})
+    return _import_form(request, db)
 
 
 @router.post("/import-xlsx")
@@ -56,47 +65,24 @@ async def import_xlsx(
     admin: User = Depends(require_admin),
 ):
     if not file.filename or not file.filename.lower().endswith(".xlsx"):
-        return render(
-            request,
-            "imports/import_xlsx.html",
-            {
-                "title": "Импорт XLSX — Пульс",
-                "error": "Файл должен быть в формате .xlsx",
-            },
-        )
+        return _import_form(request, db, error="Файл должен быть в формате .xlsx")
 
     content = await file.read()
     if len(content) > MAX_IMPORT_FILE_SIZE:
         size_mb = len(content) / (1024 * 1024)
-        return render(
-            request,
-            "imports/import_xlsx.html",
-            {
-                "title": "Импорт XLSX — Пульс",
-                "error": f"Файл слишком большой ({size_mb:.1f} МБ) — лимит 20 МБ.",
-            },
+        return _import_form(
+            request, db, error=f"Файл слишком большой ({size_mb:.1f} МБ) — лимит 20 МБ."
         )
 
     try:
         df = pd.read_excel(io.BytesIO(content))
     except Exception as e:
-        return render(
-            request,
-            "imports/import_xlsx.html",
-            {"title": "Импорт XLSX — Пульс", "error": f"Ошибка чтения XLSX: {e}"},
-        )
+        return _import_form(request, db, error=f"Ошибка чтения XLSX: {e}")
 
     required = ["Месяц", "Тип", "Клиент", "Номенклатура", "SKU", "Количество", "Вес"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        return render(
-            request,
-            "imports/import_xlsx.html",
-            {
-                "title": "Импорт XLSX — Пульс",
-                "error": f'Нет колонок: {", ".join(missing)}',
-            },
-        )
+        return _import_form(request, db, error=f'Нет колонок: {", ".join(missing)}')
 
     df["Количество"] = pd.to_numeric(df["Количество"], errors="coerce").fillna(0)
     df["Вес"] = pd.to_numeric(df["Вес"], errors="coerce").fillna(0)
@@ -150,11 +136,8 @@ async def import_xlsx(
         user_id=admin.id,
     )
 
-    return render(
+    return _import_form(
         request,
-        "imports/import_xlsx.html",
-        {
-            "title": "Импорт XLSX — Пульс",
-            "message": f"Импортировано строк: {imported}, не сопоставлено: {unmatched}",
-        },
+        db,
+        message=f"Импортировано строк: {imported}, не сопоставлено: {unmatched}",
     )

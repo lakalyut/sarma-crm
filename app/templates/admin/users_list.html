@@ -37,7 +37,7 @@
                 <option value="admin" {% if u.role == "admin" %}selected{% endif %}>admin</option>
                 <option value="ambassador" {% if u.role == "ambassador" %}selected{% endif %}>ambassador</option>
               </select>
-              <button type="submit" class="btn-secondary" style="padding:6px 12px;">Сохранить</button>
+              <button type="submit" class="btn-secondary btn-small">Сохранить</button>
             </form>
           </td>
           <td>{{ u.telegram_id or "—" }} / {{ u.city or "—" }}</td>
@@ -51,14 +51,14 @@
           <td>{{ u.created_at.strftime("%d.%m.%Y %H:%M") }}</td>
           <td style="white-space: nowrap;">
             <form method="post" action="/admin/users/{{u.id}}/reset-link" style="display:inline;">
-              <button type="submit" class="btn-secondary" style="padding:6px 12px;">Новая ссылка</button>
+              <button type="submit" class="btn-secondary btn-small">Новая ссылка</button>
             </form>
 
             <form method="post" action="/admin/users/{{u.id}}/toggle-active" style="display:inline;">
               {% if u.is_active %}
-                <button type="submit" class="btn-secondary" style="padding:6px 12px;">Отключить</button>
+                <button type="submit" class="btn-secondary btn-small">Отключить</button>
               {% else %}
-                <button type="submit" style="padding:6px 12px;">Включить</button>
+                <button type="submit" class="btn-small">Включить</button>
               {% endif %}
             </form>
 
@@ -69,7 +69,7 @@
               style="display:inline;"
               onsubmit="return confirm('Удалить пользователя {{ u.email }}? Это необратимо.');"
             >
-              <button type="submit" class="btn-secondary" style="padding:6px 12px; color: var(--danger); border-color: var(--danger-border);">Удалить</button>
+              <button type="submit" class="btn-secondary btn-small btn-danger">Удалить</button>
             </form>
             {% endif %}
           </td>

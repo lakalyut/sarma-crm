@@ -437,3 +437,36 @@ table.sheet-table tbody tr:hover td {
 .abc-missing-c {
         background: var(--bg-page);
     }
+/* =========================
+   Несопоставленные — инлайн-сопоставление и действия
+========================= */
+
+#unmatched-table {
+        table-layout: auto;
+        min-width: max-content;
+    }
+
+#unmatched-table td {
+        vertical-align: top;
+    }
+
+.unmatched-match-form {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+
+.unmatched-match-form .unmatched-product-input {
+        min-width: 220px;
+    }
+
+.unmatched-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+.unmatched-actions form {
+        display: inline-flex;
+    }

@@ -9,10 +9,11 @@
     Удаляются только записи продаж из базы. Справочник продуктов и пользователи не затрагиваются.
 </div>
 
+<div class="filters-card">
 <form method="post" action="/admin/imports/delete/preview">
-    <div class="flex-row filters-row" style="gap:16px; margin-top:12px;">
+    <div class="filters-grid ambassadors-filters-grid">
 
-        <div class="field filter-field filter-field-region-search" style="min-width:220px;">
+        <div class="field filter-field filter-field-region-search">
             <label for="delete-import-city-search">Город</label>
             <input type="hidden" name="city" id="delete-import-city" value="{{ selected_city or '' }}">
             <input id="delete-import-city-search" type="text" placeholder="Начни вводить город..." autocomplete="off">
@@ -33,7 +34,7 @@
             </div>
         </div>
 
-        <div class="field" style="min-width:260px;">
+        <div class="field filter-field">
             <label>Месяцы</label>
 
             <div class="multiselect" id="delete-months-multiselect">
@@ -73,7 +74,7 @@
             </div>
         </div>
 
-        <div class="field" style="min-width:220px;">
+        <div class="field filter-field">
             <label>Тип точки</label>
             <div class="multiselect" id="delete-types-multiselect">
                 <div class="multiselect-display">
@@ -111,11 +112,17 @@
                 </div>
             </div>
         </div>
-                <div class="field field-align-end">
-                    <button type="submit">Показать количество</button>
-                </div>
+
+        <div class="field filter-field filter-actions-row">
+            <label>&nbsp;</label>
+            <div class="filters-actions">
+                <button type="submit">Показать количество</button>
+                <a href="/admin/imports/delete" class="btn btn-secondary">Сбросить</a>
+            </div>
+        </div>
     </div>
 </form>
+</div>
 
 {% if preview_count is not none %}
     <div class="sheet-wrapper" style="margin-top:16px;">

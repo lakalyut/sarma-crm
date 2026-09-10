@@ -185,10 +185,22 @@ a.btn-secondary:hover {
         background: var(--border);
     }
 
-.btn-small {
+.btn-small,
+a.btn-small {
         min-height: 32px;
         padding: 6px 12px;
         font-size: 12px;
+    }
+
+/* Опасное действие (удаление) — красный текст на вторичной кнопке. Заменяет
+   повторявшийся инлайн style="color: var(--danger); border-color: ...". */
+.btn-danger {
+        color: var(--danger);
+        border: 1px solid var(--danger-border);
+    }
+
+.btn-danger:hover {
+        background: var(--danger-bg);
     }
 
 .file-upload-row {

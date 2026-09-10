@@ -138,10 +138,11 @@
 
 #va-table .va-actions-cell {
     white-space: nowrap;
+    display: flex;
+    gap: 6px;
+    align-items: center;
 }
 
-#va-table .va-actions-cell a,
 #va-table .va-actions-cell form {
-    display: inline-block;
-    margin-right: 4px;
+    display: inline-flex;
 }

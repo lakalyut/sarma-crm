@@ -3,10 +3,10 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
-from ..auth_deps import require_admin, require_analyst, require_client_viewer
+from ..auth_deps import require_analyst, require_client_viewer
 from ..auth_models import User
 from ..database import get_db
-from ..models import AbcSegment, Sale
+from ..models import AbcSegment
 from ..render import render
 from ..services.abc_service import (
     ensure_default_segments,
@@ -360,15 +360,5 @@ def analytics_client_detail(
     )
 
 
-@router.get("/admin/unmatched")
-def unmatched_list(
-    request: Request,
-    db: Session = Depends(get_db),
-    _admin: User = Depends(require_admin),
-):
-    rows = db.query(Sale).filter(Sale.matched.is_(False)).order_by(Sale.id.desc()).all()
-    return render(
-        request,
-        "analytics/unmatched.html",
-        {"title": "Несопоставленные — Пульс", "items": rows},
-    )
+# /admin/unmatched переехал в routes/admin_unmatched.py — там же правка/
+# удаление/ручное сопоставление строк.

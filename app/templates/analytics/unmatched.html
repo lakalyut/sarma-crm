@@ -2,17 +2,27 @@
 {% block content %}
 <h1>Несопоставленные номенклатуры</h1>
 
+{% include "includes/messages.html" %}
+
 {% if not items %}
     <div class="message ok">Все строки успешно сопоставлены 🎉</div>
 {% else %}
     <div class="message error">
         Не сопоставлено строк: {{ items|length }}.
-        Ниже список сырой номенклатуры, с которой парсер не справился.
+        Выберите товар из справочника и нажмите «Сопоставить» — строка уйдёт в продажи города.
+        Либо поправьте поля или удалите строку.
     </div>
+
+    <datalist id="unmatched-products">
+        {% for p in products %}
+            <option value="{{ p.label }}"></option>
+        {% endfor %}
+    </datalist>
+    <div id="unmatched-product-map" data-map="{{ product_id_by_label|tojson }}" hidden></div>
 
     <div class="sheet-wrapper">
         <div class="sheet-scroller">
-            <table class="sheet-table">
+            <table class="sheet-table" id="unmatched-table">
                 <thead>
                 <tr>
                     <th>Город</th>
@@ -22,6 +32,8 @@
                     <th>Сырой SKU</th>
                     <th>Кол-во</th>
                     <th>Вес</th>
+                    <th>Сопоставить с товаром</th>
+                    <th>Действия</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -34,11 +46,56 @@
                         <td>{{ s.raw_sku }}</td>
                         <td>{{ "%.2f"|format(s.qty or 0) }}</td>
                         <td>{{ "%.2f"|format(s.weight or 0) }}</td>
+                        <td>
+                            <form method="post" action="/admin/unmatched/{{ s.id }}/match" class="unmatched-match-form">
+                                <input
+                                    type="text"
+                                    list="unmatched-products"
+                                    class="unmatched-product-input"
+                                    placeholder="Начните вводить название"
+                                    autocomplete="off"
+                                >
+                                <input type="hidden" name="product_id" class="unmatched-product-id">
+                                <button type="submit" class="btn-small" disabled>Сопоставить</button>
+                            </form>
+                        </td>
+                        <td class="unmatched-actions">
+                            <a class="btn btn-secondary btn-small" href="/admin/unmatched/{{ s.id }}/edit">Изменить</a>
+                            <form
+                                method="post"
+                                action="/admin/unmatched/{{ s.id }}/delete"
+                                style="display:inline;"
+                                onsubmit="return confirm('Удалить строку «{{ s.raw_name }}»? Это необратимо.');"
+                            >
+                                <button type="submit" class="btn-secondary btn-small btn-danger">Удалить</button>
+                            </form>
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let map = {};
+        try {
+            map = JSON.parse(document.getElementById("unmatched-product-map").dataset.map);
+        } catch (e) { map = {}; }
+
+        document.querySelectorAll(".unmatched-match-form").forEach(form => {
+            const input = form.querySelector(".unmatched-product-input");
+            const hidden = form.querySelector(".unmatched-product-id");
+            const btn = form.querySelector("button");
+
+            input.addEventListener("input", function () {
+                const id = map[input.value.trim()];
+                hidden.value = id || "";
+                btn.disabled = !id;
+            });
+        });
+    });
+    </script>
 {% endif %}
 {% endblock %}

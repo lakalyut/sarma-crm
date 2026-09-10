@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card-narrow">
+  <h1>Несопоставленная строка</h1>
+
+  {% include "includes/messages.html" %}
+
+  <div class="page-subtitle" style="margin-bottom: 16px;">
+    Сырая номенклатура: <b>{{ sale.raw_name }}</b>{% if sale.raw_sku %} · SKU: {{ sale.raw_sku }}{% endif %}
+  </div>
+
+  <form method="post" action="/admin/unmatched/{{ sale.id }}/edit" id="unmatched-form">
+    <div class="field filter-field filter-field-region-search">
+      <label for="um-city">Город</label>
+      <input type="text" name="city" id="um-city" value="{{ sale.city or '' }}" autocomplete="off" required>
+      <div class="search-dropdown" id="um-city-dropdown" style="display:none;">
+        {% for c in cities %}
+          <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Месяц</label>
+      <input type="text" name="month" value="{{ sale.month or '' }}" placeholder="2026-09-01 или «Сентябрь 2026»" required>
+    </div>
+
+    <div class="field">
+      <label>Тип точки</label>
+      <input type="text" name="sale_type" value="{{ sale.type or '' }}" required>
+    </div>
+
+    <div class="field">
+      <label>Клиент</label>
+      <input type="text" name="client" value="{{ sale.client or '' }}" required>
+    </div>
+
+    <div class="field">
+      <label>Количество</label>
+      <input type="number" name="qty" step="0.01" value="{{ sale.qty or 0 }}">
+    </div>
+
+    <div class="field">
+      <label>Вес</label>
+      <input type="number" name="weight" step="0.01" value="{{ sale.weight or 0 }}">
+    </div>
+
+    <div class="field">
+      <label>Товар из справочника</label>
+      <input
+        type="text"
+        list="um-products"
+        id="um-product-input"
+        placeholder="Не выбран — строка останется несопоставленной"
+        autocomplete="off"
+        value="{{ current_product_label or '' }}"
+      >
+      <input type="hidden" name="product_id" id="um-product-id" value="{{ sale.product_id or '' }}">
+      <datalist id="um-products">
+        {% for p in products %}
+          <option value="{{ p.label }}"></option>
+        {% endfor %}
+      </datalist>
+      <div class="field-hint" id="um-product-hint">
+        Выберите товар → строка станет сопоставленной и попадёт в продажи города.
+      </div>
+    </div>
+
+    <div id="um-product-map" data-map="{{ product_id_by_label|tojson }}" hidden></div>
+
+    <div class="flex-row actions-split" style="margin-top: 18px;">
+      <a class="btn btn-secondary" href="/admin/unmatched">Отмена</a>
+      <button type="submit">Сохранить</button>
+    </div>
+  </form>
+
+  <form
+    method="post"
+    action="/admin/unmatched/{{ sale.id }}/delete"
+    style="margin-top: 14px;"
+    onsubmit="return confirm('Удалить строку «{{ sale.raw_name }}»? Это необратимо.');"
+  >
+    <button type="submit" class="btn-secondary btn-danger">Удалить строку</button>
+  </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // город: клик по подсказке подставляет, свободный ввод — новый город
+    const cityInput = document.getElementById("um-city");
+    const cityDd = document.getElementById("um-city-dropdown");
+    if (cityInput && cityDd) {
+        const items = Array.from(cityDd.querySelectorAll(".search-dropdown-item"));
+        const show = () => filterSearchDropdown(cityInput, items, cityDd);
+        cityInput.addEventListener("focus", show);
+        cityInput.addEventListener("input", show);
+        cityInput.addEventListener("click", e => e.stopPropagation());
+        items.forEach(i => i.addEventListener("click", () => {
+            cityInput.value = i.dataset.value;
+            cityDd.style.display = "none";
+        }));
+        document.addEventListener("click", () => { cityDd.style.display = "none"; });
+    }
+
+    // товар: <datalist> отдаёт строку — резолвим в id по карте
+    let map = {};
+    try { map = JSON.parse(document.getElementById("um-product-map").dataset.map); }
+    catch (e) { map = {}; }
+
+    const pInput = document.getElementById("um-product-input");
+    const pId = document.getElementById("um-product-id");
+    const pHint = document.getElementById("um-product-hint");
+    pInput.addEventListener("input", function () {
+        const v = pInput.value.trim();
+        const id = map[v];
+        pId.value = id || "";
+        if (!v) {
+            pHint.textContent = "Не выбран — строка останется несопоставленной.";
+        } else if (id) {
+            pHint.textContent = "Строка станет сопоставленной и попадёт в продажи города.";
+        } else {
+            pHint.textContent = "Нет такого товара в справочнике — выберите из подсказок.";
+        }
+    });
+});
+</script>
+{% endblock %}

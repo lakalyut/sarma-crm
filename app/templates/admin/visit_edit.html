@@ -110,7 +110,7 @@
     onsubmit="return confirm('Удалить визит {{ visit.client }} от {{ visit.created_at.strftime('%d.%m.%Y') }}? Это необратимо.');"
   >
     <input type="hidden" name="back_url" value="{{ back_url }}">
-    <button type="submit" class="btn-secondary" style="color: var(--danger); border-color: var(--danger-border);">Удалить визит</button>
+    <button type="submit" class="btn-secondary btn-danger">Удалить визит</button>
   </form>
 </div>
 
