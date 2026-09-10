@@ -76,8 +76,14 @@ def build_visit_effectiveness_report(
 
         entry = client_aromas.setdefault(
             product.id,
-            {"brand": product.brand, "flavor": product.flavor, "ambassadors": set()},
+            {
+                "brand": product.brand,
+                "flavor": product.flavor,
+                "ambassadors": set(),
+                "shown_ym": set(),
+            },
         )
+        entry["shown_ym"].add((visit.created_at.year, visit.created_at.month))
         ambassador = visit.ambassador
         if ambassador:
             name = f"{ambassador.first_name or ''} {ambassador.last_name or ''}".strip()
@@ -108,18 +114,25 @@ def build_visit_effectiveness_report(
             continue
 
         ordered_ids = ordered_by_client.get(client, set())
-        aromas = sorted(
-            (
+        aromas = []
+        for product_id, entry in client_aromas.items():
+            if not (entry["shown_ym"] & sale_ym):
+                # аромат показан только в месяц(ы) без загруженных продаж —
+                # сверять не с чем, статус «ждём продажи», не «не заказан»
+                status = "pending"
+            elif product_id in ordered_ids:
+                status = "ordered"
+            else:
+                status = "not_ordered"
+            aromas.append(
                 {
                     "brand": entry["brand"],
                     "flavor": entry["flavor"],
-                    "ordered": product_id in ordered_ids,
+                    "status": status,
                     "ambassadors": sorted(entry["ambassadors"]),
                 }
-                for product_id, entry in client_aromas.items()
-            ),
-            key=lambda a: a["flavor"],
-        )
+            )
+        aromas.sort(key=lambda a: a["flavor"])
         clients_result.append({"name": client, "aromas": aromas})
 
     return {

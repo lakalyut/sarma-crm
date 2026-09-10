@@ -129,9 +129,14 @@
                         <h2 class="amb-card-title">{{ client.name }}</h2>
                     </div>
 
+                    {% set ordered_n = client.aromas|selectattr("status", "equalto", "ordered")|list|length %}
+                    {% set pending_n = client.aromas|selectattr("status", "equalto", "pending")|list|length %}
                     <div class="amb-card-badges">
                         <span class="amb-badge amb-badge-blue">Ароматов показано: {{ client.aromas|length }}</span>
-                        <span class="amb-badge amb-badge-green">Заказано: {{ client.aromas|selectattr("ordered")|list|length }}</span>
+                        <span class="amb-badge amb-badge-green">Заказано: {{ ordered_n }}</span>
+                        {% if pending_n %}
+                            <span class="amb-badge">Ждём продажи: {{ pending_n }}</span>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -150,8 +155,10 @@
                                     <tr>
                                         <td>{{ aroma.brand }} — {{ aroma.flavor }}</td>
                                         <td>
-                                            {% if aroma.ordered %}
+                                            {% if aroma.status == "ordered" %}
                                                 <span class="amb-badge amb-badge-green">Заказан ✓</span>
+                                            {% elif aroma.status == "pending" %}
+                                                <span class="amb-badge" title="Продажи за месяц визита ещё не загружены">Ждём продажи</span>
                                             {% else %}
                                                 <span class="amb-badge">Не заказан</span>
                                             {% endif %}

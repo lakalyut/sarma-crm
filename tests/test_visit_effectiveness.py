@@ -104,8 +104,8 @@ def test_ordered_and_not_ordered_flavors(db_session):
     )
 
     assert len(report["clients"]) == 1
-    aromas = {a["flavor"]: a["ordered"] for a in report["clients"][0]["aromas"]}
-    assert aromas == {"Мята": True, "Лимон": False}
+    aromas = {a["flavor"]: a["status"] for a in report["clients"][0]["aromas"]}
+    assert aromas == {"Мята": "ordered", "Лимон": "not_ordered"}
     ambassadors_for_mint = next(
         a for a in report["clients"][0]["aromas"] if a["flavor"] == "Мята"
     )["ambassadors"]
@@ -205,6 +205,40 @@ def test_selected_clients_narrows_result(db_session):
         selected_clients=["Клиент Г"],
     )
     assert {c["name"] for c in report_narrow["clients"]} == {"Клиент Г"}
+
+
+def test_aroma_shown_only_in_month_without_sales_is_pending(db_session):
+    """Широкий период: визит в сентябре (продаж нет), но у клиента есть
+    старые продажи этого аромата в марте. Статус аромата — «ждём продажи»,
+    а не «заказан»: сентябрьскую эффективность визита ещё не проверить."""
+    from app.services.visit_effectiveness_service import (
+        build_visit_effectiveness_report,
+    )
+
+    ambassador = _make_ambassador(db_session, telegram_id=555010)
+    product = _make_product(db_session, "Байкал", "SKU-PND")
+
+    _make_visit(
+        db_session,
+        ambassador,
+        city="Иркутск",
+        client="Дзиро",
+        sale_type="Кальянная",
+        created_at=datetime(2026, 9, 3, tzinfo=UTC),
+        product_ids=[product.id],
+    )
+    # старая продажа того же аромата — в марте, задолго до визита
+    _make_sale(db_session, "Иркутск", "Дзиро", "2026-03-01", product.id)
+
+    report = build_visit_effectiveness_report(
+        db_session,
+        city="Иркутск",
+        selected_months=["2026-03-01", "2026-09-01"],
+        selected_clients=[],
+    )
+    aroma = report["clients"][0]["aromas"][0]
+    assert aroma["status"] == "pending"
+    assert report["months_without_sales"] == ["2026-09-01"]
 
 
 def test_visit_effectiveness_tab_requires_analyst(admin_client):

@@ -121,9 +121,10 @@ def test_visit_effectiveness_flags_month_without_sales(db_session):
     )
     # ароматы визита показаны
     assert [c["name"] for c in report["clients"]] == ["Бар Сентябрь"]
-    # но сверять не с чем — сентябрьских продаж ещё нет
+    # но сверять не с чем — сентябрьских продаж ещё нет, статус «ждём продажи»,
+    # не «не заказан»
     assert report["months_without_sales"] == ["2026-09-01"]
-    assert all(not a["ordered"] for a in report["clients"][0]["aromas"])
+    assert all(a["status"] == "pending" for a in report["clients"][0]["aromas"])
 
 
 def test_visit_effectiveness_no_flag_once_sales_loaded(db_session):
