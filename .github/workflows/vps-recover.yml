@@ -1,0 +1,62 @@
+name: VPS recover
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "diag = только диагностика; recover = стоп caddy + пересобрать compose"
+        type: choice
+        options:
+          - diag
+          - recover
+        default: diag
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set +e
+            echo "=== uptime / load ==="
+            uptime
+            echo "=== disk ==="
+            df -h /
+            echo "=== mem ==="
+            free -m
+            echo "=== who is on :80 / :443 ==="
+            sudo ss -tlnp | grep -E ':80 |:443 |:22 ' || true
+            echo "=== caddy ==="
+            systemctl is-active caddy; systemctl is-enabled caddy
+            sudo systemctl status caddy --no-pager 2>&1 | head -20
+            echo "=== docker ==="
+            sudo systemctl is-active docker
+            sudo docker ps -a 2>&1 | head -30
+            echo "=== compose ps ==="
+            cd /home/ubuntu/sarma-crm && sudo docker compose ps 2>&1
+            echo "=== nginx container logs ==="
+            sudo docker logs sarma-crm-nginx-1 --tail 25 2>&1
+            echo "=== web container logs ==="
+            sudo docker logs sarma-crm-web-1 --tail 25 2>&1
+
+            if [ "${{ github.event.inputs.mode }}" = "recover" ]; then
+              echo "=== RECOVER ==="
+              sudo systemctl stop caddy 2>&1
+              sudo systemctl disable caddy 2>&1
+              cd /home/ubuntu/sarma-crm
+              git fetch --all && git reset --hard origin/main
+              sudo docker compose down --remove-orphans 2>&1
+              sudo docker compose up -d --build 2>&1
+              echo "--- wait 25s ---"
+              sleep 25
+              sudo docker compose ps 2>&1
+              curl -s -o /dev/null -w "nginx :80 /health -> %{http_code}\n" http://127.0.0.1/health
+              curl -sk -o /dev/null -w "nginx :443 / -> %{http_code}\n" https://127.0.0.1/ --resolve sarma-crm.ru:443:127.0.0.1
+            fi
+            true
