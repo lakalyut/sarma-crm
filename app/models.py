@@ -137,7 +137,7 @@ class Visit(Base):
     sku_light = Column(Integer)  # линейка «Лёгкая»
     people_count = Column(Integer)  # человек на мероприятии
     comment = Column(String)  # свободная заметка, видна историей по точке
-    goal = Column(String)  # цель визита (пока свободный текст, каркас под список)
+    goal = Column(String)  # цель визита (быстрые чипы VISIT_GOALS + свой текст)
 
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False

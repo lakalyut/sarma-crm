@@ -487,10 +487,12 @@ FastAPI сжатием не занимались вообще — большие
 заказанным. Данные: `Visit`/`VisitProduct` ([app/models.py](app/models.py),
 `ambassador_id`/`city`/`client`/`sale_type`/`created_at`, `created_at` —
 настоящий `datetime`, единственный формат, в отличие от `Sale.month`; плюс
-анкета визита, горизонт 13.5 — `sku_classic`/`sku_strong`/`sku_light` (СКЮ на
-полке по линейкам), `people_count`, `comment`, `goal` — все nullable в БД, но
-обязательны на новых визитах через `ambassador_service.create_visit`; старые
-визиты None не мешают) и три новых поля на `User`
+анкета визита, горизонт 13.5 — `sku_classic`/`sku_strong`/`sku_light` (SKU на
+полке по линейкам — в UI пишем «SKU», не «СКЮ»), `people_count`, `comment`,
+`goal` (быстрые чипы `ambassador_service.VISIT_GOALS` + свободный текст) — все
+nullable в БД, но обязательны на новых визитах через
+`ambassador_service.create_visit`; старые визиты None не мешают) и три новых
+поля на `User`
 ([app/auth_models.py](app/auth_models.py)):
 `telegram_id` (unique, nullable), `city` (обычная строка — той же природы,
 что `Sale.city`, не FK на справочник; заменил `region_id` в ходе сессии,
