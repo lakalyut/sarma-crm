@@ -182,6 +182,22 @@ template, ctx)`, который сам достаёт `current_user` по cookie
   `client`/`qty`/`weight` (`update_sale_fields`) + тот же `<datalist>`-выбор товара; убрал
   товар из выбора у сопоставленной строки — `unmatch_sale()` вернёт её в несопоставленные.
 
+**Ревизия номенклатуры** (`/admin/nomenclature/review`,
+[app/routes/admin_nomenclature.py](app/routes/admin_nomenclature.py) +
+[app/services/nomenclature_review_service.py](app/services/nomenclature_review_service.py)).
+`Sale` хранит **копию** названия товара (`sale.sku`/`sale.name`, проставляется при импорте/
+матче); `edit_product` меняет `Product`, но эти копии **не трогает** → аналитика через
+`sku_expr()` (`coalesce(Sale.sku, …)` первым) показывает старое имя после правки бренда/
+линии. `get_drift_groups()` собирает сопоставленные строки, где `sale.sku` ≠ актуальный
+`canonical_sku`, сгруппированные по товару; `resync_product_sales()` / `resync_all()`
+пересчитывают `sku`/`name` из `product_id` (вес — из `raw_name`/`default_weight_g`, как
+импорт; `raw_name`/`raw_sku` не трогаем). Пересинхронизация **ручная** (решение
+пользователя): кнопка на `/admin/products/edit/{id}` (плашка «продаж с прежним названием:
+N») и на странице ревизии (пачкой / по товару). Плюс `flavor_collision()` — при
+создании/правке товара, если тот же `norm_flavor` уже есть у товара с другим `norm_brand`
+(«Сарма Ваниль» vs «Сарма 360 Ваниль»), редирект на карточку с предупреждением (не
+блокирует). Слияния дублей нет — пользователь правит существующий товар, не плодит новый.
+
 **Данные продаж — плоская таблица `Sale`** ([app/models.py](app/models.py)): город, месяц
 (строка `YYYY-MM-01`, форматируется фильтром Jinja `format_month` в «Март 2026»), тип точки,
 клиент, сырые и сопоставленные название/SKU, qty/weight, `matched`. Почти вся аналитика —
