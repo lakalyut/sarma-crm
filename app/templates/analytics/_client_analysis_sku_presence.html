@@ -47,26 +47,33 @@
                 </select>
             </div>
 
-            <div class="field filter-field filter-field-region-search">
-                <label for="sp-sku-search">SKU</label>
-                <input id="sp-sku-search" type="text" value="" placeholder="Начни вводить SKU..." autocomplete="off">
-                <div id="sp-sku-dropdown" class="search-dropdown" style="display:none;">
-                    {% for opt in sku_options %}
-                        <div class="search-dropdown-item" data-value="{{ opt.sku }}">
-                            <span class="sp-sku-name">{{ opt.sku }}</span>
-                            {% if opt.abc %}<span class="abc-badge abc-badge-{{ opt.abc|lower }}">{{ opt.abc }}</span>{% endif %}
-                            {% if opt.is_new %}<span class="abc-badge abc-badge-new">NEW</span>{% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-
             <div class="field filter-field filter-actions-row">
                 <label>&nbsp;</label>
                 <div class="filters-actions">
                     <button type="submit">Показать</button>
                     <a href="/analytics/client-analysis?tab=sku_presence" class="btn btn-secondary">Сбросить</a>
                 </div>
+            </div>
+        </div>
+
+        <div class="field filter-field filter-field-region-search sp-sku-full">
+            <label for="sp-sku-search">SKU</label>
+            <div class="amb-status-filter" id="sp-status-filter">
+                <button type="button" class="amb-status-filter-btn active" data-status="all">Все</button>
+                <button type="button" class="amb-status-filter-btn" data-status="A">A</button>
+                <button type="button" class="amb-status-filter-btn" data-status="B">B</button>
+                <button type="button" class="amb-status-filter-btn" data-status="C">C</button>
+                <button type="button" class="amb-status-filter-btn" data-status="new">NEW</button>
+            </div>
+            <input id="sp-sku-search" type="text" value="" placeholder="Начни вводить SKU или выбери статус выше..." autocomplete="off">
+            <div id="sp-sku-dropdown" class="search-dropdown" style="display:none;">
+                {% for opt in sku_options %}
+                    <div class="search-dropdown-item" data-value="{{ opt.sku }}" data-abc="{{ opt.abc or '' }}" data-new="{{ '1' if opt.is_new else '' }}">
+                        <span class="sp-sku-name">{{ opt.sku }}</span>
+                        {% if opt.abc %}<span class="abc-badge abc-badge-{{ opt.abc|lower }}">{{ opt.abc }}</span>{% endif %}
+                        {% if opt.is_new %}<span class="abc-badge abc-badge-new">NEW</span>{% endif %}
+                    </div>
+                {% endfor %}
             </div>
         </div>
 
@@ -199,11 +206,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    initTagSearch({
+    let statusFilter = "all";
+
+    const skuSearch = initTagSearch({
         inputId: "sp-sku-search",
         dropdownId: "sp-sku-dropdown",
         tagsId: "sp-skus-tags",
-        inputName: "skus"
+        inputName: "skus",
+        maxVisible: 3,
+        itemFilter: function (item) {
+            if (statusFilter === "all") return true;
+            if (statusFilter === "new") return item.dataset.new === "1";
+            return item.dataset.abc === statusFilter;
+        }
+    });
+
+    document.querySelectorAll("#sp-status-filter .amb-status-filter-btn").forEach(btn => {
+        btn.addEventListener("click", function () {
+            statusFilter = btn.dataset.status;
+            document.querySelectorAll("#sp-status-filter .amb-status-filter-btn")
+                .forEach(b => b.classList.toggle("active", b === btn));
+            if (skuSearch) skuSearch.refresh();
+        });
     });
 });
 </script>

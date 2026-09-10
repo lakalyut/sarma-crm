@@ -259,3 +259,15 @@
     color: var(--status-lost-text);
     text-decoration: line-through;
 }
+
+.sp-sku-full {
+    margin-top: 14px;
+}
+
+.sp-sku-full .amb-status-filter {
+    margin: 0 0 8px;
+}
+
+.sp-sku-full .search-dropdown {
+    max-height: 340px;
+}

@@ -11,6 +11,9 @@ function initTagSearch(config) {
 
     const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
     const maxVisible = config.maxVisible || null;
+    // Необязательный внешний фильтр пунктов дропдауна (например, по ABC/NEW):
+    // (item) => bool. Вернём {refresh} — дёрнуть после смены фильтра.
+    const itemFilter = config.itemFilter || (() => true);
     let expanded = false;
     let moreBtn = null;
 
@@ -66,7 +69,8 @@ function initTagSearch(config) {
         items.forEach(item => {
             const text = item.dataset.value.toLowerCase();
             const alreadySelected = selected.includes(item.dataset.value);
-            const visible = !alreadySelected && (!value || text.includes(value));
+            const visible =
+                !alreadySelected && (!value || text.includes(value)) && itemFilter(item);
 
             item.classList.toggle("hidden", !visible);
 
@@ -133,4 +137,6 @@ function initTagSearch(config) {
             dropdown.style.display = "none";
         }
     });
+
+    return { refresh: filterItems };
 }
