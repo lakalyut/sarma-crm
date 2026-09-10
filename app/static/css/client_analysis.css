@@ -157,6 +157,13 @@
     gap: 8px;
 }
 
+/* ID-селектор выше бьёт .search-dropdown-item.hidden (0-2-0) по
+   специфичности — без явного правила спрятанные фильтром пункты остаются
+   видимыми (та же ловушка каскада, что в DESIGN.md). */
+#sp-sku-dropdown .search-dropdown-item.hidden {
+    display: none;
+}
+
 #sp-sku-dropdown .sp-sku-name {
     flex: 1;
 }
