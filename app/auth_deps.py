@@ -66,3 +66,13 @@ def require_ambassador(user: User = Depends(require_user)) -> User:
     if user.role not in ("admin", "ambassador"):
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user
+
+
+def require_client_viewer(user: User = Depends(require_user)) -> User:
+    # «Клиенты» и «Детализация по клиенту» — аналитикам (admin/user) целиком,
+    # амбассадору только по своему городу (роут форсит city=user.city, любой
+    # ?city= в запросе игнорируется). Отдельная от require_analyst зависимость,
+    # чтобы не расширять блэнкет-доступ на остальную аналитику.
+    if user.role not in ("admin", "user", "ambassador"):
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+    return user

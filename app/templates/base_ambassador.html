@@ -25,6 +25,7 @@
     .amb-web-nav {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
     }
     .amb-web-nav a {
@@ -55,6 +56,9 @@
       margin: 0 auto;
       padding: 20px;
     }
+    .amb-web-content.amb-web-content-wide {
+      max-width: 1120px;
+    }
   </style>
 </head>
 <body>
@@ -62,6 +66,7 @@
     <span class="amb-web-brand">Пульс — амбассадор</span>
     <nav class="amb-web-nav">
       <a href="/ambassador/visit" class="{% if request.url.path == '/ambassador/visit' %}active{% endif %}">Визит</a>
+      <a href="/analytics/clients" class="{% if request.url.path.startswith('/analytics/client') %}active{% endif %}">Клиенты</a>
       <a href="/ambassador/leaderboard" class="{% if request.url.path == '/ambassador/leaderboard' %}active{% endif %}">Лидерборд</a>
       <form method="post" action="/auth/logout" style="display:inline;">
         <button type="submit" class="amb-web-logout">Выйти</button>
@@ -69,11 +74,13 @@
     </nav>
   </header>
 
-  <div class="amb-web-content">
+  <div class="amb-web-content{% if wide_content %} amb-web-content-wide{% endif %}">
     {% block content %}{% endblock %}
   </div>
 
   <script src="/static/js/checkbox_multiselect.js"></script>
+  <script src="/static/js/custom_select.js"></script>
+  <script src="/static/js/sku_status_table.js"></script>
   <script src="/static/js/visit_products.js"></script>
   <script src="/static/js/csrf.js"></script>
 </body>

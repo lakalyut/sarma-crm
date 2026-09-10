@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_302_FOUND
 
-from ..auth_deps import require_admin, require_analyst
+from ..auth_deps import require_admin, require_analyst, require_client_viewer
 from ..auth_models import User
 from ..database import get_db
 from ..models import AbcSegment, Sale
@@ -28,6 +29,20 @@ from ..utils.params import get_int_param
 router = APIRouter()
 
 
+def _layout_context(user: User) -> dict:
+    """Амбассадор видит «Клиенты»/детализацию в своём минимальном layout без
+    сайдбара; аналитики — как обычно. `ambassador_mode` глушит в шаблонах
+    аналитик-специфичные блоки (поиск региона, панель «Сформировать свод»).
+    `wide_content` расширяет узкий (640px) контейнер base_ambassador.html под
+    широкие таблицы этих страниц — на обычном base.html флаг игнорируется."""
+    ambassador_mode = user.role == "ambassador"
+    return {
+        "ambassador_mode": ambassador_mode,
+        "base_template": "base_ambassador.html" if ambassador_mode else "base.html",
+        "wide_content": ambassador_mode,
+    }
+
+
 @router.get("/analytics/clients")
 def analytics_clients(
     request: Request,
@@ -36,11 +51,17 @@ def analytics_clients(
     sale_types: list[str] = Query(default=None),
     matched: str | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_analyst),
+    _user: User = Depends(require_client_viewer),
 ):
     if _user.role != "admin":
         matched = None
 
+    if _user.role == "ambassador":
+        if not _user.city:
+            return RedirectResponse("/ambassador/profile", status_code=HTTP_302_FOUND)
+        city = _user.city
+
+    layout = _layout_context(_user)
     cities = get_cities(db)
 
     if not city:
@@ -70,6 +91,7 @@ def analytics_clients(
                 "empty_state": {
                     "hint": "Выберите регион в фильтре выше — здесь появится сводка по клиентам"
                 },
+                **layout,
             },
         )
 
@@ -124,6 +146,7 @@ def analytics_clients(
             "summary": summary,
             "type_cards": type_cards,
             "monthly_by_client": monthly_by_client,
+            **layout,
         },
     )
 
@@ -247,10 +270,17 @@ def analytics_client_detail(
     matched: str | None = None,
     abc_segment: int | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_analyst),
+    _user: User = Depends(require_client_viewer),
 ):
     if _user.role != "admin":
         matched = None
+
+    if _user.role == "ambassador":
+        if not _user.city:
+            return RedirectResponse("/ambassador/profile", status_code=HTTP_302_FOUND)
+        city = _user.city
+
+    layout = _layout_context(_user)
 
     detail_data = get_client_detail_data(
         db=db,
@@ -325,6 +355,7 @@ def analytics_client_detail(
             "matched": matched,
             "status_settings": status_settings,
             "sku_status": sku_status,
+            **layout,
         },
     )
 

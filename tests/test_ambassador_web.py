@@ -228,3 +228,116 @@ def test_leaderboard_page_accessible_to_ambassador(client, db_session):
 
     resp = client.get("/ambassador/leaderboard")
     assert resp.status_code == 200
+
+
+def test_ambassador_sees_clients_scoped_to_own_city(client, db_session):
+    from app.models import Sale
+
+    db_session.add_all(
+        [
+            Sale(
+                city="Свой Город",
+                month="2026-01-01",
+                type="HoReCa",
+                client="Мой Клиент",
+                qty=1,
+                weight=1,
+                matched=True,
+            ),
+            Sale(
+                city="Чужой Город",
+                month="2026-01-01",
+                type="HoReCa",
+                client="Чужой Клиент",
+                qty=1,
+                weight=1,
+                matched=True,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    _login_ambassador(client, db_session, city="Свой Город", first_name="Иван")
+
+    # ?city= в запросе игнорируется — форсится город амбассадора
+    resp = client.get(
+        "/analytics/clients?city=%D0%A7%D1%83%D0%B6%D0%BE%D0%B9+%D0%93%D0%BE%D1%80%D0%BE%D0%B4"
+    )
+    assert resp.status_code == 200
+    assert "Мой Клиент" in resp.text
+    assert "Чужой Клиент" not in resp.text
+    # минимальный layout амбассадора, без сайдбара аналитика и панели «Свод»
+    assert 'class="sidebar"' not in resp.text
+    assert "Сформировать свод" not in resp.text
+
+
+def test_ambassador_client_detail_scoped_to_own_city(client, db_session):
+    from app.models import Sale
+
+    db_session.add_all(
+        [
+            Sale(
+                city="Свой Город",
+                month="2026-01-01",
+                type="HoReCa",
+                client="Общий",
+                qty=5,
+                weight=5,
+                matched=True,
+            ),
+            Sale(
+                city="Чужой Город",
+                month="2026-01-01",
+                type="HoReCa",
+                client="Общий",
+                qty=99,
+                weight=99,
+                matched=True,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    _login_ambassador(client, db_session, city="Свой Город", first_name="Иван")
+
+    resp = client.get(
+        "/analytics/client"
+        "?city=%D0%A7%D1%83%D0%B6%D0%BE%D0%B9+%D0%93%D0%BE%D1%80%D0%BE%D0%B4"
+        "&client=%D0%9E%D0%B1%D1%89%D0%B8%D0%B9&sale_type=HoReCa"
+    )
+    assert resp.status_code == 200
+    assert "Свой Город" in resp.text
+    assert "Чужой Город" not in resp.text
+    assert "99.00" not in resp.text  # данные чужого города не подмешались
+
+
+def test_ambassador_without_city_redirected_to_profile_from_clients(client, db_session):
+    _login_ambassador(client, db_session, city=None, first_name="Иван")
+
+    resp = client.get("/analytics/clients", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "/ambassador/profile"
+
+
+def test_analyst_still_sees_full_clients_page(admin_client, db_session):
+    from app.models import Sale
+
+    db_session.add(
+        Sale(
+            city="Аналитикоград",
+            month="2026-01-01",
+            type="HoReCa",
+            client="Клиент А",
+            qty=1,
+            weight=1,
+            matched=True,
+        )
+    )
+    db_session.commit()
+
+    resp = admin_client.get(
+        "/analytics/clients?city=%D0%90%D0%BD%D0%B0%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%BE%D0%B3%D1%80%D0%B0%D0%B4"
+    )
+    assert resp.status_code == 200
+    assert 'class="sidebar"' in resp.text
+    assert "Сформировать свод" in resp.text

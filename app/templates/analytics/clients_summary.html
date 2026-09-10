@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends base_template|default('base.html') %}
 {% from "includes/month_year_picker.html" import month_year_grid %}
 {% block content %}
 <h1>Список клиентов</h1>
@@ -8,6 +8,13 @@
     <form method="get" id="clients-filters-form">
         <div class="filters-grid clients-filters-grid">
 
+            {% if ambassador_mode %}
+            <div class="field filter-field">
+                <label>Регион</label>
+                <input type="hidden" name="city" id="city-hidden" value="{{ selected_city or '' }}">
+                <div class="selected-city-value" style="padding-top: 6px;">{{ selected_city }}</div>
+            </div>
+            {% else %}
             <div class="field filter-field filter-field-region-search">
                 <label for="city-search">Поиск региона</label>
 
@@ -29,6 +36,7 @@
                     {% endfor %}
                 </div>
             </div>
+            {% endif %}
 
             <div class="field filter-field">
                 <label>Месяцы</label>
@@ -223,6 +231,7 @@
         </div>
     </div>
 
+    {% if not ambassador_mode %}
     <div
         class="filters-card is-hidden"
         id="ca-selection-bar"
@@ -239,6 +248,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <div id="clients-table-wrapper">
         {% if not rows and empty_state %}
@@ -308,7 +318,7 @@
                                     data-delta="0"
                                     data-monthly="{{ client_monthly|tojson }}"
                                 >
-                                    <td><input type="checkbox" class="ca-row-select" data-client="{{ r.client }}"></td>
+                                    <td>{% if not ambassador_mode %}<input type="checkbox" class="ca-row-select" data-client="{{ r.client }}">{% endif %}</td>
                                     <td>{{ r.type }}</td>
                                     <td class="client-name-cell">{{ r.client }}</td>
                                     <td>{{ "%.2f"|format(r.qty) }}</td>
@@ -352,6 +362,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
+{% if not ambassador_mode %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     initFilterMemory({
@@ -361,6 +372,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+{% endif %}
 
 
 
@@ -378,6 +390,7 @@ document.addEventListener("DOMContentLoaded", function () {
 })();
 </script>
 
+{% if not ambassador_mode %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     initRegionSearch({
@@ -391,6 +404,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+{% endif %}
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -693,6 +707,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
+{% if not ambassador_mode %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const bar = document.getElementById("ca-selection-bar");
@@ -753,5 +768,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 </script>
+{% endif %}
 
 {% endblock %}
