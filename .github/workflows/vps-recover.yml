@@ -30,6 +30,10 @@ jobs:
             df -h /
             echo "=== mem ==="
             free -m
+            echo "=== ufw ==="
+            sudo ufw status verbose 2>&1
+            echo "=== iptables INPUT ==="
+            sudo iptables -S INPUT 2>&1 | head -30
             echo "=== who is on :80 / :443 ==="
             sudo ss -tlnp | grep -E ':80 |:443 |:22 ' || true
             echo "=== caddy ==="
@@ -49,6 +53,12 @@ jobs:
               echo "=== RECOVER ==="
               sudo systemctl stop caddy 2>&1
               sudo systemctl disable caddy 2>&1
+              echo "--- open 80/443/22 in ufw ---"
+              sudo ufw allow 22/tcp 2>&1
+              sudo ufw allow 80/tcp 2>&1
+              sudo ufw allow 443/tcp 2>&1
+              sudo ufw reload 2>&1
+              sudo ufw status 2>&1
               cd /home/ubuntu/sarma-crm
               git fetch --all && git reset --hard origin/main
               sudo docker compose down --remove-orphans 2>&1
