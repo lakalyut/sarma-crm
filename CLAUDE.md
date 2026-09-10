@@ -93,7 +93,9 @@ template, ctx)`, который сам достаёт `current_user` по cookie
 [app/auth_deps.py](app/auth_deps.py) даёт FastAPI-зависимости `get_current_user` /
 `require_user` / `require_admin` / `require_analyst` (`role in ("admin", "user")` —
 блэнкет-доступ на аналитику) / `require_ambassador` (`role in ("admin", "ambassador")`,
-горизонт 13, см. ниже). Три роли на `User.role`: `admin`/`user`/`ambassador`. Пароли —
+горизонт 13, см. ниже) / `require_client_viewer` (все три роли — «Клиенты»/детализация
+клиента, амбассадору только по своему городу, см. ниже). Три роли на `User.role`:
+`admin`/`user`/`ambassador`. Пароли —
 прямой `bcrypt`
 ([app/auth_security.py](app/auth_security.py), `passlib` убран — был мёртв с 2020, роадмап
 давно планировал; существующие хеши в БД совместимы без миграции, оба формата `$2b$12$...`).
@@ -529,6 +531,26 @@ FastAPI сжатием не занимались вообще — большие
   второй путь просто видит «уже зарегистрирован»/анкета не показывается
   повторно (`_profile_complete()` в `ambassador_web.py` — `first_name` и
   `city` оба заполнены).
+
+  **Амбассадор видит «Клиенты» и «Детализацию по клиенту» по своему
+  городу.** Не отдельные роуты — те же `/analytics/clients` и
+  `/analytics/client` из [analytics.py](app/routes/analytics.py), но с
+  зависимостью `require_client_viewer` (admin/user/ambassador) вместо
+  `require_analyst`; для роли `ambassador` роут **форсит `city = user.city`**
+  и игнорирует любой `?city=` (без города в анкете — редирект на
+  `/ambassador/profile`). `_layout_context()` кладёт в контекст
+  `base_template`/`ambassador_mode`/`wide_content`: шаблоны
+  `clients_summary.html`/`client_detail.html` через динамический
+  `{% extends base_template %}` рендерятся под `base_ambassador.html` (без
+  сайдбара, пункт «Клиенты» в его шапке), аналитик-специфичные блоки (поиск
+  региона, панель «Сформировать свод»/«Амбассадорский отчёт», чекбоксы
+  выбора клиентов) гасятся `{% if not ambassador_mode %}`. Для аналитика
+  `base_template='base.html'` передаётся явно — рендер байт-в-байт прежний.
+  `base_ambassador.html` из-за этого догружает `custom_select.js`/
+  `sku_status_table.js` (нужны детализации) и расширяет свой узкий
+  контейнер под таблицы (`.amb-web-content-wide`). Остальная аналитика
+  (`/analytics/charts`, `/analytics/regions`, `/analytics/client-analysis`)
+  амбассадору по-прежнему закрыта — `require_analyst` там не тронут.
 
 **Бизнес-логика визита и лидерборда — в сервисах, не завязана на источник
 запроса**, поэтому у неё три вызывающих (Telegram, браузер, обычный веб)
