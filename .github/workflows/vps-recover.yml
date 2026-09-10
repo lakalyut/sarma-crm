@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "diag = только диагностика; recover = стоп caddy + пересобрать compose"
+        description: "diag / recover / gitssh (перевести origin на SSH-remote)"
         type: choice
         options:
           - diag
           - recover
+          - gitssh
         default: diag
 
 jobs:
@@ -68,5 +69,39 @@ jobs:
               sudo docker compose ps 2>&1
               curl -s -o /dev/null -w "nginx :80 /health -> %{http_code}\n" http://127.0.0.1/health
               curl -sk -o /dev/null -w "nginx :443 / -> %{http_code}\n" https://127.0.0.1/ --resolve sarma-crm.ru:443:127.0.0.1
+            fi
+
+            if [ "${{ github.event.inputs.mode }}" = "gitssh" ]; then
+              echo "=== GITSSH ==="
+              echo "--- outbound github reachability ---"
+              (nc -zv -w 8 github.com 22 2>&1); echo "  ^ github.com:22 (нужен для SSH-remote)"
+              (nc -zv -w 8 github.com 443 2>&1); echo "  ^ github.com:443 (текущий HTTPS-remote)"
+              (nc -zv -w 8 api.telegram.org 443 2>&1); echo "  ^ api.telegram.org:443 (для справки)"
+
+              mkdir -p ~/.ssh && chmod 700 ~/.ssh
+              if [ ! -f ~/.ssh/gh_deploy ]; then
+                ssh-keygen -t ed25519 -f ~/.ssh/gh_deploy -N "" -C "sarma-crm-vps-$(date +%F)"
+              fi
+              chmod 600 ~/.ssh/gh_deploy
+              echo "=== PUBLIC KEY — добавить в Settings -> Deploy keys (read-only) ==="
+              cat ~/.ssh/gh_deploy.pub
+              echo "=== /PUBLIC KEY ==="
+
+              ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+              sort -u ~/.ssh/known_hosts -o ~/.ssh/known_hosts
+
+              if ! grep -q "Host github.com" ~/.ssh/config 2>/dev/null; then
+                printf 'Host github.com\n  User git\n  IdentityFile ~/.ssh/gh_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config
+              fi
+              chmod 600 ~/.ssh/config
+
+              cd /home/ubuntu/sarma-crm
+              git remote set-url origin git@github.com:lakalyut/sarma-crm.git
+              git remote -v
+              echo "--- ssh -T git@github.com ---"
+              ssh -o BatchMode=yes -o ConnectTimeout=10 -T git@github.com 2>&1 | head -3
+              echo "--- git fetch ---"
+              git fetch --all 2>&1 | head -8
+              git log --oneline -1 origin/main 2>&1
             fi
             true
