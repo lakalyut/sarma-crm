@@ -765,10 +765,24 @@ DOM, рендер-функции в каждом шаблоне свои. `app.h
 
 `main` → GitHub Actions CI ([.github/workflows/ci.yml](.github/workflows/ci.yml): ruff + black
 --check + pytest на sqlite) → при зелёном CI автоматически триггерится
-[deploy.yml](.github/workflows/deploy.yml) по SSH на VPS: git reset --hard на прод-ветку,
-бэкап Postgres в `/home/ubuntu/sarma_backups` (хранится 14 дней), `alembic upgrade head` внутри
-контейнера, `docker compose up -d --build`. Ручного деплоя нет — пуш в `main` с прошедшим CI
+[deploy.yml](.github/workflows/deploy.yml) по SSH на VPS: `git fetch` + `git reset --hard
+origin/main`, бэкап Postgres в `/home/ubuntu/sarma_backups` (хранится 14 дней), `alembic
+upgrade head` внутри контейнера, `docker compose up -d --build`, финальный
+`curl -fsS http://127.0.0.1/health`. Ручного деплоя нет — пуш в `main` с прошедшим CI
 достаточен.
+
+**`origin` на сервере — SSH, не HTTPS** (`git@github.com:lakalyut/sarma-crm.git`, порт 22).
+Переведён 2026-09-10: исходящий `:443` с VPS нестабилен (та же сетевая блокировка, что у
+Telegram — см. ниже), из-за неё `git fetch` по HTTPS в деплое падал
+`Failed to connect to github.com port 443`. Порт 22 наружу открыт. На сервере заведён
+выделённый deploy-ключ `~/.ssh/gh_deploy` (публичная половина — в репозитории как deploy key
+`id 162884689`, read-only); `ssh -T -i ~/.ssh/gh_deploy git@github.com` подтверждает доступ
+к `sarma-crm`. **Нюанс:** в `~/.ssh/config` уже был `Host github.com`-блок от соседнего
+`dziro_bot`, поэтому `git fetch` по факту аутентифицируется ключом `~/.ssh/dziro_bot_deploy`
+(GitHub принимает его для этого репо тоже) — fetch работает надёжно в любом случае, но если
+он вдруг сломается, начинать с `GIT_SSH_COMMAND="ssh -v" git ls-remote origin` на сервере и
+смотреть, какой ключ реально предлагается/принимается. Диагностика/перенастройка —
+`vps-recover.yml` mode=gitssh (см. ниже).
 
 Локальный `main` часто уходит вперёд `origin/main` на несколько коммитов, пока идёт сессия
 работы — не забывать `git push`, если требуется деплой или продолжение с другой машины.
@@ -841,20 +855,27 @@ denied`) — не факт, что не сменится, но с этого н�
 статический IP** — тогда п.1/п.2 не повторяются. Домен `sarma-crm.ru`
 управляется отдельно (не в этом репо).
 
-**Security Group Yandex Cloud.** После смены IP к интерфейсу прицепилась SG,
-пускавшая только `:22` — снаружи `:80/:443` были глухой таймаут (при том что
-`ufw` inactive, `iptables -P INPUT ACCEPT`, `nginx` внутри отвечал). Если
-хостовый фаервол чист, а веб недоступен снаружи — проверять/чинить входящие
-правила SG (TCP 22/80/443 c `0.0.0.0/0`) **в консоли Yandex Cloud**, из
-шелла это не видно.
+**Security Group Yandex Cloud — фильтрует трафик В ОБЕ СТОРОНЫ.** После смены IP
+к интерфейсу прицепилась SG, пускавшая только входящий `:22` — снаружи `:80/:443`
+были глухой таймаут (при том что `ufw` inactive, `iptables -P INPUT ACCEPT`,
+`nginx` внутри отвечал). Добавили входящие правила `:80/:443` — веб поднялся, но
+тут же отвалился деплой: SG без явного egress-правила **режет весь исходящий
+трафик** (github :22/:443, apt, всё). Рабочая конфигурация SG:
+- входящие: TCP 22/80/443 с `0.0.0.0/0`;
+- исходящие: allow-all (`0.0.0.0/0`, все порты) — обязательно отдельным правилом.
+
+Если хостовый фаервол чист, а что-то недоступно (снаружи ИЛИ изнутри наружу) —
+проверять правила SG **в консоли Yandex Cloud**, из шелла это не видно.
 
 **[.github/workflows/vps-recover.yml](.github/workflows/vps-recover.yml)** —
-`workflow_dispatch` (`gh workflow run "VPS recover" -f mode=diag|recover`),
+`workflow_dispatch` (`gh workflow run "VPS recover" -f mode=diag|recover|gitssh`),
 заходит по SSH теми же секретами, что `deploy.yml`. `diag` — только показать
 (память/диск/`ufw`/`ss`/логи `nginx`/`web`/статус `caddy`); `recover` —
 `stop+disable caddy`, `ufw allow 22/80/443`, `git reset --hard origin/main`,
 `docker compose down --remove-orphans && up -d --build`, финальный
-`curl 127.0.0.1/health`. Оставлен как ops-инструмент — им подняли прод
+`curl 127.0.0.1/health`; `gitssh` — тест исходящего к github/telegram, генерация
+`~/.ssh/gh_deploy`, перевод `origin` на `git@github.com`, проверка какой ключ
+принят при `git fetch`. Оставлен как ops-инструмент — им подняли прод
 2026-09-10, когда SSH с рабочих машин был недоступен.
 
 **Исходящий HTTPS к Telegram (`api.telegram.org:443`) с этого VPS может быть
@@ -868,3 +889,9 @@ denied`) — не факт, что не сменится, но с этого н�
 общая для всего хоста, не специфика sarma-crm — чинить код в этом случае
 бессмысленно, ждать восстановления доступа или заводить прокси/VPN для
 исходящего трафика к Telegram (горизонт 13 ROADMAP.md, доп. заход, 2026-08-17).
+**2026-09-10 подтверждено:** блок именно на уровне IP-диапазонов Telegram
+(149.154.x), а не общий egress-фильтр — после того как в SG добавили egress
+allow-all и `git fetch`/`apt`/`github:443` заработали, `nc -zv api.telegram.org
+443` всё равно висит таймаутом. SG-правило Telegram не чинит; нужен исходящий
+прокси/VPN через сеть без этого блока. Пока живёт браузерный путь амбассадора
+(`/ambassador/*`, cookie-сессия) — он от Telegram-доступа не зависит.
