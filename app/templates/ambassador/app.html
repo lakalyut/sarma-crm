@@ -43,10 +43,21 @@
     textarea { resize: vertical; }
     .visit-sku-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .visit-sku-item { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #737373; }
+    .visit-collapse { border: 1px solid #d4d4d4; border-radius: 10px; background: #fff; overflow: hidden; }
+    .visit-collapse-head {
+        width: 100%; display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; padding: 11px 12px; background: none; border: none;
+        color: #0a0a0a; font-weight: 600; font-size: 14px; cursor: pointer;
+    }
+    .visit-collapse-count { color: #6d5ef8; font-weight: 600; font-size: 13px; }
+    .visit-collapse-count.visit-collapse-count-empty { color: #737373; font-weight: 500; }
+    .visit-collapse-chevron { color: #737373; transition: transform 0.15s ease; }
+    .visit-collapse-head[aria-expanded="true"] .visit-collapse-chevron { transform: rotate(180deg); }
+    .visit-collapse-body { padding: 0 12px 12px; max-height: 320px; overflow-y: auto; }
     .visit-goal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
     .visit-goal-chip {
-        border: 1px solid #d4d4d4; background: #f5f5f5; border-radius: 10px;
-        padding: 5px 10px; font-size: 13px; cursor: pointer; width: auto;
+        border: 1px solid #d4d4d4; background: #fff; color: #0a0a0a; border-radius: 10px;
+        padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; width: auto;
     }
     .visit-history {
         border: 1px solid #e5e5e5; border-radius: 12px; background: #fafafa;
@@ -196,13 +207,20 @@
         </div>
 
         <div class="field is-hidden" id="products-field">
-            <label>Ароматы</label>
-            <input type="text" id="product-search" placeholder="Поиск по названию или SKU" autocomplete="off" style="margin-bottom: 8px;">
-            <div id="products-list"></div>
+            <div class="visit-collapse">
+                <button type="button" class="visit-collapse-head" id="aromas-toggle" aria-expanded="false">
+                    <span>Ароматы <span class="visit-collapse-count visit-collapse-count-empty" id="aromas-count">не выбраны</span></span>
+                    <span class="visit-collapse-chevron">▾</span>
+                </button>
+                <div class="visit-collapse-body is-hidden" id="aromas-body">
+                    <input type="text" id="product-search" placeholder="Поиск по названию или SKU" autocomplete="off" style="margin-bottom: 8px;">
+                    <div id="products-list"></div>
+                </div>
+            </div>
         </div>
 
         <div class="field is-hidden" id="survey-field">
-            <label>Кол-во СКЮ на полке (по линейкам)</label>
+            <label>Кол-во SKU на полке (по линейкам)</label>
             <div class="visit-sku-grid">
                 <label class="visit-sku-item"><span>Классическая</span><input type="number" id="sku-classic" min="0" step="1" inputmode="numeric"></label>
                 <label class="visit-sku-item"><span>Крепкая</span><input type="number" id="sku-strong" min="0" step="1" inputmode="numeric"></label>
@@ -214,7 +232,7 @@
 
             <label style="margin-top: 12px;">Цель визита</label>
             <div id="goal-chips" class="visit-goal-chips"></div>
-            <input type="text" id="goal-input" placeholder="первичный завоз, ротация полки…" autocomplete="off">
+            <input type="text" id="goal-input" placeholder="Или впишите свою цель" autocomplete="off">
 
             <label style="margin-top: 12px;">Комментарий</label>
             <textarea id="comment-input" rows="3" placeholder="Заметки по точке — увидят на следующем визите"></textarea>
@@ -293,6 +311,19 @@ function loadHistory(client) {
         .then(d => renderHistory(d.history))
         .catch(() => renderHistory([]));
 }
+
+function updateAromasCount() {
+    const n = document.querySelectorAll('#products-list input[type="checkbox"]:checked').length;
+    const el = document.getElementById('aromas-count');
+    el.textContent = n ? n + ' выбрано' : 'не выбраны';
+    el.classList.toggle('visit-collapse-count-empty', n === 0);
+}
+
+document.getElementById('aromas-toggle').addEventListener('click', function () {
+    const body = document.getElementById('aromas-body');
+    const open = body.classList.toggle('is-hidden') === false;
+    this.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
 
 function populateCity() {
     const citySelect = document.getElementById('city-select');
@@ -378,9 +409,13 @@ function onTypeChange() {
     document.getElementById('survey-field').classList.remove('is-hidden');
 
     document.getElementById('products-list').querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', updateSubmitEnabled);
+        cb.addEventListener('change', function () {
+            updateAromasCount();
+            updateSubmitEnabled();
+        });
     });
     document.getElementById('product-search').value = '';
+    updateAromasCount();
     updateSubmitEnabled();
 }
 

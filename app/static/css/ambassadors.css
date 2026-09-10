@@ -394,6 +394,81 @@
     font-weight: 700;
 }
 /* --- Форма визита амбассадора: анкета (SKU по линейкам, цель, история) --- */
+
+/* Все контролы формы визита — как поле «Клиент» (обведённые, белый фон),
+   а не дефолтный «плоский» серый инпут из forms.css: на телефоне серые
+   инпуты без рамки почти не видно (репорт пользователя). */
+#visit-form input[type="text"],
+#visit-form input[type="number"],
+#visit-form textarea,
+#visit-form .custom-select-display {
+    border: 1px solid var(--input-border);
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 8px 12px;
+    min-height: 42px;
+}
+
+#visit-form textarea {
+    min-height: 76px;
+    padding: 10px 12px;
+}
+
+/* Раскрывающаяся карточка «Ароматы» */
+.visit-collapse {
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.visit-collapse-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 11px 12px;
+    background: none;
+    border: none;
+    color: var(--text-strong);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    min-height: 0;
+}
+
+.visit-collapse-head:hover { background: var(--bg-page); }
+
+.visit-collapse-count {
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.visit-collapse-count.visit-collapse-count-empty {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.visit-collapse-chevron {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+}
+
+.visit-collapse-head[aria-expanded="true"] .visit-collapse-chevron {
+    transform: rotate(180deg);
+}
+
+.visit-collapse-body {
+    padding: 0 12px 12px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
 .visit-sku-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -421,12 +496,15 @@
 }
 
 .visit-goal-chip {
-    border: 1px solid var(--border);
-    background: var(--bg-page);
+    border: 1px solid var(--input-border);
+    background: var(--surface);
+    color: var(--text-main);
     border-radius: var(--radius-md, 8px);
-    padding: 5px 10px;
+    padding: 6px 12px;
     font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
+    min-height: 0;
 }
 
 .visit-goal-chip:hover {

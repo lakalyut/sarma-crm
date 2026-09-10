@@ -78,6 +78,7 @@ def test_get_visit_options_scoped_to_city(db_session):
     assert options["cities"] == ["Тестгород"]
     assert options["clients_by_city"]["Тестгород"] == ["Клиент А"]
     assert options["types_by_city"]["Тестгород"] == ["Кальянная"]
+    assert "Прокур новинки" in options["visit_goals"]
     assert any(p["id"] == product.id for p in options["products"])
     matched = next(p for p in options["products"] if p["id"] == product.id)
     assert matched["sku"] == "TEST-SKU"

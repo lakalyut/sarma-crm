@@ -36,13 +36,20 @@
   </div>
 
   <div class="field">
-    <label>Ароматы</label>
-    <input type="text" id="product-search" placeholder="Поиск по названию или SKU" autocomplete="off" style="margin-bottom: 8px;">
-    <div id="products-list"></div>
+    <div class="visit-collapse" id="aromas-collapse">
+      <button type="button" class="visit-collapse-head" id="aromas-toggle" aria-expanded="false">
+        <span class="visit-collapse-label">Ароматы <span class="visit-collapse-count" id="aromas-count">не выбраны</span></span>
+        <svg class="visit-collapse-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <div class="visit-collapse-body is-hidden" id="aromas-body">
+        <input type="text" id="product-search" placeholder="Поиск по названию или SKU" autocomplete="off" style="margin-bottom: 8px;">
+        <div id="products-list"></div>
+      </div>
+    </div>
   </div>
 
   <div class="field">
-    <label>Кол-во СКЮ на полке (по линейкам)</label>
+    <label>Кол-во SKU на полке (по линейкам)</label>
     <div class="visit-sku-grid">
       <label class="visit-sku-item">
         <span>Классическая</span>
@@ -67,7 +74,7 @@
   <div class="field">
     <label>Цель визита</label>
     <div id="goal-chips" class="visit-goal-chips"></div>
-    <input type="text" name="goal" id="goal-input" placeholder="Например: первичный завоз, ротация полки, обучение персонала" autocomplete="off" required>
+    <input type="text" name="goal" id="goal-input" placeholder="Или впишите свою цель" autocomplete="off" required>
   </div>
 
   <div class="field">
@@ -101,9 +108,27 @@ document.addEventListener("DOMContentLoaded", function () {
         chip.type = "button";
         chip.className = "visit-goal-chip";
         chip.textContent = g;
-        chip.addEventListener("click", () => { goalInput.value = g; });
+        chip.addEventListener("click", () => {
+            goalInput.value = g;
+            updateSubmitEnabled();
+        });
         goalChips.appendChild(chip);
     });
+
+    const aromasToggle = document.getElementById("aromas-toggle");
+    const aromasBody = document.getElementById("aromas-body");
+    const aromasCount = document.getElementById("aromas-count");
+
+    aromasToggle.addEventListener("click", function () {
+        const open = aromasBody.classList.toggle("is-hidden") === false;
+        aromasToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    function updateAromasCount() {
+        const n = document.querySelectorAll('#products-list input[type="checkbox"]:checked').length;
+        aromasCount.textContent = n ? n + " выбрано" : "не выбраны";
+        aromasCount.classList.toggle("visit-collapse-count-empty", n === 0);
+    }
 
     function escHtml(s) {
         return String(s ?? "").replace(/[&<>"']/g, c => (
@@ -191,9 +216,13 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         productsList.innerHTML = html;
         productsList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.addEventListener("change", updateSubmitEnabled);
+            cb.addEventListener("change", function () {
+                updateAromasCount();
+                updateSubmitEnabled();
+            });
         });
         productSearch.value = "";
+        updateAromasCount();
         updateSubmitEnabled();
     }
 

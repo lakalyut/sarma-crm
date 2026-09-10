@@ -132,7 +132,7 @@ class Visit(Base):
 
     # Поля анкеты визита (горизонт 13.5). nullable — старые визиты их не имеют;
     # на новых обязательны на уровне приложения (ambassador_service.create_visit).
-    sku_classic = Column(Integer)  # СКЮ на полке, линейка «Классическая»
+    sku_classic = Column(Integer)  # SKU на полке, линейка «Классическая»
     sku_strong = Column(Integer)  # линейка «Крепкая»
     sku_light = Column(Integer)  # линейка «Лёгкая»
     people_count = Column(Integer)  # человек на мероприятии

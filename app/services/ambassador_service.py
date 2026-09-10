@@ -12,10 +12,14 @@ from ..models import AbcSegment, Product, ProductAbcRating, Visit, VisitProduct
 from . import sales_options_service
 from .abc_service import guess_default_segment
 
-# Каркас под «Цель визита» — пока пусто, амбассадор пишет свободным текстом.
-# Когда появятся конкретные цели — просто дописать сюда, форма подхватит их
-# как быстрые варианты над текстовым полем.
-VISIT_GOALS: list[str] = []
+# «Цель визита» — быстрые варианты (чипы над текстовым полем формы визита).
+# Список редактируется здесь; амбассадор может вписать и свою цель текстом.
+VISIT_GOALS: list[str] = [
+    "Прокур новинки",
+    "Обучение по продукту",
+    "Ротация полки",
+    "Первичный завоз",
+]
 
 
 def ambassador_display_name(user: User | None) -> str:
@@ -159,9 +163,9 @@ def create_visit(
     if set(product_ids) - valid_ids:
         raise ValueError("Часть выбранных ароматов недоступна, обновите страницу")
 
-    sku_classic = _parse_count(sku_classic, "СКЮ на полке — классическая")
-    sku_strong = _parse_count(sku_strong, "СКЮ на полке — крепкая")
-    sku_light = _parse_count(sku_light, "СКЮ на полке — лёгкая")
+    sku_classic = _parse_count(sku_classic, "SKU на полке — классическая")
+    sku_strong = _parse_count(sku_strong, "SKU на полке — крепкая")
+    sku_light = _parse_count(sku_light, "SKU на полке — лёгкая")
     people_count = _parse_count(people_count, "Человек на мероприятии")
 
     comment = (comment or "").strip()
