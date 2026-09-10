@@ -15,44 +15,52 @@ from .charts_service import sku_expr
 
 
 def get_sku_options(db: Session, city: str, segment_id: int | None) -> list[dict]:
-    """SKU города + бейджи для мультивыбора: ABC-категория (по выбранному
-    сегменту) и NEW (`Product.is_new`). SKU резолвится в товар по
-    сопоставленным строкам продаж — тот же приём, что в
-    `build_ambassadors_report` (`product_id_by_sku`)."""
-    all_skus = get_distinct_skus(db, city)
-    if not all_skus:
-        return []
+    """Список SKU для мультивыбора + бейджи ABC (по сегменту) и NEW
+    (`Product.is_new`).
 
-    product_id_by_sku: dict[str, int] = {}
-    rows = (
+    Источник — **объединение**:
+    - SKU из продаж города (`sku_expr()`; у сопоставленной строки это
+      `Sale.sku`, т.е. `canonical_sku`, у несопоставленной — сырая строка);
+    - `canonical_sku` всех активных товаров справочника — иначе только что
+      заведённая номенклатура без продаж в этом городе в списке не видна
+      (репорт пользователя).
+    Для сырых sale-строк товар резолвится по сопоставленным продажам."""
+    active_products = (
+        db.query(Product)
+        .filter(Product.is_active.is_(True))
+        .order_by(Product.brand, Product.flavor)
+        .all()
+    )
+    product_by_sku: dict[str, Product] = {}
+    for p in active_products:
+        key = (p.canonical_sku or "").strip()
+        if key:
+            product_by_sku.setdefault(key, p)
+
+    product_id_by_raw: dict[str, int] = {}
+    for sku, product_id in (
         db.query(sku_expr().label("sku"), Sale.product_id)
         .filter(Sale.city == city, Sale.product_id.isnot(None))
         .distinct()
-        .all()
-    )
-    for sku, product_id in rows:
+    ):
         key = (sku or "").strip()
         if key:
-            product_id_by_sku.setdefault(key, product_id)
+            product_id_by_raw.setdefault(key, product_id)
 
-    needed_ids = set(product_id_by_sku.values())
-    is_new_by_id: dict[int, bool] = {}
+    is_new_by_id = {p.id: bool(p.is_new) for p in active_products}
     abc_by_id: dict[int, str] = {}
-    if needed_ids:
-        for pid, is_new in db.query(Product.id, Product.is_new).filter(
-            Product.id.in_(needed_ids)
+    if segment_id:
+        for r in db.query(ProductAbcRating).filter(
+            ProductAbcRating.segment_id == segment_id
         ):
-            is_new_by_id[pid] = bool(is_new)
-        if segment_id:
-            for r in db.query(ProductAbcRating).filter(
-                ProductAbcRating.segment_id == segment_id,
-                ProductAbcRating.product_id.in_(needed_ids),
-            ):
-                abc_by_id[r.product_id] = r.category
+            abc_by_id[r.product_id] = r.category
+
+    all_skus = sorted(set(get_distinct_skus(db, city)) | set(product_by_sku.keys()))
 
     options = []
     for sku in all_skus:
-        pid = product_id_by_sku.get(sku)
+        prod = product_by_sku.get(sku)
+        pid = prod.id if prod else product_id_by_raw.get(sku)
         options.append(
             {
                 "sku": sku,

@@ -74,6 +74,20 @@ def test_get_sku_options_has_abc_and_new_badges(db_session):
     assert opts["SARMA-COLA"]["abc"] is None
 
 
+def test_get_sku_options_includes_new_product_without_sales(db_session):
+    """Только что заведённая номенклатура без продаж в этом городе должна
+    быть в списке (репорт: «нет номенклатуры, которую недавно добавил»)."""
+    from app.services.sku_presence_service import get_sku_options
+
+    _product(db_session, "Мята", "HAS-SALES")
+    _sale(db_session, "Кафе А", "HoReCa", "HAS-SALES")
+    _product(db_session, "Новинка Без Продаж", "NO-SALES-YET", is_new=True)
+
+    skus = {o["sku"]: o for o in get_sku_options(db_session, "Иркутск", None)}
+    assert "NO-SALES-YET" in skus
+    assert skus["NO-SALES-YET"]["is_new"] is True
+
+
 def test_build_sku_presence_green_if_any_ordered(db_session):
     from app.services.sku_presence_service import build_sku_presence
 
