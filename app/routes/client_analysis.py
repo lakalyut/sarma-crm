@@ -27,7 +27,7 @@ from ..services.client_analysis_service import (
 from ..services.sales_options_service import get_cities, get_clients, get_months
 from ..services.visit_analysis_service import get_visit_analysis
 from ..services.visit_effectiveness_service import build_visit_effectiveness_report
-from ..utils.dates import month_sort_key
+from ..utils.dates import month_sort_key, parse_month
 from ..utils.params import get_int_param
 
 # Вкладки, которые про визиты, а не про продажи: их пикер периода и список
@@ -106,10 +106,17 @@ def client_analysis_page(
 
     all_months = get_months(db, city=city, reverse=True)
     if active_tab in _VISIT_TABS:
+        # Продажи приходят с опозданием на месяц (сентябрьские грузят в
+        # октябре), а визиты идут в текущем месяце — иначе месяц визита не
+        # выбрать в пикере. Дедуп по (год, месяц) через parse_month: когда
+        # продажи за этот месяц наконец подъедут (в своём формате —
+        # «Сентябрь 2026» или ISO), ISO-месяц из визита в список НЕ
+        # добавляется, чтобы не было двух «Сентябрь 2026».
+        known = {parse_month(m) for m in all_months}
+        known.discard(None)
+        extra = [m for m in get_visit_months(db, city) if parse_month(m) not in known]
         all_months = sorted(
-            set(all_months) | set(get_visit_months(db, city)),
-            key=month_sort_key,
-            reverse=True,
+            set(all_months) | set(extra), key=month_sort_key, reverse=True
         )
 
     raw_selected_months = [m for m in (months or []) if m in all_months]

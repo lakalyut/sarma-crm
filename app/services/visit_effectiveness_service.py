@@ -14,13 +14,14 @@ def build_visit_effectiveness_report(
     selected_months: list[str],
     selected_clients: list[str],
 ) -> dict:
+    empty = {"clients": [], "months_without_sales": []}
     if not city or not selected_months:
-        return {"clients": []}
+        return empty
 
     year_months = {parse_month(m) for m in selected_months}
     year_months.discard(None)
     if not year_months:
-        return {"clients": []}
+        return empty
 
     visit_query = db.query(Visit).filter(Visit.city == city)
     if selected_clients:
@@ -32,7 +33,24 @@ def build_visit_effectiveness_report(
         if (v.created_at.year, v.created_at.month) in year_months
     ]
     if not visits:
-        return {"clients": []}
+        return empty
+
+    # Месяцы выборки, где визиты есть, а продаж ещё нет: продажи приходят
+    # на месяц позже (сентябрьские грузят в октябре). Без этой пометки все
+    # ароматы за такой месяц покажутся «не заказан» — хотя причина в том,
+    # что сверять пока не с чем. Роут потом сведёт аналитику сам, когда
+    # продажи подъедут.
+    visit_ym = {(v.created_at.year, v.created_at.month) for v in visits}
+    sale_ym = {
+        parse_month(row[0])
+        for row in db.query(Sale.month)
+        .filter(Sale.city == city, Sale.month.in_(selected_months))
+        .distinct()
+    }
+    sale_ym.discard(None)
+    months_without_sales = [
+        f"{y:04d}-{m:02d}-01" for (y, m) in sorted(visit_ym - sale_ym)
+    ]
 
     visit_by_id = {v.id: v for v in visits}
 
@@ -104,4 +122,7 @@ def build_visit_effectiveness_report(
         )
         clients_result.append({"name": client, "aromas": aromas})
 
-    return {"clients": clients_result}
+    return {
+        "clients": clients_result,
+        "months_without_sales": months_without_sales,
+    }

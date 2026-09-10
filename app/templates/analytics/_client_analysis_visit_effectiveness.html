@@ -104,6 +104,14 @@
     </form>
 </div>
 
+{% if report and report.months_without_sales %}
+    <div class="message" style="margin: 4px 0 12px;">
+        За <b>{{ report.months_without_sales|format_month_list }}</b> ещё нет данных по продажам.
+        Ароматы показаны, но сверка («заказан / не заказан») появится после загрузки продаж за этот месяц —
+        они приходят в следующем месяце.
+    </div>
+{% endif %}
+
 {% if report and report.clients %}
     <div class="amb-report-list">
         {% for client in report.clients %}

@@ -104,3 +104,82 @@ def test_visit_effectiveness_tab_shows_visit_only_month(admin_client, db_session
     )
     assert resp.status_code == 200
     assert "Бар Сентябрь" in resp.text
+
+
+def test_visit_effectiveness_flags_month_without_sales(db_session):
+    from app.services.visit_effectiveness_service import (
+        build_visit_effectiveness_report,
+    )
+
+    _seed(db_session)
+
+    report = build_visit_effectiveness_report(
+        db_session,
+        city="Тбилиси",
+        selected_months=["2026-09-01"],
+        selected_clients=[],
+    )
+    # ароматы визита показаны
+    assert [c["name"] for c in report["clients"]] == ["Бар Сентябрь"]
+    # но сверять не с чем — сентябрьских продаж ещё нет
+    assert report["months_without_sales"] == ["2026-09-01"]
+    assert all(not a["ordered"] for a in report["clients"][0]["aromas"])
+
+
+def test_visit_effectiveness_no_flag_once_sales_loaded(db_session):
+    from app.models import Sale
+    from app.services.visit_effectiveness_service import (
+        build_visit_effectiveness_report,
+    )
+
+    _seed(db_session)
+    db_session.add(
+        Sale(
+            city="Тбилиси",
+            month="2026-09-01",
+            type="Кальянная",
+            client="Бар Сентябрь",
+            product_id=None,
+            qty=1,
+            weight=1,
+        )
+    )
+    db_session.commit()
+
+    report = build_visit_effectiveness_report(
+        db_session,
+        city="Тбилиси",
+        selected_months=["2026-09-01"],
+        selected_clients=[],
+    )
+    assert report["months_without_sales"] == []
+
+
+def test_visit_month_not_duplicated_once_sales_arrive(admin_client, db_session):
+    """Продажи за сентябрь приходят в октябре в формате «Сентябрь 2026».
+    ISO-месяц из визита (2026-09-01) не должен добавляться второй строкой —
+    один и тот же (год, месяц)."""
+    from app.models import Sale
+
+    _seed(db_session)
+    db_session.add(
+        Sale(
+            city="Тбилиси",
+            month="Сентябрь 2026",
+            type="Кальянная",
+            client="Бар Сентябрь",
+            product_id=None,
+            qty=1,
+            weight=1,
+        )
+    )
+    db_session.commit()
+
+    resp = admin_client.get(
+        "/analytics/client-analysis?tab=visit_analysis"
+        "&city=%D0%A2%D0%B1%D0%B8%D0%BB%D0%B8%D1%81%D0%B8"
+    )
+    assert resp.status_code == 200
+    # в пикере — «Сентябрь 2026» из Sale, а ISO-дубля визита нет
+    assert 'value="Сентябрь 2026"' in resp.text
+    assert 'value="2026-09-01"' not in resp.text
