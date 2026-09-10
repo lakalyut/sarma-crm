@@ -1,0 +1,119 @@
+"""«Представленность SKU» — 5-я вкладка «Аналитики по клиентам».
+
+Выбираем регион / период / несколько SKU → список (клиент, тип точки) с
+продажами за период, у каждого подсвечено: заказал ли клиент выбранные SKU.
+Зелёный — заказан хотя бы один, красный — ни одного. Зелёные сверху.
+По клику — детализация клиента (`/analytics/client`)."""
+
+from collections import defaultdict
+
+from sqlalchemy.orm import Session
+
+from ..models import Product, ProductAbcRating, Sale
+from .ambassadors_service import get_distinct_skus
+from .charts_service import sku_expr
+
+
+def get_sku_options(db: Session, city: str, segment_id: int | None) -> list[dict]:
+    """SKU города + бейджи для мультивыбора: ABC-категория (по выбранному
+    сегменту) и NEW (`Product.is_new`). SKU резолвится в товар по
+    сопоставленным строкам продаж — тот же приём, что в
+    `build_ambassadors_report` (`product_id_by_sku`)."""
+    all_skus = get_distinct_skus(db, city)
+    if not all_skus:
+        return []
+
+    product_id_by_sku: dict[str, int] = {}
+    rows = (
+        db.query(sku_expr().label("sku"), Sale.product_id)
+        .filter(Sale.city == city, Sale.product_id.isnot(None))
+        .distinct()
+        .all()
+    )
+    for sku, product_id in rows:
+        key = (sku or "").strip()
+        if key:
+            product_id_by_sku.setdefault(key, product_id)
+
+    needed_ids = set(product_id_by_sku.values())
+    is_new_by_id: dict[int, bool] = {}
+    abc_by_id: dict[int, str] = {}
+    if needed_ids:
+        for pid, is_new in db.query(Product.id, Product.is_new).filter(
+            Product.id.in_(needed_ids)
+        ):
+            is_new_by_id[pid] = bool(is_new)
+        if segment_id:
+            for r in db.query(ProductAbcRating).filter(
+                ProductAbcRating.segment_id == segment_id,
+                ProductAbcRating.product_id.in_(needed_ids),
+            ):
+                abc_by_id[r.product_id] = r.category
+
+    options = []
+    for sku in all_skus:
+        pid = product_id_by_sku.get(sku)
+        options.append(
+            {
+                "sku": sku,
+                "abc": abc_by_id.get(pid) if pid else None,
+                "is_new": is_new_by_id.get(pid, False) if pid else False,
+            }
+        )
+    return options
+
+
+def build_sku_presence(
+    db: Session,
+    city: str | None,
+    selected_months: list[str],
+    selected_skus: list[str],
+) -> dict:
+    result = {"rows": [], "sku_count": len(selected_skus or []), "present_count": 0}
+    if not city or not selected_skus:
+        return result
+
+    selected_set = set(selected_skus)
+
+    query = db.query(Sale.client, Sale.type, sku_expr().label("sku"), Sale.qty).filter(
+        Sale.city == city
+    )
+    if selected_months:
+        query = query.filter(Sale.month.in_(selected_months))
+
+    ordered_by_ct: dict[tuple, set] = defaultdict(set)
+    all_ct: set[tuple] = set()
+
+    for client, sale_type, sku, qty in query.all():
+        ct = (client or "Без клиента", sale_type or "")
+        all_ct.add(ct)
+        key = (sku or "").strip()
+        if key in selected_set and (qty or 0) > 0:
+            ordered_by_ct[ct].add(key)
+
+    rows = []
+    for client, sale_type in all_ct:
+        got = ordered_by_ct.get((client, sale_type), set())
+        rows.append(
+            {
+                "client": client,
+                "sale_type": sale_type,
+                "ordered_skus": sorted(got),
+                "missing_skus": sorted(selected_set - got),
+                "ordered_count": len(got),
+                "is_present": bool(got),
+            }
+        )
+
+    # зелёные сверху (по убыванию числа заказанных SKU), потом красные — по имени
+    rows.sort(
+        key=lambda r: (
+            not r["is_present"],
+            -r["ordered_count"],
+            r["client"].lower(),
+            r["sale_type"],
+        )
+    )
+    result["rows"] = rows
+    result["present_count"] = sum(1 for r in rows if r["is_present"])
+    return result

@@ -146,3 +146,116 @@
 #va-table .va-actions-cell form {
     display: inline-flex;
 }
+
+/* =========================
+   Вкладка «Представленность SKU»
+========================= */
+
+#sp-sku-dropdown .search-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#sp-sku-dropdown .sp-sku-name {
+    flex: 1;
+}
+
+.sp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.sp-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "main side" "skus skus";
+    gap: 4px 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    text-decoration: none;
+    color: var(--text-main);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.sp-row:hover {
+    transform: translateX(2px);
+    box-shadow: var(--shadow-soft);
+    text-decoration: none;
+}
+
+.sp-row-present {
+    border-left-color: var(--success);
+    background: var(--status-new-row-bg);
+}
+
+.sp-row-absent {
+    border-left-color: var(--danger);
+    background: var(--status-lost-row-bg);
+}
+
+.sp-row-main {
+    grid-area: main;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sp-row-client {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.sp-row-type {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.sp-row-side {
+    grid-area: side;
+}
+
+.sp-row-count {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.sp-row-present .sp-row-count {
+    color: var(--success);
+}
+
+.sp-row-absent .sp-row-count {
+    color: var(--danger);
+}
+
+.sp-row-skus {
+    grid-area: skus;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.sp-sku-chip {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+.sp-sku-chip-ok {
+    background: var(--status-new-badge-bg);
+    color: var(--status-new-text);
+}
+
+.sp-sku-chip-no {
+    background: var(--status-lost-badge-bg);
+    color: var(--status-lost-text);
+    text-decoration: line-through;
+}

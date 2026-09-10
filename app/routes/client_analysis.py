@@ -25,6 +25,7 @@ from ..services.client_analysis_service import (
     get_types_rollup,
 )
 from ..services.sales_options_service import get_cities, get_clients, get_months
+from ..services.sku_presence_service import build_sku_presence, get_sku_options
 from ..services.visit_analysis_service import get_visit_analysis
 from ..services.visit_effectiveness_service import build_visit_effectiveness_report
 from ..utils.dates import month_sort_key, parse_month
@@ -46,13 +47,21 @@ def client_analysis_page(
     months: list[str] = Query(default=None),
     clients: list[str] = Query(default=None),
     new_skus: list[str] = Query(default=None),
+    skus: list[str] = Query(default=None),
     abc_segment: list[int] = Query(default=[]),
     db: Session = Depends(get_db),
     _user: User = Depends(require_analyst),
 ):
     active_tab = (
         tab
-        if tab in ("summary", "ambassadors", "visit_effectiveness", "visit_analysis")
+        if tab
+        in (
+            "summary",
+            "ambassadors",
+            "visit_effectiveness",
+            "visit_analysis",
+            "sku_presence",
+        )
         else "summary"
     )
 
@@ -98,6 +107,10 @@ def client_analysis_page(
                     "qty": [],
                     "unique_sku": [],
                 },
+                "sku_options": [],
+                "selected_skus": [],
+                "selected_segment_id": None,
+                "sku_presence": {"rows": [], "sku_count": 0},
                 "empty_state": {
                     "hint": "Выберите регион в фильтре выше — здесь появится анализ по клиентам"
                 },
@@ -255,6 +268,41 @@ def client_analysis_page(
                 "raw_selected_months": raw_selected_months,
                 "selected_clients": selected_clients,
                 "visit_rows": visit_rows,
+            },
+        )
+
+    if active_tab == "sku_presence":
+        valid_segment_ids = {s.id for s in segments}
+        selected_segment_id = next(
+            (sid for sid in abc_segment if sid in valid_segment_ids), None
+        ) or (segments[0].id if segments else None)
+
+        sku_options = get_sku_options(db, city, selected_segment_id)
+        valid_skus = {o["sku"] for o in sku_options}
+        selected_skus = [s for s in (skus or []) if s in valid_skus]
+
+        presence = build_sku_presence(
+            db, city=city, selected_months=selected_months, selected_skus=selected_skus
+        )
+
+        return render(
+            request,
+            "analytics/client_analysis.html",
+            {
+                "title": "Аналитика по клиентам — Пульс",
+                "active_tab": active_tab,
+                "cities": cities,
+                "all_months": all_months,
+                "all_clients": all_clients,
+                "selected_city": city,
+                "selected_months": selected_months,
+                "raw_selected_months": raw_selected_months,
+                "selected_clients": selected_clients,
+                "segments_json": segments_json,
+                "sku_options": sku_options,
+                "selected_skus": selected_skus,
+                "selected_segment_id": selected_segment_id,
+                "sku_presence": presence,
             },
         )
 

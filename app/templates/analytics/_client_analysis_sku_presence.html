@@ -1,0 +1,209 @@
+{% from "includes/month_year_picker.html" import month_year_grid %}
+<div class="filters-card">
+    <form method="get" id="sp-filters-form">
+        <input type="hidden" name="tab" value="sku_presence">
+
+        <div class="filters-grid ambassadors-filters-grid">
+            <div class="field filter-field filter-field-region-search">
+                <label for="sp-city-search">Регион</label>
+                <input type="hidden" name="city" id="sp-city-hidden" value="{{ selected_city or '' }}">
+                <input id="sp-city-search" type="text" value="" placeholder="Начни вводить регион..." autocomplete="off">
+                <div id="sp-city-dropdown" class="search-dropdown" style="display:none;">
+                    {% for c in cities %}
+                        <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label>Период</label>
+                <div class="multiselect" id="sp-months-multiselect">
+                    <div class="multiselect-display">
+                        <span class="multiselect-text">
+                            {% if selected_months %}
+                                {% for m in selected_months %}{{ m|format_month }}{% if not loop.last %}, {% endif %}{% endfor %}
+                            {% else %}Все месяцы{% endif %}
+                        </span>
+                        <span class="multiselect-arrow">▾</span>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <label class="month-checkbox month-checkbox-all">
+                            <input type="checkbox" class="multiselect-select-all-checkbox">
+                            <span>Выбрать все</span>
+                        </label>
+                        <div class="month-checkboxes">
+                            {{ month_year_grid(all_months, selected_months, "months") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label for="sp-segment">ABC-сегмент</label>
+                <select name="abc_segment" id="sp-segment" class="js-custom-select" onchange="this.form.submit()">
+                    {% for s in segments_json %}
+                        <option value="{{ s.id }}" {% if s.id == selected_segment_id %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="sp-sku-search">SKU</label>
+                <input id="sp-sku-search" type="text" value="" placeholder="Начни вводить SKU..." autocomplete="off">
+                <div id="sp-sku-dropdown" class="search-dropdown" style="display:none;">
+                    {% for opt in sku_options %}
+                        <div class="search-dropdown-item" data-value="{{ opt.sku }}">
+                            <span class="sp-sku-name">{{ opt.sku }}</span>
+                            {% if opt.abc %}<span class="abc-badge abc-badge-{{ opt.abc|lower }}">{{ opt.abc }}</span>{% endif %}
+                            {% if opt.is_new %}<span class="abc-badge abc-badge-new">NEW</span>{% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field filter-actions-row">
+                <label>&nbsp;</label>
+                <div class="filters-actions">
+                    <button type="submit">Показать</button>
+                    <a href="/analytics/client-analysis?tab=sku_presence" class="btn btn-secondary">Сбросить</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="multiselect-tags amb-tags-row" id="sp-skus-tags">
+            {% for sku in selected_skus %}
+                <span class="filter-tag">
+                    <span>{{ sku }}</span>
+                    <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                    <input type="hidden" name="skus" value="{{ sku }}">
+                </span>
+            {% endfor %}
+        </div>
+
+        <div class="selected-city-text">
+            {% if selected_city %}
+                Регион: <span class="selected-city-value" id="sp-selected-city-label">{{ selected_city }}</span>
+            {% else %}
+                <span id="sp-selected-city-empty">Регион не выбран</span>
+                <span class="selected-city-value" id="sp-selected-city-label" style="display:none;"></span>
+            {% endif %}
+        </div>
+        <div class="selected-city-text">
+            {% if selected_months %}Месяцы: <span class="selected-city-value">{{ selected_months|format_month_list }}</span>{% else %}<span>Все месяцы</span>{% endif %}
+        </div>
+        {% if selected_skus %}
+        <div class="selected-city-text">SKU: <span class="selected-city-value">{{ selected_skus|length }}</span></div>
+        {% endif %}
+    </form>
+</div>
+
+{% set sp_months_qs %}{% for m in selected_months %}&months={{ m }}{% endfor %}{% endset %}
+{% if not selected_city %}
+    <div class="message">Выбери регион, период и SKU — здесь появится список клиентов с продажами за период.</div>
+{% elif not selected_skus %}
+    <div class="message">Выбери один или несколько SKU и нажми «Показать».</div>
+{% elif not sku_presence.rows %}
+    <div class="message">За выбранный период у клиентов региона нет продаж.</div>
+{% else %}
+    <div class="filter-summary" style="margin: 4px 0 10px;">
+        Клиентов: {{ sku_presence.rows|length }} · представлены (заказан хотя бы один SKU):
+        <b>{{ sku_presence.present_count }}</b> из {{ sku_presence.rows|length }}
+    </div>
+    <div class="sp-list">
+        {% for r in sku_presence.rows %}
+            <a
+                class="sp-row {% if r.is_present %}sp-row-present{% else %}sp-row-absent{% endif %}"
+                href="/analytics/client?city={{ selected_city|urlencode }}&client={{ r.client|urlencode }}&sale_type={{ r.sale_type|urlencode }}{{ sp_months_qs }}"
+            >
+                <div class="sp-row-main">
+                    <span class="sp-row-client">{{ r.client }}</span>
+                    <span class="sp-row-type">{{ r.sale_type or "—" }}</span>
+                </div>
+                <div class="sp-row-side">
+                    <span class="sp-row-count">{{ r.ordered_count }} из {{ sku_presence.sku_count }}</span>
+                </div>
+                <div class="sp-row-skus">
+                    {% for sku in r.ordered_skus %}<span class="sp-sku-chip sp-sku-chip-ok">{{ sku }}</span>{% endfor %}
+                    {% for sku in r.missing_skus %}<span class="sp-sku-chip sp-sku-chip-no">{{ sku }}</span>{% endfor %}
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initCheckboxMultiselect({
+        id: "sp-months-multiselect",
+        inputName: "months",
+        emptyText: "Все месяцы",
+        dateRange: true
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("sp-filters-form");
+    const input = document.getElementById("sp-city-search");
+    const hidden = document.getElementById("sp-city-hidden");
+    const dropdown = document.getElementById("sp-city-dropdown");
+    const label = document.getElementById("sp-selected-city-label");
+    const empty = document.getElementById("sp-selected-city-empty");
+    if (!form || !input || !hidden || !dropdown) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function filterItems() {
+        const v = input.value.trim().toLowerCase();
+        let n = 0;
+        items.forEach(item => {
+            const vis = !v || item.dataset.value.toLowerCase().includes(v);
+            item.classList.toggle("hidden", !vis);
+            if (vis) n++;
+        });
+        dropdown.style.display = n > 0 ? "block" : "none";
+    }
+
+    function regionUrl(city) {
+        const url = new URL(window.location.origin + "/analytics/client-analysis");
+        url.searchParams.set("tab", "sku_presence");
+        url.searchParams.set("city", city);
+        return url.toString();
+    }
+
+    if (!hidden.value) {
+        const last = window.PulseRegionMemory && window.PulseRegionMemory.get();
+        if (last) { window.location.replace(regionUrl(last)); return; }
+    }
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const v = item.dataset.value;
+            hidden.value = v;
+            if (label) { label.textContent = v; label.style.display = ""; }
+            if (empty) empty.style.display = "none";
+            input.value = "";
+            dropdown.style.display = "none";
+            if (window.PulseRegionMemory) window.PulseRegionMemory.save(v);
+            window.location.href = regionUrl(v);
+        });
+    });
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = "none";
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initTagSearch({
+        inputId: "sp-sku-search",
+        dropdownId: "sp-sku-dropdown",
+        tagsId: "sp-skus-tags",
+        inputName: "skus"
+    });
+});
+</script>
