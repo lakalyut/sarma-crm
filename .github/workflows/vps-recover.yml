@@ -98,9 +98,10 @@ jobs:
               cd /home/ubuntu/sarma-crm
               git remote set-url origin git@github.com:lakalyut/sarma-crm.git
               git remote -v
-              echo "--- ssh -T git@github.com ---"
-              ssh -o BatchMode=yes -o ConnectTimeout=10 -T git@github.com 2>&1 | head -3
-              echo "--- git fetch ---"
+              echo "--- ssh -T с ЯВНЫМ ключом gh_deploy ---"
+              ssh -i ~/.ssh/gh_deploy -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -T git@github.com 2>&1 | head -3
+              echo "--- git fetch (какой ключ реально принят) ---"
+              GIT_SSH_COMMAND="ssh -v" git ls-remote origin -h refs/heads/main 2>&1 | grep -iE "Offering public key|Server accepts key|Authenticated to|Hi lakalyut|refs/heads/main" | head -8
               git fetch --all 2>&1 | head -8
               git log --oneline -1 origin/main 2>&1
             fi
