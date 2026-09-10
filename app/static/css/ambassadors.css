@@ -428,11 +428,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 11px 12px;
+    padding: 9px 12px;
     background: none;
     border: none;
-    color: var(--text-strong);
-    font-weight: 600;
+    color: var(--text-main);
+    font-weight: 500;
     font-size: 14px;
     cursor: pointer;
     min-height: 0;
@@ -443,17 +443,17 @@
 .visit-collapse-count {
     color: var(--primary);
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .visit-collapse-count.visit-collapse-count-empty {
     color: var(--text-muted);
-    font-weight: 500;
+    font-weight: 400;
 }
 
 .visit-collapse-chevron {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     flex: 0 0 auto;
     color: var(--text-muted);
     transition: transform 0.15s ease;

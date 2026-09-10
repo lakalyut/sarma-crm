@@ -8,6 +8,25 @@ from .utils.dates import parse_month
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+_STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+
+def asset(path: str) -> str:
+    """URL статики с ?v=<mtime файла> — меняется при каждой правке файла,
+    поэтому после деплоя браузер гарантированно берёт новую версию, а не
+    отдаёт старую из кэша. StaticFiles сам `Cache-Control` не ставит,
+    браузеры кешируют статику эвристически — ловили на форме визита, когда
+    новый CSS не подхватывался на телефоне после деплоя."""
+    rel = path.lstrip("/")
+    try:
+        version = int(os.path.getmtime(os.path.join(_STATIC_DIR, rel)))
+    except OSError:
+        version = 0
+    return f"/static/{rel}?v={version}"
+
+
+templates.env.globals["asset"] = asset
+
 MONTHS_RU = {
     1: "Январь",
     2: "Февраль",

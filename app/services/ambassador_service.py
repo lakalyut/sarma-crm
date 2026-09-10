@@ -17,8 +17,6 @@ from .abc_service import guess_default_segment
 VISIT_GOALS: list[str] = [
     "Прокур новинки",
     "Обучение по продукту",
-    "Ротация полки",
-    "Первичный завоз",
 ]
 
 

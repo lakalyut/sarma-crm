@@ -5,7 +5,7 @@
   <title>{{ title or "Пульс — амбассадор" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   {% include "_styles.html" %}
   <style>
@@ -96,10 +96,10 @@
     {% block content %}{% endblock %}
   </div>
 
-  <script src="/static/js/checkbox_multiselect.js"></script>
-  <script src="/static/js/custom_select.js"></script>
-  <script src="/static/js/sku_status_table.js"></script>
-  <script src="/static/js/visit_products.js"></script>
-  <script src="/static/js/csrf.js"></script>
+  <script src="{{ asset('js/checkbox_multiselect.js') }}"></script>
+  <script src="{{ asset('js/custom_select.js') }}"></script>
+  <script src="{{ asset('js/sku_status_table.js') }}"></script>
+  <script src="{{ asset('js/visit_products.js') }}"></script>
+  <script src="{{ asset('js/csrf.js') }}"></script>
 </body>
 </html>

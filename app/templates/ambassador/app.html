@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Пульс — амбассадор</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="/static/js/visit_products.js"></script>
+<script src="{{ asset('js/visit_products.js') }}"></script>
 <style>
     body {
         margin: 0;
@@ -46,12 +46,12 @@
     .visit-collapse { border: 1px solid #d4d4d4; border-radius: 10px; background: #fff; overflow: hidden; }
     .visit-collapse-head {
         width: 100%; display: flex; align-items: center; justify-content: space-between;
-        gap: 8px; padding: 11px 12px; background: none; border: none;
-        color: #0a0a0a; font-weight: 600; font-size: 14px; cursor: pointer;
+        gap: 8px; padding: 9px 12px; background: none; border: none;
+        color: #0a0a0a; font-weight: 500; font-size: 14px; cursor: pointer;
     }
-    .visit-collapse-count { color: #6d5ef8; font-weight: 600; font-size: 13px; }
-    .visit-collapse-count.visit-collapse-count-empty { color: #737373; font-weight: 500; }
-    .visit-collapse-chevron { color: #737373; transition: transform 0.15s ease; }
+    .visit-collapse-count { color: #6d5ef8; font-weight: 600; font-size: 12px; }
+    .visit-collapse-count.visit-collapse-count-empty { color: #737373; font-weight: 400; }
+    .visit-collapse-chevron { color: #737373; font-size: 13px; transition: transform 0.15s ease; }
     .visit-collapse-head[aria-expanded="true"] .visit-collapse-chevron { transform: rotate(180deg); }
     .visit-collapse-body { padding: 0 12px 12px; max-height: 320px; overflow-y: auto; }
     .visit-goal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
