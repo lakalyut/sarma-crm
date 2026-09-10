@@ -589,6 +589,19 @@ nullable в БД, но обязательны на новых визитах ч�
   из `/leaderboard` (веб, `require_analyst`), `/ambassador/leaderboard`
   (браузер) и `/ambassador/app/leaderboard` (Telegram, без фильтра по
   месяцу — там нет `month_year_grid()`, чистый JS-фетч).
+  **Метрики строки** (2026-09-10, запрос пользователя): `aromas_total`
+  (все «прокуры» — каждый `VisitProduct`, т.е. аромат × визит; один аромат
+  на трёх визитах = 3, **не** distinct по названию), `aromas_a`/`aromas_b`
+  (из них категории A/B по ABC-сегменту, угаданному из `sale_type` визита —
+  `guess_default_segment()`, тот же приём, что был у прежней колонки
+  «категории А»; товар без рейтинга в этом сегменте — ни A, ни B),
+  `aromas_new` (ароматы-новинки, `Product.is_new`), `visits`. **Новинка
+  идёт только в `aromas_new`** — `continue` до проверки A/B: статус A/B
+  новинкам присваивают позже, до этого они в A/B не участвуют (решение
+  пользователя). Сортировка — `(-aromas_a, -aromas_b, -visits, ambassador)`.
+  Три шаблона синхронно: `leaderboard/leaderboard.html`,
+  `ambassador/leaderboard.html` (таблицы), `ambassador/app.html`
+  (`renderLeaderboard()`, JS).
 - [app/services/visit_effectiveness_service.py](app/services/visit_effectiveness_service.py)
   — третья вкладка на «Анализе по клиентам» (`?tab=visit_effectiveness`):
   сверяет продемонстрированные визитом ароматы с тем, что клиент заказал
