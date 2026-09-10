@@ -241,6 +241,16 @@ def test_leaderboard_page_allows_admin(admin_client):
     assert resp.status_code == 200
 
 
+def test_leaderboard_columns_are_sortable(admin_client, db_session):
+    _make_ambassador(db_session, "Город", 480, "Сорт", "Тестов")
+    resp = admin_client.get("/leaderboard")
+    assert resp.status_code == 200
+    # разметка сортировки на всех колонках + инициализация
+    for key in ("aromas_total", "aromas_a", "aromas_b", "aromas_new", "visits"):
+        assert f'data-sort-key="{key}"' in resp.text
+    assert "initSortableTable(" in resp.text
+
+
 def test_leaderboard_page_filters_by_month(admin_client, db_session):
     from datetime import UTC, datetime
 

@@ -121,6 +121,7 @@
     .abc-badge-a { background: #dcfce7; color: #16a34a; }
     .abc-badge-b { background: #e5e1ff; color: #6d5ef8; }
     .abc-badge-c { background: #f1f5f9; color: #737373; }
+    .abc-badge-new { background: #ede9fe; color: #6d28d9; padding: 0 8px; }
     button.primary {
         width: 100%;
         padding: 13px;
@@ -401,8 +402,9 @@ function onTypeChange() {
         for (const item of group.items) {
             const p = item.product;
             const badge = item.abc ? '<span class="abc-badge abc-badge-' + item.abc.toLowerCase() + '">' + item.abc + '</span>' : '';
+            const newBadge = p.is_new ? '<span class="abc-badge abc-badge-new">Новинка</span>' : '';
             html += '<label class="product-row" data-search="' + item.searchKey.replace(/"/g, '&quot;') + '"><input type="checkbox" value="' + p.id + '">' +
-                '<span class="product-flavor">' + p.brand + ' — ' + p.flavor + '</span>' + badge + '</label>';
+                '<span class="product-flavor">' + p.brand + ' — ' + p.flavor + '</span>' + badge + newBadge + '</label>';
         }
         html += '</div>';
     }

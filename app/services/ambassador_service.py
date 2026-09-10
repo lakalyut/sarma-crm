@@ -85,6 +85,7 @@ def get_visit_options(db: Session, city: str) -> dict:
                 "flavor": p.flavor,
                 "name": p.canonical_name,
                 "sku": p.canonical_sku,
+                "is_new": bool(p.is_new),
             }
             for p in products
         ],

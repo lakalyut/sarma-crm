@@ -258,9 +258,10 @@ document.addEventListener("DOMContentLoaded", function () {
             for (const item of group.items) {
                 const p = item.product;
                 const badge = item.abc ? '<span class="abc-badge abc-badge-' + item.abc.toLowerCase() + '">' + item.abc + "</span>" : "";
+                const newBadge = p.is_new ? '<span class="abc-badge abc-badge-new">Новинка</span>' : "";
                 html += '<label class="product-row" data-search="' + item.searchKey.replace(/"/g, "&quot;") + '" style="display:flex; align-items:center; gap:8px; padding:6px 0;">' +
                     '<input type="checkbox" name="product_ids" value="' + p.id + '">' +
-                    "<span>" + p.brand + " — " + p.flavor + "</span>" + badge + "</label>";
+                    "<span>" + p.brand + " — " + p.flavor + "</span>" + badge + newBadge + "</label>";
             }
         }
         productsList.innerHTML = html;

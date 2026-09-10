@@ -82,6 +82,7 @@ def test_get_visit_options_scoped_to_city(db_session):
     assert any(p["id"] == product.id for p in options["products"])
     matched = next(p for p in options["products"] if p["id"] == product.id)
     assert matched["sku"] == "TEST-SKU"
+    assert matched["is_new"] is False
 
 
 def test_create_visit_happy_path(db_session):

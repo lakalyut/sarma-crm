@@ -107,7 +107,7 @@
 {% if report and report.months_without_sales %}
     <div class="message" style="margin: 4px 0 12px;">
         За <b>{{ report.months_without_sales|format_month_list }}</b> ещё нет данных по продажам.
-        Ароматы показаны, но сверка («заказан / не заказан») появится после загрузки продаж за этот месяц —
+        Ароматы прокурены, но сверка («заказан / не заказан») появится после загрузки продаж за этот месяц —
         они приходят в следующем месяце.
     </div>
 {% endif %}
@@ -132,7 +132,7 @@
                     {% set ordered_n = client.aromas|selectattr("status", "equalto", "ordered")|list|length %}
                     {% set pending_n = client.aromas|selectattr("status", "equalto", "pending")|list|length %}
                     <div class="amb-card-badges">
-                        <span class="amb-badge amb-badge-blue">Ароматов показано: {{ client.aromas|length }}</span>
+                        <span class="amb-badge amb-badge-blue">Ароматов прокурено: {{ client.aromas|length }}</span>
                         <span class="amb-badge amb-badge-green">Заказано: {{ ordered_n }}</span>
                         {% if pending_n %}
                             <span class="amb-badge">Ждём продажи: {{ pending_n }}</span>
@@ -174,7 +174,7 @@
         {% endfor %}
     </div>
 {% else %}
-    <div class="message">Выбери регион и месяцы — здесь появятся визиты и то, что из показанного заказали.</div>
+    <div class="message">Выбери регион и месяцы — здесь появятся визиты и то, что из прокуренного заказали.</div>
 {% endif %}
 
 <script>

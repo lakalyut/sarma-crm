@@ -55,6 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
         emptyText: "Всё время",
         dateRange: true
     });
+    initSortableTable(document.getElementById("leaderboard-table"));
 });
 </script>
 
@@ -66,18 +67,26 @@ document.addEventListener("DOMContentLoaded", function () {
     <table class="sheet-table" id="leaderboard-table">
       <thead>
         <tr>
-          <th>Город</th>
-          <th>Амбассадор</th>
-          <th title="Все прокуренные ароматы (аромат × визит)">Прокурено<br>ароматов</th>
-          <th title="Из них категории A по ABC-сегменту типа точки">из них<br>кат. A</th>
-          <th title="Из них категории B по ABC-сегменту типа точки">из них<br>кат. B</th>
-          <th title="Из них ароматы-новинки">Новинки</th>
-          <th>Визиты</th>
+          <th data-sort-key="city" data-sort-type="text">Город <span class="sort-icon">↕</span></th>
+          <th data-sort-key="ambassador" data-sort-type="text">Амбассадор <span class="sort-icon">↕</span></th>
+          <th data-sort-key="aromas_total" title="Все прокуренные ароматы (аромат × визит)">Прокурено<br>ароматов <span class="sort-icon">↕</span></th>
+          <th data-sort-key="aromas_a" title="Из них категории A по ABC-сегменту типа точки">из них<br>кат. A <span class="sort-icon">↕</span></th>
+          <th data-sort-key="aromas_b" title="Из них категории B по ABC-сегменту типа точки">из них<br>кат. B <span class="sort-icon">↕</span></th>
+          <th data-sort-key="aromas_new" title="Из них ароматы-новинки">Новинки <span class="sort-icon">↕</span></th>
+          <th data-sort-key="visits">Визиты <span class="sort-icon">↕</span></th>
         </tr>
       </thead>
       <tbody>
       {% for row in rows %}
-        <tr>
+        <tr
+          data-city="{{ row.city }}"
+          data-ambassador="{{ row.ambassador }}"
+          data-aromas_total="{{ row.aromas_total }}"
+          data-aromas_a="{{ row.aromas_a }}"
+          data-aromas_b="{{ row.aromas_b }}"
+          data-aromas_new="{{ row.aromas_new }}"
+          data-visits="{{ row.visits }}"
+        >
           <td>{{ row.city }}</td>
           <td>{{ row.ambassador }}</td>
           <td>{{ row.aromas_total }}</td>
