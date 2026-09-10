@@ -15,6 +15,7 @@ from .csrf import attach_csrf_cookie, csrf_guard, get_csrf_token
 from .database import Base, SessionLocal, engine
 from .routes.admin_abc import router as admin_abc_router
 from .routes.admin_imports import router as admin_imports_router
+from .routes.admin_nomenclature import router as admin_nomenclature_router
 from .routes.admin_regions import router as admin_regions_router
 from .routes.admin_unmatched import router as admin_unmatched_router
 from .routes.admin_users import router as admin_users_router
@@ -65,6 +66,7 @@ app.include_router(auth_router)
 app.include_router(admin_users_router)
 app.include_router(admin_visits_router)
 app.include_router(admin_unmatched_router)
+app.include_router(admin_nomenclature_router)
 app.include_router(misc_router)
 app.include_router(products_router)
 app.include_router(imports_router)

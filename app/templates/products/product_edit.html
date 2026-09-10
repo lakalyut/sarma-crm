@@ -3,6 +3,30 @@
 {% block content %}
 <h1>Редактирование продукта</h1>
 
+<div style="max-width: 760px;">
+    {% if saved %}
+        <div class="message ok">Сохранено.</div>
+    {% endif %}
+    {% if resynced is not none %}
+        <div class="message ok">Пересинхронизировано продаж: {{ resynced }}.</div>
+    {% endif %}
+    {% if collision %}
+        <div class="message error">
+            Такой же вкус («{{ product.flavor }}») уже есть у товара
+            <b>{{ collision.brand }}{% if collision.line %} {{ collision.line }}{% endif %} {{ collision.flavor }}</b>.
+            Проверь бренд/линейку — возможно, это дубль.
+        </div>
+    {% endif %}
+    {% if drift_count %}
+        <div class="message error" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <span>Продаж с прежним названием этого товара: <b>{{ drift_count }}</b>. Аналитика по SKU показывает у них старое имя.</span>
+            <form method="post" action="/admin/products/edit/{{ product.id }}/resync-sales" style="margin:0;">
+                <button type="submit" class="btn-small">Пересинхронизировать</button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+
 <div class="sheet-wrapper" style="max-width: 760px;">
     <form method="post" style="padding: 20px;">
         <div class="form-grid-2col">

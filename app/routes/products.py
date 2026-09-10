@@ -14,6 +14,11 @@ from ..product_parser import (
     parse_product_line,
 )
 from ..render import render
+from ..services.nomenclature_review_service import (
+    flavor_collision,
+    product_drift_count,
+    resync_product_sales,
+)
 
 router = APIRouter()
 
@@ -71,7 +76,15 @@ def product_new(
     )
     db.add(p)
     db.commit()
+    db.refresh(p)
 
+    # Тот же вкус у товара с другим брендом — вероятно опечатка в бренде
+    # («Сарма» вместо «Сарма 360»). Не блокируем, показываем предупреждение
+    # на карточке нового товара.
+    if flavor_collision(db, p):
+        return RedirectResponse(
+            f"/admin/products/edit/{p.id}?dup=1", status_code=HTTP_302_FOUND
+        )
     return RedirectResponse("/admin/products", status_code=HTTP_302_FOUND)
 
 
@@ -143,6 +156,9 @@ def products_import(
 def edit_product_form(
     product_id: int,
     request: Request,
+    saved: int = 0,
+    dup: int = 0,
+    resynced: int = -1,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
@@ -150,10 +166,18 @@ def edit_product_form(
     if not product:
         return {"error": "Product not found"}
 
+    collision = flavor_collision(db, product) if (dup or saved) else None
     return render(
         request,
         "products/product_edit.html",
-        {"title": f"{product.brand} — {product.flavor} — Пульс", "product": product},
+        {
+            "title": f"{product.brand} — {product.flavor} — Пульс",
+            "product": product,
+            "drift_count": product_drift_count(db, product_id),
+            "collision": collision,
+            "saved": bool(saved),
+            "resynced": resynced if resynced >= 0 else None,
+        },
     )
 
 
@@ -191,4 +215,20 @@ def edit_product(
 
     db.commit()
 
-    return RedirectResponse("/admin/products", status_code=302)
+    # На форму, а не в список: там плашка «продажи со старым названием —
+    # пересинхронизировать?» и предупреждение о возможном дубле.
+    return RedirectResponse(
+        f"/admin/products/edit/{product_id}?saved=1", status_code=302
+    )
+
+
+@router.post("/admin/products/edit/{product_id}/resync-sales")
+def resync_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    n = resync_product_sales(db, product_id)
+    return RedirectResponse(
+        f"/admin/products/edit/{product_id}?resynced={n}", status_code=302
+    )

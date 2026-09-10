@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ревизия номенклатуры</h1>
+
+<div class="page-subtitle" style="margin-bottom: 12px;">
+    Сопоставленные продажи, у которых копия названия товара (<code>sku</code>) разошлась
+    с актуальным справочником — обычно после правки товара. Пересинхронизация
+    пересчитывает <code>sku</code>/<code>name</code> из товара; сырые данные из XLSX не трогаются.
+</div>
+
+{% if resynced is not none %}
+    <div class="message ok">Пересинхронизировано продаж: {{ resynced }}.</div>
+{% endif %}
+
+{% if not groups %}
+    <div class="message ok">Все сопоставленные продажи совпадают со справочником 🎉</div>
+{% else %}
+    <div class="message error" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <span>Товаров с расхождениями: <b>{{ groups|length }}</b>, строк продаж: <b>{{ total }}</b>.</span>
+        <form method="post" action="/admin/nomenclature/review/resync-all" style="margin:0;"
+              onsubmit="return confirm('Пересинхронизировать все {{ total }} строк?');">
+            <button type="submit">Пересинхронизировать всё</button>
+        </form>
+    </div>
+
+    <div class="sheet-wrapper">
+        <div class="sheet-scroller">
+            <table class="sheet-table">
+                <thead>
+                    <tr>
+                        <th>Товар сейчас</th>
+                        <th>Старое название в продажах</th>
+                        <th>Города</th>
+                        <th>Строк</th>
+                        <th>Действие</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in groups %}
+                        <tr>
+                            <td>
+                                <a href="/admin/products/edit/{{ g.product.id }}">{{ g.product.canonical_sku }}</a>
+                            </td>
+                            <td>{{ g.old_names|join("; ") }}</td>
+                            <td>{{ g.cities|join(", ") }}</td>
+                            <td>{{ g.count }}</td>
+                            <td>
+                                <form method="post" action="/admin/nomenclature/review/resync/{{ g.product.id }}" style="margin:0;">
+                                    <button type="submit" class="btn-secondary btn-small">Пересинхронизировать</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
