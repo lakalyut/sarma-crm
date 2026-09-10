@@ -19,7 +19,7 @@ def _make_ambassador(db_session, city, telegram_id, first_name, last_name):
     return user
 
 
-def _make_product(db_session, flavor, sku):
+def _make_product(db_session, flavor, sku, is_new=False):
     from app.models import Product
 
     product = Product(
@@ -31,6 +31,7 @@ def _make_product(db_session, flavor, sku):
         norm_brand="бренд",
         norm_flavor=flavor.lower(),
         is_active=True,
+        is_new=is_new,
     )
     db_session.add(product)
     db_session.commit()
@@ -44,7 +45,7 @@ def test_get_leaderboard_empty_when_no_ambassadors(db_session):
     assert get_leaderboard(db_session) == []
 
 
-def test_get_leaderboard_counts_visits_and_category_a(db_session):
+def test_get_leaderboard_counts_burned_aromas_by_category(db_session):
     from app.models import AbcSegment, ProductAbcRating, Visit, VisitProduct
     from app.services.leaderboard_service import get_leaderboard
 
@@ -56,16 +57,39 @@ def test_get_leaderboard_counts_visits_and_category_a(db_session):
     db_session.refresh(segment)
 
     product_a = _make_product(db_session, "Мята", "SKU-A")
+    product_b = _make_product(db_session, "Дыня", "SKU-B")
     product_c = _make_product(db_session, "Лимон", "SKU-C")
+    # новинка: рейтинг A стоит, но в счётчик A попасть не должна
+    product_new = _make_product(db_session, "Кола", "SKU-N", is_new=True)
 
-    db_session.add(
-        ProductAbcRating(product_id=product_a.id, segment_id=segment.id, category="A")
-    )
-    db_session.add(
-        ProductAbcRating(product_id=product_c.id, segment_id=segment.id, category="C")
-    )
+    for product, category in [
+        (product_a, "A"),
+        (product_b, "B"),
+        (product_c, "C"),
+        (product_new, "A"),
+    ]:
+        db_session.add(
+            ProductAbcRating(
+                product_id=product.id, segment_id=segment.id, category=category
+            )
+        )
     db_session.commit()
 
+    # два визита, на обоих — один и тот же аромат A (должно посчитаться как 2)
+    for _ in range(2):
+        visit = Visit(
+            ambassador_id=ambassador.id,
+            city="Город",
+            client="Клиент",
+            sale_type="Кальянная",
+        )
+        db_session.add(visit)
+        db_session.commit()
+        db_session.refresh(visit)
+        db_session.add(VisitProduct(visit_id=visit.id, product_id=product_a.id))
+        db_session.commit()
+
+    # третий визит — B, C и новинка
     visit = Visit(
         ambassador_id=ambassador.id,
         city="Город",
@@ -75,9 +99,8 @@ def test_get_leaderboard_counts_visits_and_category_a(db_session):
     db_session.add(visit)
     db_session.commit()
     db_session.refresh(visit)
-
-    db_session.add(VisitProduct(visit_id=visit.id, product_id=product_a.id))
-    db_session.add(VisitProduct(visit_id=visit.id, product_id=product_c.id))
+    for product in (product_b, product_c, product_new):
+        db_session.add(VisitProduct(visit_id=visit.id, product_id=product.id))
     db_session.commit()
 
     rows = get_leaderboard(db_session)
@@ -85,10 +108,55 @@ def test_get_leaderboard_counts_visits_and_category_a(db_session):
     assert len(rows) == 1
     row = rows[0]
     assert row["ambassador"] == "Иван Иванов"
-    assert row["city"] == "Город 1"
-    assert row["visits"] == 1
-    assert row["category_a"] == 1
-    assert row["aromas"] == ["Лимон", "Мята"]
+    assert row["visits"] == 3
+    assert row["aromas_total"] == 5  # 2×A + B + C + новинка
+    assert row["aromas_a"] == 2  # один аромат на двух визитах = 2
+    assert row["aromas_b"] == 1
+    assert row["aromas_new"] == 1  # новинка сюда, не в A
+    assert "category_a" not in row
+    assert "aromas" not in row
+
+
+def test_get_leaderboard_sorts_by_category_a_then_b_then_visits(db_session):
+    from app.models import AbcSegment, ProductAbcRating, Visit, VisitProduct
+    from app.services.leaderboard_service import get_leaderboard
+
+    segment = AbcSegment(name="Кальянная", sort_order=0)
+    db_session.add(segment)
+    db_session.commit()
+    db_session.refresh(segment)
+
+    product_a = _make_product(db_session, "Мята", "S-A")
+    db_session.add(
+        ProductAbcRating(product_id=product_a.id, segment_id=segment.id, category="A")
+    )
+    db_session.commit()
+
+    many_visits = _make_ambassador(db_session, "Г", 201, "Мало", "Аромат")
+    few_a = _make_ambassador(db_session, "Г", 202, "Много", "Аромат")
+
+    # many_visits: 3 визита, ни одного аромата A
+    for _ in range(3):
+        db_session.add(
+            Visit(
+                ambassador_id=many_visits.id,
+                city="Г",
+                client="К",
+                sale_type="Кальянная",
+            )
+        )
+    db_session.commit()
+
+    # few_a: 1 визит, но с ароматом A
+    v = Visit(ambassador_id=few_a.id, city="Г", client="К", sale_type="Кальянная")
+    db_session.add(v)
+    db_session.commit()
+    db_session.refresh(v)
+    db_session.add(VisitProduct(visit_id=v.id, product_id=product_a.id))
+    db_session.commit()
+
+    rows = get_leaderboard(db_session)
+    assert [r["ambassador"] for r in rows] == ["Много Аромат", "Мало Аромат"]
 
 
 def test_get_leaderboard_hides_deactivated_ambassador(db_session):
@@ -206,19 +274,19 @@ def test_leaderboard_page_filters_by_month(admin_client, db_session):
     # в лидерборде не сокращается фильтром (показаны все, даже с 0 визитами
     # за период — тот же принцип, что и в get_leaderboard без фильтра), важна
     # именно цифра «Визиты» у каждого.
+    def _row(text, name):
+        start = text.index(f"<td>{name}</td>")
+        return text[start : text.index("</tr>", start)]
+
     resp = admin_client.get("/leaderboard?months=2026-05-01")
     assert resp.status_code == 200
-    oleg_idx = resp.text.index("Олег Олегов")
-    irina_idx = resp.text.index("Ирина Иринина")
-    assert "<td>1</td>" in resp.text[oleg_idx : oleg_idx + 200]
-    assert "<td>0</td>" in resp.text[irina_idx : irina_idx + 200]
+    assert "<td>1</td>" in _row(resp.text, "Олег Олегов")  # 1 визит в мае
+    assert "<td>1</td>" not in _row(resp.text, "Ирина Иринина")  # 0 визитов
 
     resp = admin_client.get("/leaderboard?months=2026-06-01")
     assert resp.status_code == 200
-    oleg_idx = resp.text.index("Олег Олегов")
-    irina_idx = resp.text.index("Ирина Иринина")
-    assert "<td>0</td>" in resp.text[oleg_idx : oleg_idx + 200]
-    assert "<td>1</td>" in resp.text[irina_idx : irina_idx + 200]
+    assert "<td>1</td>" not in _row(resp.text, "Олег Олегов")
+    assert "<td>1</td>" in _row(resp.text, "Ирина Иринина")
 
 
 def test_ambassador_app_leaderboard_matches_service(db_session, client):

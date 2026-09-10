@@ -4,7 +4,8 @@
 <h1>Лидерборд амбассадоров</h1>
 
 <div class="page-subtitle" style="margin-bottom: 12px;">
-  Визиты и продемонстрированные ароматы по всем амбассадорам
+  Прокуренные ароматы и визиты по всем амбассадорам. «Прокур» — это аромат на
+  конкретном визите; один аромат на трёх визитах считается как три.
 </div>
 
 <div class="filters-card">
@@ -67,9 +68,11 @@ document.addEventListener("DOMContentLoaded", function () {
         <tr>
           <th>Город</th>
           <th>Амбассадор</th>
+          <th title="Все прокуренные ароматы (аромат × визит)">Прокурено<br>ароматов</th>
+          <th title="Из них категории A по ABC-сегменту типа точки">из них<br>кат. A</th>
+          <th title="Из них категории B по ABC-сегменту типа точки">из них<br>кат. B</th>
+          <th title="Из них ароматы-новинки">Новинки</th>
           <th>Визиты</th>
-          <th>Ароматов категории А</th>
-          <th>Ароматы</th>
         </tr>
       </thead>
       <tbody>
@@ -77,9 +80,11 @@ document.addEventListener("DOMContentLoaded", function () {
         <tr>
           <td>{{ row.city }}</td>
           <td>{{ row.ambassador }}</td>
+          <td>{{ row.aromas_total }}</td>
+          <td>{{ row.aromas_a }}</td>
+          <td>{{ row.aromas_b }}</td>
+          <td>{{ row.aromas_new }}</td>
           <td>{{ row.visits }}</td>
-          <td>{{ row.category_a }}</td>
-          <td>{{ row.aromas|join(", ") if row.aromas else "—" }}</td>
         </tr>
       {% endfor %}
       </tbody>

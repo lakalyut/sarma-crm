@@ -75,7 +75,22 @@ def get_leaderboard(
         else []
     )
 
-    stats = {a.id: {"visits": 0, "category_a": 0, "aromas": set()} for a in ambassadors}
+    # Метрики: каждый (аромат × визит) — отдельный «прокур», один и тот же
+    # аромат на трёх визитах = 3. Категория A/B аромата — по ABC-сегменту,
+    # угаданному из типа точки визита (как в «Анализе по клиентам»); товар
+    # без рейтинга в этом сегменте — не A и не B. Новинки (`Product.is_new`)
+    # идут только в свой счётчик: статус A/B им присваивают позже, до этого
+    # они в A/B не участвуют.
+    stats = {
+        a.id: {
+            "visits": 0,
+            "aromas_total": 0,
+            "aromas_a": 0,
+            "aromas_b": 0,
+            "aromas_new": 0,
+        }
+        for a in ambassadors
+    }
     for visit in visits:
         stats[visit.ambassador_id]["visits"] += 1
 
@@ -90,13 +105,19 @@ def get_leaderboard(
     for visit_product, product in visit_products:
         visit = visit_by_id[visit_product.visit_id]
         row = stats[visit.ambassador_id]
-        row["aromas"].add(product.flavor)
+        row["aromas_total"] += 1
+
+        if product.is_new:
+            row["aromas_new"] += 1
+            continue
 
         segment_id = guessed_segment_id(visit.sale_type)
         if segment_id is not None:
             category = rating_by_segment.get(segment_id, {}).get(product.id)
             if category == "A":
-                row["category_a"] += 1
+                row["aromas_a"] += 1
+            elif category == "B":
+                row["aromas_b"] += 1
 
     rows = []
     for ambassador in ambassadors:
@@ -107,10 +128,14 @@ def get_leaderboard(
                 "ambassador": name or ambassador.email,
                 "city": ambassador.city or "—",
                 "visits": row["visits"],
-                "category_a": row["category_a"],
-                "aromas": sorted(row["aromas"]),
+                "aromas_total": row["aromas_total"],
+                "aromas_a": row["aromas_a"],
+                "aromas_b": row["aromas_b"],
+                "aromas_new": row["aromas_new"],
             }
         )
 
-    rows.sort(key=lambda r: (-r["visits"], -r["category_a"]))
+    rows.sort(
+        key=lambda r: (-r["aromas_a"], -r["aromas_b"], -r["visits"], r["ambassador"])
+    )
     return rows

@@ -63,9 +63,11 @@ document.addEventListener("DOMContentLoaded", function () {
         <tr>
           <th>Город</th>
           <th>Амбассадор</th>
+          <th>Прокурено<br>ароматов</th>
+          <th>из них<br>кат. A</th>
+          <th>из них<br>кат. B</th>
+          <th>Новинки</th>
           <th>Визиты</th>
-          <th>Ароматов категории А</th>
-          <th>Ароматы</th>
         </tr>
       </thead>
       <tbody>
@@ -73,9 +75,11 @@ document.addEventListener("DOMContentLoaded", function () {
         <tr>
           <td>{{ row.city }}</td>
           <td>{{ row.ambassador }}</td>
+          <td>{{ row.aromas_total }}</td>
+          <td>{{ row.aromas_a }}</td>
+          <td>{{ row.aromas_b }}</td>
+          <td>{{ row.aromas_new }}</td>
           <td>{{ row.visits }}</td>
-          <td>{{ row.category_a }}</td>
-          <td>{{ row.aromas|join(", ") if row.aromas else "—" }}</td>
         </tr>
       {% endfor %}
       </tbody>

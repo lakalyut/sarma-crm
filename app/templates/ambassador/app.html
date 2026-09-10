@@ -167,9 +167,8 @@
     .lb-top { display: flex; justify-content: space-between; align-items: baseline; }
     .lb-name { font-weight: 600; font-size: 14px; }
     .lb-region { font-size: 12px; color: #737373; }
-    .lb-stats { display: flex; gap: 14px; margin-top: 4px; font-size: 13px; color: #737373; }
+    .lb-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; font-size: 13px; color: #737373; }
     .lb-stats b { color: #0a0a0a; }
-    .lb-aromas { margin-top: 4px; font-size: 12px; color: #737373; }
 </style>
 </head>
 <body>
@@ -537,9 +536,13 @@ function renderLeaderboard(rows) {
         '<div class="lb-row">' +
             '<div class="lb-top"><span class="lb-name">' + r.ambassador + '</span>' +
             '<span class="lb-region">' + r.city + '</span></div>' +
-            '<div class="lb-stats"><span>Визиты: <b>' + r.visits + '</b></span>' +
-            '<span>Категория А: <b>' + r.category_a + '</b></span></div>' +
-            '<div class="lb-aromas">' + (r.aromas.length ? r.aromas.join(', ') : '—') + '</div>' +
+            '<div class="lb-stats">' +
+            '<span>Прокурено: <b>' + r.aromas_total + '</b></span>' +
+            '<span>кат. A: <b>' + r.aromas_a + '</b></span>' +
+            '<span>кат. B: <b>' + r.aromas_b + '</b></span>' +
+            '<span>Новинки: <b>' + r.aromas_new + '</b></span>' +
+            '<span>Визиты: <b>' + r.visits + '</b></span>' +
+        '</div>' +
         '</div>'
     ).join('');
 }
