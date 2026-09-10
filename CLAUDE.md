@@ -164,9 +164,23 @@ template, ctx)`, который сам достаёт `current_user` по cookie
 `pd.read_excel()`), читает XLSX через pandas,
 требует колонки `Месяц/Тип/Клиент/Номенклатура/SKU/Количество/Вес`, для каждой строки зовёт
 `match_product_by_flavor()`; при совпадении проставляет `product_id/sku/name/matched=True`,
-иначе `matched=False` — такие строки видны на `/admin/unmatched`
-([app/routes/analytics.py](app/routes/analytics.py)) и **пока не редактируются на месте**
-(это горизонт 1 роадмапа — сейчас read-only список сырых строк).
+иначе `matched=False`. Город на форме `/import-xlsx` — поиск по существующим (`get_cities`)
+**или** свободный ввод нового (`<input name="city">` сам несёт значение, дропдаун только
+подсказывает; хинт под полем говорит «существующий»/«новый город»).
+
+**Несопоставленные** (`matched=False`) — доводятся руками на `/admin/unmatched`
+([app/routes/admin_unmatched.py](app/routes/admin_unmatched.py) +
+[app/services/unmatched_service.py](app/services/unmatched_service.py); GET переехал сюда
+из `analytics.py`). Действия per-строка (все `require_admin`, PRG-редирект на список):
+- `POST …/match` (`product_id`) — `match_sale_to_product()` ставит те же поля, что
+  авто-матч импорта (`sku`/`name` из canonical + вес из `raw_name` или дефолтного веса
+  товара), `matched=True` → строка уходит в актуальные продажи города. На списке — инлайн
+  через `<datalist>` активных товаров (label = «бренд — вкус · SKU», JS резолвит строку в
+  id по карте `product_id_by_label` из `data-map`-атрибута).
+- `POST …/delete` — `delete_sale()`.
+- `GET/POST …/{id}/edit` (`analytics/unmatched_edit.html`) — правка `city`/`month`/`type`/
+  `client`/`qty`/`weight` (`update_sale_fields`) + тот же `<datalist>`-выбор товара; убрал
+  товар из выбора у сопоставленной строки — `unmatch_sale()` вернёт её в несопоставленные.
 
 **Данные продаж — плоская таблица `Sale`** ([app/models.py](app/models.py)): город, месяц
 (строка `YYYY-MM-01`, форматируется фильтром Jinja `format_month` в «Март 2026»), тип точки,
