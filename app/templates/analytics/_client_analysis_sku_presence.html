@@ -222,10 +222,14 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     document.querySelectorAll("#sp-status-filter .amb-status-filter-btn").forEach(btn => {
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (e) {
+            // не даём клику дойти до document-обработчика initTagSearch,
+            // который иначе тут же прячет только что показанный дропдаун
+            e.stopPropagation();
             statusFilter = btn.dataset.status;
             document.querySelectorAll("#sp-status-filter .amb-status-filter-btn")
                 .forEach(b => b.classList.toggle("active", b === btn));
+            document.getElementById("sp-sku-search").focus();
             if (skuSearch) skuSearch.refresh();
         });
     });
