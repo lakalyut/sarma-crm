@@ -187,6 +187,14 @@ table.sheet-table tbody tr:hover td {
         text-align: center;
     }
 
+/* Амбассадорский вид «Клиентов» — без чекбоксов «Сформировать свод», первая
+   колонка пустая, прячем её целиком (nth-child остальных колонок считает
+   DOM-позицию, ширины 2-9 не съезжают). */
+#clients-table.clients-table-noselect th:nth-child(1),
+#clients-table.clients-table-noselect td:nth-child(1) {
+        display: none;
+    }
+
 #clients-table th:nth-child(2),
 #clients-table td:nth-child(2) {
         width: 110px;

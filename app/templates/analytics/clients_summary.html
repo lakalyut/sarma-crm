@@ -258,7 +258,7 @@
         {% else %}
             <div class="sheet-wrapper">
                 <div class="sheet-scroller">
-                    <table class="sheet-table" id="clients-table">
+                    <table class="sheet-table{% if ambassador_mode %} clients-table-noselect{% endif %}" id="clients-table">
                         <thead>
                         <tr>
                             <th></th>
