@@ -608,10 +608,17 @@ nullable в БД, но обязательны на новых визитах ч�
   `aromas_new` (ароматы-новинки, `Product.is_new`), `visits`. **Новинка
   идёт только в `aromas_new`** — `continue` до проверки A/B: статус A/B
   новинкам присваивают позже, до этого они в A/B не участвуют (решение
-  пользователя). Сортировка — `(-aromas_a, -aromas_b, -visits, ambassador)`.
+  пользователя). Дефолтная сортировка сервера —
+  `(-aromas_a, -aromas_b, -visits, ambassador)`.
   Три шаблона синхронно: `leaderboard/leaderboard.html`,
   `ambassador/leaderboard.html` (таблицы), `ambassador/app.html`
-  (`renderLeaderboard()`, JS).
+  (`renderLeaderboard()`, JS). Обе таблицы (веб + браузер амбассадора) —
+  сортируемые по клику на любую колонку через
+  [sortable_table.js](app/static/js/sortable_table.js)`::initSortableTable`
+  (`th[data-sort-key]` + `data-sort-type="text"|number`, значения строк в
+  `tr.dataset.<key>`; клик циклит убыв.→возр.→сброс). Это **не**
+  `sku_status_table.js` — тот про таблицы с «Итого» и ранговыми статусами
+  (New/Lost/A/B/C), здесь плоская таблица с числом/строкой.
 - [app/services/visit_effectiveness_service.py](app/services/visit_effectiveness_service.py)
   — третья вкладка на «Анализе по клиентам» (`?tab=visit_effectiveness`):
   сверяет продемонстрированные визитом ароматы с тем, что клиент заказал
@@ -678,6 +685,9 @@ nullable в БД, но обязательны на новых визитах ч�
 `.client-list-item`/`.category-group`) — вынесены только вычисления без обращения к
 DOM, рендер-функции в каждом шаблоне свои. `app.html` из-за самостоятельности
 подключает модуль отдельным `<script src>` в `<head>`, не через `base_ambassador.html`.
+Каждый аромат в списке несёт бейдж ABC (по сегменту типа точки) **и** бейдж
+`Новинка` (`Product.is_new`, `.abc-badge-new`) — `get_visit_options` кладёт
+`is_new` в каждый элемент `products`, обе рендер-функции его читают.
 
 **Валидация формы визита — по клику, с подсветкой** (2026-09-10, оба шаблона —
 `visit.html` и `app.html`, каждый своей копией JS). Раньше кнопка «Записать
