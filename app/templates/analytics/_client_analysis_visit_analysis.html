@@ -1,0 +1,247 @@
+{% from "includes/month_year_picker.html" import month_year_grid %}
+<div class="filters-card">
+    <form method="get" id="va-filters-form">
+        <input type="hidden" name="tab" value="visit_analysis">
+
+        <div class="filters-grid ambassadors-filters-grid">
+            <div class="field filter-field filter-field-region-search">
+                <label for="va-city-search">Регион</label>
+                <input type="hidden" name="city" id="va-city-hidden" value="{{ selected_city or '' }}">
+                <input id="va-city-search" type="text" value="" placeholder="Начни вводить регион..." autocomplete="off">
+
+                <div id="va-city-dropdown" class="search-dropdown" style="display:none;">
+                    {% for c in cities %}
+                        <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field">
+                <label>Период</label>
+                <div class="multiselect" id="va-months-multiselect">
+                    <div class="multiselect-display">
+                        <span class="multiselect-text">
+                            {% if selected_months %}
+                                {% for m in selected_months %}
+                                    {{ m|format_month }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Все месяцы
+                            {% endif %}
+                        </span>
+                        <span class="multiselect-arrow">▾</span>
+                    </div>
+
+                    <div class="multiselect-dropdown">
+                        <label class="month-checkbox month-checkbox-all">
+                            <input type="checkbox" class="multiselect-select-all-checkbox">
+                            <span>Выбрать все</span>
+                        </label>
+
+                        <div class="month-checkboxes">
+                            {{ month_year_grid(all_months, selected_months, "months") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field filter-field filter-field-region-search">
+                <label for="va-client-search">Клиенты (опционально)</label>
+                <input id="va-client-search" type="text" value="" placeholder="Начни вводить клиента..." autocomplete="off">
+
+                <div id="va-client-dropdown" class="search-dropdown" style="display:none;">
+                    {% for client_name in all_clients %}
+                        <div class="search-dropdown-item" data-value="{{ client_name }}">{{ client_name }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="field filter-field filter-actions-row">
+                <label>&nbsp;</label>
+                <div class="filters-actions">
+                    <button type="submit">Показать</button>
+                    <a href="/analytics/client-analysis?tab=visit_analysis" class="btn btn-secondary">Сбросить</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="multiselect-tags amb-tags-row" id="va-clients-tags">
+            {% if selected_clients %}
+                {% for client in selected_clients %}
+                    <span class="filter-tag">
+                        <span>{{ client }}</span>
+                        <button type="button" class="filter-tag-remove" aria-label="Удалить">×</button>
+                        <input type="hidden" name="clients" value="{{ client }}">
+                    </span>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="selected-city-text">
+            {% if selected_city %}
+                Регион:
+                <span class="selected-city-value" id="va-selected-city-label">{{ selected_city }}</span>
+            {% else %}
+                <span id="va-selected-city-empty">Регион не выбран</span>
+                <span class="selected-city-value" id="va-selected-city-label" style="display:none;"></span>
+            {% endif %}
+        </div>
+
+        <div class="selected-city-text">
+            {% if selected_months %}
+                Месяцы:
+                <span class="selected-city-value">{{ selected_months|format_month_list }}</span>
+            {% else %}
+                <span>Все месяцы</span>
+            {% endif %}
+        </div>
+
+        {% if selected_clients %}
+        <div class="selected-city-text">
+            Клиентов: <span class="selected-city-value">{{ selected_clients|length }}</span>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{% if visit_rows %}
+    <div class="filter-summary" style="margin: 4px 0 10px;">Визитов: {{ visit_rows|length }}</div>
+    <div class="sheet-wrapper">
+        <div class="sheet-scroller">
+            <table class="sheet-table" id="va-table">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Клиент</th>
+                        <th>Тип точки</th>
+                        <th>Цель визита</th>
+                        <th title="СКЮ на полке: Классическая / Крепкая / Лёгкая">СКЮ на полке<br>(Кл / Кр / Лёг)</th>
+                        <th>Человек</th>
+                        <th>Ароматов<br>показано</th>
+                        <th>Комментарий</th>
+                        <th>Амбассадор</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in visit_rows %}
+                        <tr>
+                            <td>{{ v.date }}</td>
+                            <td>{{ v.client }}</td>
+                            <td>{{ v.sale_type }}</td>
+                            <td>{{ v.goal }}</td>
+                            <td class="va-sku-cell">
+                                {{ v.sku_classic if v.sku_classic is not none else "—" }} /
+                                {{ v.sku_strong if v.sku_strong is not none else "—" }} /
+                                {{ v.sku_light if v.sku_light is not none else "—" }}
+                            </td>
+                            <td>{{ v.people_count if v.people_count is not none else "—" }}</td>
+                            <td>{{ v.aromas_count }}</td>
+                            <td class="va-comment-cell">{{ v.comment }}</td>
+                            <td>{{ v.ambassador }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% else %}
+    <div class="message">Выбери регион — здесь появится таблица визитов с анкетой (SKU на полке, человек, цель, комментарий).</div>
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initCheckboxMultiselect({
+        id: "va-months-multiselect",
+        inputName: "months",
+        emptyText: "Все месяцы",
+        dateRange: true
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("va-filters-form");
+    const input = document.getElementById("va-city-search");
+    const hidden = document.getElementById("va-city-hidden");
+    const dropdown = document.getElementById("va-city-dropdown");
+    const selectedCityLabel = document.getElementById("va-selected-city-label");
+    const selectedCityEmpty = document.getElementById("va-selected-city-empty");
+
+    if (!form || !input || !hidden || !dropdown) return;
+
+    const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
+
+    function filterItems() {
+        const value = input.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.dataset.value.toLowerCase();
+            const visible = !value || text.includes(value);
+            item.classList.toggle("hidden", !visible);
+            if (visible) visibleCount++;
+        });
+
+        dropdown.style.display = visibleCount > 0 ? "block" : "none";
+    }
+
+    function buildRegionUrl(cityValue) {
+        const url = new URL(window.location.origin + "/analytics/client-analysis");
+        url.searchParams.set("tab", "visit_analysis");
+        url.searchParams.set("city", cityValue);
+        return url.toString();
+    }
+
+    if (!hidden.value) {
+        const lastRegion = window.PulseRegionMemory && window.PulseRegionMemory.get();
+        if (lastRegion) {
+            window.location.replace(buildRegionUrl(lastRegion));
+            return;
+        }
+    }
+
+    input.addEventListener("focus", filterItems);
+    input.addEventListener("input", filterItems);
+
+    items.forEach(item => {
+        item.addEventListener("click", function () {
+            const value = item.dataset.value;
+
+            hidden.value = value;
+
+            if (selectedCityLabel) {
+                selectedCityLabel.textContent = value;
+                selectedCityLabel.style.display = "";
+            }
+
+            if (selectedCityEmpty) {
+                selectedCityEmpty.style.display = "none";
+            }
+
+            input.value = "";
+            dropdown.style.display = "none";
+
+            if (window.PulseRegionMemory) window.PulseRegionMemory.save(value);
+            window.location.href = buildRegionUrl(value);
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = "none";
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initTagSearch({
+        inputId: "va-client-search",
+        dropdownId: "va-client-dropdown",
+        tagsId: "va-clients-tags",
+        inputName: "clients"
+    });
+});
+</script>

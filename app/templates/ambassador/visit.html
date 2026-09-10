@@ -25,6 +25,11 @@
     <div class="field-hint" id="selected-client" style="display:none;"></div>
   </div>
 
+  <div class="visit-history is-hidden" id="visit-history">
+    <div class="visit-history-title">История по точке</div>
+    <div id="visit-history-list"></div>
+  </div>
+
   <div class="field">
     <label>Тип точки</label>
     <select name="sale_type" id="type-select" class="js-custom-select"></select>
@@ -34,6 +39,40 @@
     <label>Ароматы</label>
     <input type="text" id="product-search" placeholder="Поиск по названию или SKU" autocomplete="off" style="margin-bottom: 8px;">
     <div id="products-list"></div>
+  </div>
+
+  <div class="field">
+    <label>Кол-во СКЮ на полке (по линейкам)</label>
+    <div class="visit-sku-grid">
+      <label class="visit-sku-item">
+        <span>Классическая</span>
+        <input type="number" name="sku_classic" min="0" step="1" inputmode="numeric" required>
+      </label>
+      <label class="visit-sku-item">
+        <span>Крепкая</span>
+        <input type="number" name="sku_strong" min="0" step="1" inputmode="numeric" required>
+      </label>
+      <label class="visit-sku-item">
+        <span>Лёгкая</span>
+        <input type="number" name="sku_light" min="0" step="1" inputmode="numeric" required>
+      </label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Кол-во человек на мероприятии</label>
+    <input type="number" name="people_count" min="0" step="1" inputmode="numeric" required>
+  </div>
+
+  <div class="field">
+    <label>Цель визита</label>
+    <div id="goal-chips" class="visit-goal-chips"></div>
+    <input type="text" name="goal" id="goal-input" placeholder="Например: первичный завоз, ротация полки, обучение персонала" autocomplete="off" required>
+  </div>
+
+  <div class="field">
+    <label>Комментарий</label>
+    <textarea name="comment" id="comment-input" rows="3" placeholder="Заметки по точке — увидят на следующем визите" required></textarea>
   </div>
 
   <button type="submit" id="submit-btn" disabled>Записать визит</button>
@@ -52,6 +91,51 @@ document.addEventListener("DOMContentLoaded", function () {
     const productsList = document.getElementById("products-list");
     const productSearch = document.getElementById("product-search");
     const submitBtn = document.getElementById("submit-btn");
+    const goalInput = document.getElementById("goal-input");
+    const goalChips = document.getElementById("goal-chips");
+    const historyBox = document.getElementById("visit-history");
+    const historyList = document.getElementById("visit-history-list");
+
+    (options.visit_goals || []).forEach(g => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "visit-goal-chip";
+        chip.textContent = g;
+        chip.addEventListener("click", () => { goalInput.value = g; });
+        goalChips.appendChild(chip);
+    });
+
+    function escHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, c => (
+            { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+        ));
+    }
+
+    function renderHistory(items) {
+        if (!items || !items.length) {
+            historyBox.classList.add("is-hidden");
+            historyList.innerHTML = "";
+            return;
+        }
+        historyList.innerHTML = items.map(h => (
+            '<div class="visit-history-item">' +
+                '<div class="visit-history-meta">' + escHtml(h.date) +
+                    " · " + escHtml(h.ambassador) +
+                    (h.sale_type ? " · " + escHtml(h.sale_type) : "") + "</div>" +
+                (h.goal ? '<div class="visit-history-goal">Цель: ' + escHtml(h.goal) + "</div>" : "") +
+                (h.comment ? '<div class="visit-history-comment">' + escHtml(h.comment) + "</div>" : "") +
+            "</div>"
+        )).join("");
+        historyBox.classList.remove("is-hidden");
+    }
+
+    function loadHistory(client) {
+        if (!client) { renderHistory([]); return; }
+        fetch("/ambassador/visit-history?client=" + encodeURIComponent(client))
+            .then(r => r.ok ? r.json() : { history: [] })
+            .then(d => renderHistory(d.history))
+            .catch(() => renderHistory([]));
+    }
 
     citySelect.innerHTML = options.cities.map(c => '<option value="' + c + '">' + c + '</option>').join("");
     if (options.cities.length > 1) {
@@ -77,10 +161,17 @@ document.addEventListener("DOMContentLoaded", function () {
         clientDropdown.style.display = "block";
     }
 
+    const surveyInputs = Array.from(document.querySelectorAll(
+        'input[name="sku_classic"], input[name="sku_strong"], input[name="sku_light"], input[name="people_count"], #goal-input, #comment-input'
+    ));
+
     function updateSubmitEnabled() {
         const hasProducts = document.querySelectorAll('#products-list input[type="checkbox"]:checked').length > 0;
-        submitBtn.disabled = !(clientHidden.value && hasProducts);
+        const surveyDone = surveyInputs.every(el => el.value.trim() !== "");
+        submitBtn.disabled = !(clientHidden.value && hasProducts && surveyDone);
     }
+
+    surveyInputs.forEach(el => el.addEventListener("input", updateSubmitEnabled));
 
     function renderProducts() {
         const type = typeSelect.value;
@@ -144,6 +235,7 @@ document.addEventListener("DOMContentLoaded", function () {
     clientInput.addEventListener("input", function (e) {
         clientHidden.value = "";
         selectedClientEl.style.display = "none";
+        renderHistory([]);
         renderClientList(e.target.value);
         updateSubmitEnabled();
     });
@@ -157,6 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
         clientDropdown.style.display = "none";
         selectedClientEl.textContent = "Выбрано: " + value;
         selectedClientEl.style.display = "block";
+        loadHistory(value);
         updateSubmitEnabled();
     });
 

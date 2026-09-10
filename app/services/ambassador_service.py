@@ -12,6 +12,30 @@ from ..models import AbcSegment, Product, ProductAbcRating, Visit, VisitProduct
 from . import sales_options_service
 from .abc_service import guess_default_segment
 
+# Каркас под «Цель визита» — пока пусто, амбассадор пишет свободным текстом.
+# Когда появятся конкретные цели — просто дописать сюда, форма подхватит их
+# как быстрые варианты над текстовым полем.
+VISIT_GOALS: list[str] = []
+
+
+def ambassador_display_name(user: User | None) -> str:
+    if not user:
+        return "—"
+    name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+    return name or user.email
+
+
+def _parse_count(raw, label: str) -> int:
+    if raw is None or str(raw).strip() == "":
+        raise ValueError(f"Укажите «{label}»")
+    try:
+        value = int(str(raw).strip())
+    except ValueError:
+        raise ValueError(f"«{label}» — это число") from None
+    if value < 0:
+        raise ValueError(f"«{label}» не может быть отрицательным")
+    return value
+
 
 def get_visit_options(db: Session, city: str) -> dict:
     clients = sales_options_service.get_clients(db, city=city)
@@ -50,6 +74,7 @@ def get_visit_options(db: Session, city: str) -> dict:
         "types_by_city": {city: types},
         "guessed_segment_by_type": guessed_segment_by_type,
         "abc_by_segment": abc_by_segment,
+        "visit_goals": VISIT_GOALS,
         "products": [
             {
                 "id": p.id,
@@ -64,6 +89,41 @@ def get_visit_options(db: Session, city: str) -> dict:
     }
 
 
+def get_client_visit_history(
+    db: Session, city: str, client: str, limit: int = 15
+) -> list[dict]:
+    """История заметок по точке — комментарии и цели прошлых визитов всех
+    амбассадоров к этому (city, client), новые сверху. Пустые (без
+    комментария и цели) не показываем."""
+    visits = (
+        db.query(Visit)
+        .filter(Visit.city == city, Visit.client == client)
+        .order_by(Visit.created_at.desc())
+        .limit(limit * 3)
+        .all()
+    )
+
+    history = []
+    for v in visits:
+        comment = (v.comment or "").strip()
+        goal = (v.goal or "").strip()
+        if not comment and not goal:
+            continue
+        history.append(
+            {
+                "date": v.created_at.strftime("%d.%m.%Y"),
+                "sale_type": v.sale_type,
+                "goal": goal,
+                "comment": comment,
+                "ambassador": ambassador_display_name(v.ambassador),
+            }
+        )
+        if len(history) >= limit:
+            break
+
+    return history
+
+
 def create_visit(
     db: Session,
     ambassador: User,
@@ -71,6 +131,12 @@ def create_visit(
     client: str,
     sale_type: str,
     product_ids: list[int],
+    sku_classic=None,
+    sku_strong=None,
+    sku_light=None,
+    people_count=None,
+    comment: str = "",
+    goal: str = "",
 ) -> Visit:
     if city != ambassador.city:
         raise ValueError("Вы можете записывать визиты только в своём городе")
@@ -93,8 +159,29 @@ def create_visit(
     if set(product_ids) - valid_ids:
         raise ValueError("Часть выбранных ароматов недоступна, обновите страницу")
 
+    sku_classic = _parse_count(sku_classic, "СКЮ на полке — классическая")
+    sku_strong = _parse_count(sku_strong, "СКЮ на полке — крепкая")
+    sku_light = _parse_count(sku_light, "СКЮ на полке — лёгкая")
+    people_count = _parse_count(people_count, "Человек на мероприятии")
+
+    comment = (comment or "").strip()
+    goal = (goal or "").strip()
+    if not comment:
+        raise ValueError("Заполните комментарий")
+    if not goal:
+        raise ValueError("Укажите цель визита")
+
     visit = Visit(
-        ambassador_id=ambassador.id, city=city, client=client, sale_type=sale_type
+        ambassador_id=ambassador.id,
+        city=city,
+        client=client,
+        sale_type=sale_type,
+        sku_classic=sku_classic,
+        sku_strong=sku_strong,
+        sku_light=sku_light,
+        people_count=people_count,
+        comment=comment,
+        goal=goal,
     )
     db.add(visit)
     db.flush()

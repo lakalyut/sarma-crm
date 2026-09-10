@@ -114,3 +114,24 @@
 .ca-missing-row td {
     background: var(--surface);
 }
+
+/* Вкладка «Анализ визита» — таблица по контенту, комментарий переносится */
+#va-table {
+    table-layout: auto;
+}
+
+#va-table td,
+#va-table th {
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+#va-table .va-sku-cell {
+    text-align: center;
+}
+
+#va-table .va-comment-cell {
+    white-space: normal;
+    min-width: 220px;
+    max-width: 360px;
+}

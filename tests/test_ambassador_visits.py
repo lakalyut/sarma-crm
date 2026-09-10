@@ -39,6 +39,16 @@ def _make_product(db_session, category="Табак", flavor="Мята"):
     return product
 
 
+SURVEY = {
+    "sku_classic": "3",
+    "sku_strong": "1",
+    "sku_light": "2",
+    "people_count": "15",
+    "comment": "Полка в порядке, попросили привезти новинки",
+    "goal": "ротация полки",
+}
+
+
 def _make_ambassador(db_session, city, telegram_id=999111):
     from app.auth_models import User
 
@@ -88,9 +98,13 @@ def test_create_visit_happy_path(db_session):
         client="Клиент А",
         sale_type="Кальянная",
         product_ids=[product.id],
+        **SURVEY,
     )
 
     assert db_session.query(Visit).filter(Visit.id == visit.id).count() == 1
+    assert visit.sku_classic == 3
+    assert visit.people_count == 15
+    assert visit.goal == "ротация полки"
     assert (
         db_session.query(VisitProduct)
         .filter(
@@ -99,6 +113,35 @@ def test_create_visit_happy_path(db_session):
         .count()
         == 1
     )
+
+
+def test_create_visit_requires_survey_fields(db_session):
+    from app.services.ambassador_service import create_visit
+
+    city = _make_sales(db_session)
+    product = _make_product(db_session)
+    ambassador = _make_ambassador(db_session, city)
+
+    with pytest.raises(ValueError):
+        create_visit(
+            db_session,
+            ambassador,
+            city="Тестгород",
+            client="Клиент А",
+            sale_type="Кальянная",
+            product_ids=[product.id],
+        )
+
+    with pytest.raises(ValueError):
+        create_visit(
+            db_session,
+            ambassador,
+            city="Тестгород",
+            client="Клиент А",
+            sale_type="Кальянная",
+            product_ids=[product.id],
+            **{**SURVEY, "comment": "   "},
+        )
 
 
 def test_create_visit_rejects_wrong_city(db_session):
@@ -170,12 +213,46 @@ def test_post_visits_happy_path(db_session, client):
             "client": "Клиент А",
             "sale_type": "Кальянная",
             "product_ids": [product.id],
+            **SURVEY,
         },
     )
 
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
     assert db_session.query(Visit).count() == 1
+
+    visit = db_session.query(Visit).first()
+    assert visit.sku_light == 2
+    assert visit.comment.startswith("Полка в порядке")
+
+
+def test_visit_history_endpoint_returns_past_comments(db_session, client):
+    from app.services.ambassador_service import create_visit
+
+    city = _make_sales(db_session)
+    product = _make_product(db_session)
+    ambassador = _make_ambassador(db_session, city)
+
+    create_visit(
+        db_session,
+        ambassador,
+        city="Тестгород",
+        client="Клиент А",
+        sale_type="Кальянная",
+        product_ids=[product.id],
+        **{**SURVEY, "comment": "Заметка мая", "goal": "первичный завоз"},
+    )
+
+    init_data = signed_init_data(ambassador.telegram_id)
+    resp = client.get(
+        "/ambassador/app/visit-history?client=%D0%9A%D0%BB%D0%B8%D0%B5%D0%BD%D1%82+%D0%90",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    assert resp.status_code == 200
+    history = resp.json()["history"]
+    assert len(history) == 1
+    assert history[0]["comment"] == "Заметка мая"
+    assert history[0]["goal"] == "первичный завоз"
 
 
 def test_post_visits_rejects_invalid_city(db_session, client):

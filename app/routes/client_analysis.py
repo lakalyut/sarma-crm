@@ -24,6 +24,7 @@ from ..services.client_analysis_service import (
     get_types_rollup,
 )
 from ..services.sales_options_service import get_cities, get_clients, get_months
+from ..services.visit_analysis_service import get_visit_analysis
 from ..services.visit_effectiveness_service import build_visit_effectiveness_report
 from ..utils.params import get_int_param
 
@@ -43,7 +44,9 @@ def client_analysis_page(
     _user: User = Depends(require_analyst),
 ):
     active_tab = (
-        tab if tab in ("summary", "ambassadors", "visit_effectiveness") else "summary"
+        tab
+        if tab in ("summary", "ambassadors", "visit_effectiveness", "visit_analysis")
+        else "summary"
     )
 
     cities = get_cities(db)
@@ -201,6 +204,35 @@ def client_analysis_page(
                 "raw_selected_months": raw_selected_months,
                 "selected_clients": selected_clients,
                 "report": report,
+            },
+        )
+
+    if active_tab == "visit_analysis":
+        # Фильтр по месяцам — только по явно выбранным (raw_selected_months),
+        # не по normalize-to-all: визиты пишутся «сейчас», часто в месяц, за
+        # который ещё нет импорта продаж, а normalize подставил бы все
+        # месяцы из Sale и скрыл бы свежие визиты.
+        visit_rows = get_visit_analysis(
+            db,
+            city=city,
+            selected_months=raw_selected_months,
+            selected_clients=selected_clients,
+        )
+
+        return render(
+            request,
+            "analytics/client_analysis.html",
+            {
+                "title": "Аналитика по клиентам — Пульс",
+                "active_tab": active_tab,
+                "cities": cities,
+                "all_months": all_months,
+                "all_clients": all_clients,
+                "selected_city": city,
+                "selected_months": raw_selected_months,
+                "raw_selected_months": raw_selected_months,
+                "selected_clients": selected_clients,
+                "visit_rows": visit_rows,
             },
         )
 

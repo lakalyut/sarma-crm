@@ -4,25 +4,32 @@
 <h1>Аналитика по клиентам</h1>
 {% include "includes/messages.html" %}
 
+{% set _tab_qs %}city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}{% endset %}
 <div class="chart-tabs" style="margin-bottom: 12px;">
     <a
-        href="/analytics/client-analysis?tab=summary&city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}"
-        class="chart-tab {% if active_tab != 'ambassadors' %}active{% endif %}"
+        href="/analytics/client-analysis?tab=summary&{{ _tab_qs }}"
+        class="chart-tab {% if active_tab == 'summary' %}active{% endif %}"
     >Свод</a>
     <a
-        href="/analytics/client-analysis?tab=ambassadors&city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}"
+        href="/analytics/client-analysis?tab=ambassadors&{{ _tab_qs }}"
         class="chart-tab {% if active_tab == 'ambassadors' %}active{% endif %}"
     >Амбассадорский отчёт</a>
     <a
-        href="/analytics/client-analysis?tab=visit_effectiveness&city={{ (selected_city or '')|urlencode }}{% for m in selected_months %}&months={{ m }}{% endfor %}{% for c in selected_clients %}&clients={{ c|urlencode }}{% endfor %}"
+        href="/analytics/client-analysis?tab=visit_effectiveness&{{ _tab_qs }}"
         class="chart-tab {% if active_tab == 'visit_effectiveness' %}active{% endif %}"
     >Эффективность визита</a>
+    <a
+        href="/analytics/client-analysis?tab=visit_analysis&{{ _tab_qs }}"
+        class="chart-tab {% if active_tab == 'visit_analysis' %}active{% endif %}"
+    >Анализ визита</a>
 </div>
 
 {% if active_tab == "ambassadors" %}
 {% include "analytics/_client_analysis_ambassadors.html" %}
 {% elif active_tab == "visit_effectiveness" %}
 {% include "analytics/_client_analysis_visit_effectiveness.html" %}
+{% elif active_tab == "visit_analysis" %}
+{% include "analytics/_client_analysis_visit_analysis.html" %}
 {% else %}
 
 <div class="filters-card">

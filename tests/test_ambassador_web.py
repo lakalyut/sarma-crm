@@ -194,6 +194,15 @@ def test_visit_submit_happy_path_and_invalid_city(client, db_session):
 
     _login_ambassador(client, db_session, city="Город", first_name="Иван")
 
+    survey = {
+        "sku_classic": "4",
+        "sku_strong": "2",
+        "sku_light": "1",
+        "people_count": "20",
+        "comment": "Комментарий по точке",
+        "goal": "ротация полки",
+    }
+
     resp = client.post(
         "/ambassador/visit",
         data={
@@ -202,11 +211,27 @@ def test_visit_submit_happy_path_and_invalid_city(client, db_session):
             "sale_type": "Кальянная",
             "product_ids": [product.id],
             "csrf_token": CSRF_TOKEN,
+            **survey,
         },
     )
     assert resp.status_code == 200
     assert "Визит записан" not in resp.text
     assert "message error" in resp.text
+
+    # без обязательных полей анкеты — визит не сохраняется
+    resp = client.post(
+        "/ambassador/visit",
+        data={
+            "city": "Город",
+            "client": "Клиент",
+            "sale_type": "Кальянная",
+            "product_ids": [product.id],
+            "csrf_token": CSRF_TOKEN,
+        },
+    )
+    assert resp.status_code == 200
+    assert "Визит записан" not in resp.text
+    assert db_session.query(Visit).count() == 0
 
     resp = client.post(
         "/ambassador/visit",
@@ -216,6 +241,7 @@ def test_visit_submit_happy_path_and_invalid_city(client, db_session):
             "sale_type": "Кальянная",
             "product_ids": [product.id],
             "csrf_token": CSRF_TOKEN,
+            **survey,
         },
     )
     assert resp.status_code == 200

@@ -4,7 +4,7 @@ Telegram-боту, см. ROADMAP.md: VPS не может достучаться 
 app/routes/ambassador_app.py (Telegram Mini App, initData-заголовок)."""
 
 from fastapi import APIRouter, Depends, Form, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
@@ -12,7 +12,11 @@ from ..auth_deps import require_ambassador
 from ..auth_models import User
 from ..database import get_db
 from ..render import render
-from ..services.ambassador_service import create_visit, get_visit_options
+from ..services.ambassador_service import (
+    create_visit,
+    get_client_visit_history,
+    get_visit_options,
+)
 from ..services.leaderboard_service import get_leaderboard_page_data
 from ..services.sales_options_service import get_cities
 
@@ -113,6 +117,12 @@ def ambassador_visit_submit(
     client: str = Form(""),
     sale_type: str = Form(""),
     product_ids: list[int] = Form(default=[]),
+    sku_classic: str = Form(""),
+    sku_strong: str = Form(""),
+    sku_light: str = Form(""),
+    people_count: str = Form(""),
+    comment: str = Form(""),
+    goal: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_ambassador),
 ):
@@ -129,6 +139,12 @@ def ambassador_visit_submit(
             client=client,
             sale_type=sale_type,
             product_ids=product_ids,
+            sku_classic=sku_classic,
+            sku_strong=sku_strong,
+            sku_light=sku_light,
+            people_count=people_count,
+            comment=comment,
+            goal=goal,
         )
     except ValueError as exc:
         return render(
@@ -146,6 +162,18 @@ def ambassador_visit_submit(
             "message": "Визит записан",
         },
     )
+
+
+@router.get("/visit-history")
+def ambassador_visit_history(
+    client: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_ambassador),
+):
+    if not _profile_complete(user) or not client:
+        return JSONResponse({"history": []})
+
+    return JSONResponse({"history": get_client_visit_history(db, user.city, client)})
 
 
 @router.get("/leaderboard")

@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 
 from ..auth_models import User
 from ..database import get_db
-from ..services.ambassador_service import create_visit, get_visit_options
+from ..services.ambassador_service import (
+    create_visit,
+    get_client_visit_history,
+    get_visit_options,
+)
 from ..services.leaderboard_service import get_leaderboard
 from ..telegram_auth import get_current_ambassador
 from ..templating import templates
@@ -46,6 +50,17 @@ def ambassador_app_options(
     return get_visit_options(db, user.city)
 
 
+@router.get("/ambassador/app/visit-history")
+def ambassador_app_visit_history(
+    client: str = "",
+    user: User = Depends(get_current_ambassador),
+    db: Session = Depends(get_db),
+):
+    if not client:
+        return {"history": []}
+    return {"history": get_client_visit_history(db, user.city, client)}
+
+
 @router.post("/ambassador/app/visits")
 async def ambassador_app_create_visit(
     request: Request,
@@ -62,6 +77,12 @@ async def ambassador_app_create_visit(
             client=body.get("client", ""),
             sale_type=body.get("sale_type", ""),
             product_ids=body.get("product_ids") or [],
+            sku_classic=body.get("sku_classic"),
+            sku_strong=body.get("sku_strong"),
+            sku_light=body.get("sku_light"),
+            people_count=body.get("people_count"),
+            comment=body.get("comment", ""),
+            goal=body.get("goal", ""),
         )
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"detail": str(exc)})

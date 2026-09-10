@@ -393,3 +393,86 @@
     background: var(--status-assortment-new-badge-bg);
     font-weight: 700;
 }
+/* --- Форма визита амбассадора: анкета (SKU по линейкам, цель, история) --- */
+.visit-sku-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.visit-sku-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.visit-sku-item input {
+    width: 100%;
+}
+
+.visit-goal-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.visit-goal-chip {
+    border: 1px solid var(--border);
+    background: var(--bg-page);
+    border-radius: var(--radius-md, 8px);
+    padding: 5px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.visit-goal-chip:hover {
+    background: var(--primary-tint);
+    color: var(--primary);
+    border-color: var(--primary-tint-border, var(--primary-tint));
+}
+
+.visit-history {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 10px);
+    background: var(--surface-alt);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+}
+
+.visit-history-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
+}
+
+.visit-history-item {
+    padding: 6px 0;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.visit-history-item:first-child {
+    border-top: none;
+}
+
+.visit-history-meta {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.visit-history-goal {
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.visit-history-comment {
+    margin-top: 2px;
+    white-space: pre-wrap;
+}
