@@ -223,9 +223,10 @@ SKU-статусы (New/Lost/Unstable — `build_client_sku_status()` в
 
 **«Анализ по клиентам»** (`/analytics/client-analysis`,
 [app/routes/client_analysis.py](app/routes/client_analysis.py) +
-[app/services/client_analysis_service.py](app/services/client_analysis_service.py)) — две
-вкладки на одной странице, переключение обычной GET-навигацией (`?tab=summary`/
-`?tab=ambassadors`): сервер каждый раз считает и рендерит **только** активную вкладку
+[app/services/client_analysis_service.py](app/services/client_analysis_service.py)) — **пять**
+вкладок (`?tab=` = `summary`/`ambassadors`/`visit_effectiveness`/`visit_analysis`/
+`sku_presence`) на одной странице, переключение обычной GET-навигацией: сервер каждый раз
+считает и рендерит **только** активную вкладку
 (вторая ветка Jinja не выполняется) — благодаря этому три ранее независимые копии
 `initTagSearch`/`ambInitTagSearch`/`veInitTagSearch` в шаблонах вкладок (свод/
 амбассадорский отчёт/эффективность визита) не конфликтовали друг с другом даже до
@@ -683,6 +684,20 @@ nullable в БД, но обязательны на новых визитах ч�
   `months_without_sales` — выбранные месяцы с визитами, но без единой
   продажи: партиал пишет «за <месяц> ещё нет данных по продажам, сверка
   появится после загрузки». «Свод»/«Амбассадорский отчёт» — только `Sale`.
+- [app/services/sku_presence_service.py](app/services/sku_presence_service.py)
+  — **пятая** вкладка «Представленность SKU» (`?tab=sku_presence`, партиал
+  `_client_analysis_sku_presence.html`). Фильтры: регион / период /
+  ABC-сегмент / мультивыбор SKU (в дропдауне у каждого SKU бейдж ABC по
+  сегменту + `NEW` для `Product.is_new`; SKU→товар резолвится по
+  сопоставленным `Sale` — `product_id_by_sku`, как в
+  `build_ambassadors_report`). `build_sku_presence()` → список **(клиент,
+  тип точки)** с продажами за период: зелёный, если заказан **хотя бы один**
+  из выбранных SKU (`qty > 0`), красный — ни одного; зелёные сверху (по
+  убыванию числа заказанных), потом красные по имени. Строка на каждый тип
+  клиента (клиент в HoReCa+Рознице = две строки), клик — детализация
+  `/analytics/client?city=&client=&sale_type=&months=`. `abc_segment`
+  (`list[int]`) переиспользован — берётся первый валидный id, дефолт
+  `segments[0]`; смена сегмента ресабмитит форму (`onchange`).
 
 Удаление пользователей (`/admin/users/{id}/delete`) блокирует удаление
 амбассадора с историей визитов — детали в разделе Auth выше («Удаление
