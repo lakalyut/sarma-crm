@@ -6,7 +6,7 @@ app/routes/ambassador_app.py (Telegram Mini App, initData-заголовок).""
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_302_FOUND
+from starlette.status import HTTP_302_FOUND, HTTP_303_SEE_OTHER
 
 from ..auth_deps import require_ambassador
 from ..auth_models import User
@@ -94,6 +94,7 @@ def ambassador_profile_submit(
 @router.get("/visit")
 def ambassador_visit_form(
     request: Request,
+    recorded: int = 0,
     db: Session = Depends(get_db),
     user: User = Depends(require_ambassador),
 ):
@@ -106,6 +107,7 @@ def ambassador_visit_form(
         {
             "title": "Визит — Пульс",
             "options": get_visit_options(db, user.city),
+            "message": "Визит записан" if recorded else None,
         },
     )
 
@@ -129,8 +131,6 @@ def ambassador_visit_submit(
     if not _profile_complete(user):
         return RedirectResponse("/ambassador/profile", status_code=HTTP_302_FOUND)
 
-    options = get_visit_options(db, user.city)
-
     try:
         create_visit(
             db,
@@ -150,17 +150,18 @@ def ambassador_visit_submit(
         return render(
             request,
             "ambassador/visit.html",
-            {"title": "Визит — Пульс", "options": options, "error": str(exc)},
+            {
+                "title": "Визит — Пульс",
+                "options": get_visit_options(db, user.city),
+                "error": str(exc),
+            },
         )
 
-    return render(
-        request,
-        "ambassador/visit.html",
-        {
-            "title": "Визит — Пульс",
-            "options": get_visit_options(db, user.city),
-            "message": "Визит записан",
-        },
+    # POST/Redirect/GET — иначе F5 на странице после записи повторно шлёт форму
+    # и создаёт визит-дубль (ловили: три обновления — три визита в лидерборде
+    # и «Истории по точке»).
+    return RedirectResponse(
+        "/ambassador/visit?recorded=1", status_code=HTTP_303_SEE_OTHER
     )
 
 

@@ -249,6 +249,64 @@ def test_visit_submit_happy_path_and_invalid_city(client, db_session):
     assert db_session.query(Visit).count() == 1
 
 
+def test_visit_submit_is_post_redirect_get(client, db_session):
+    """F5 на странице после записи не должен создавать визит-дубль: успешный
+    POST отвечает 303-редиректом на GET, а не рендерит страницу сам."""
+    from app.models import Product, Sale, Visit
+
+    db_session.add(
+        Sale(
+            city="Город",
+            month="2026-01-01",
+            type="Кальянная",
+            client="Клиент",
+            qty=1,
+            weight=1,
+        )
+    )
+    product = Product(
+        category="Табак",
+        brand="Бренд",
+        flavor="Мята",
+        canonical_sku="PRG-SKU",
+        canonical_name="Бренд Мята",
+        norm_brand="бренд",
+        norm_flavor="мята",
+        is_active=True,
+    )
+    db_session.add(product)
+    db_session.commit()
+    db_session.refresh(product)
+
+    _login_ambassador(client, db_session, city="Город", first_name="Иван")
+
+    payload = {
+        "city": "Город",
+        "client": "Клиент",
+        "sale_type": "Кальянная",
+        "product_ids": [product.id],
+        "csrf_token": CSRF_TOKEN,
+        "sku_classic": "4",
+        "sku_strong": "2",
+        "sku_light": "1",
+        "people_count": "20",
+        "comment": "Комментарий",
+        "goal": "ротация полки",
+    }
+
+    resp = client.post("/ambassador/visit", data=payload, follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/ambassador/visit?recorded=1"
+    assert db_session.query(Visit).count() == 1
+
+    # «обновление страницы» после записи — это GET, визитов не прибавляется
+    for _ in range(3):
+        page = client.get("/ambassador/visit?recorded=1")
+        assert page.status_code == 200
+        assert "Визит записан" in page.text
+    assert db_session.query(Visit).count() == 1
+
+
 def test_leaderboard_page_accessible_to_ambassador(client, db_session):
     _login_ambassador(client, db_session, city="Город лидерборда", first_name="Иван")
 
