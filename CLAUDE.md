@@ -548,6 +548,16 @@ nullable в БД, но обязательны на новых визитах ч�
   повторно (`_profile_complete()` в `ambassador_web.py` — `first_name` и
   `city` оба заполнены).
 
+  **`POST /ambassador/visit` — строго Post/Redirect/Get**: успех отвечает
+  `303` на `GET /ambassador/visit?recorded=1` (баннер «Визит записан» по
+  query-параметру), а не рендерит страницу сам. Без этого F5 на странице
+  после записи повторно слал форму и `create_visit` плодил визиты-дубли —
+  ловили вживую (три обновления → три визита в лидерборде и «Истории по
+  точке»). Ошибку валидации `POST` по-прежнему рендерит на месте (replay
+  такого POST безвреден — `create_visit` падает до commit). Telegram-путь
+  (`/ambassador/app/visits`) — fetch-POST на JSON, reload там GET, проблемы
+  нет.
+
   **Амбассадор видит «Клиенты» и «Детализацию по клиенту» по своему
   городу.** Не отдельные роуты — те же `/analytics/clients` и
   `/analytics/client` из [analytics.py](app/routes/analytics.py), но с
