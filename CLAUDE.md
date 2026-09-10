@@ -373,6 +373,16 @@ round-trip'ом — `render()` и так уже ходит в БД на кажд
 `_styles.html`; лечится либо переносом правила раньше, либо составным селектором вида
 `.mp-year-grid.is-hidden`).
 
+**Cache-busting статики — через хелпер `asset()`** ([app/templating.py](app/templating.py),
+зарегистрирован как global Jinja): `{{ asset('css/base.css') }}` → `/static/css/base.css?v=<mtime>`,
+версия меняется при каждой правке файла. `StaticFiles` **не** ставит `Cache-Control`, ни
+nginx его для статики не добавляет — браузеры кешируют её эвристически, и после деплоя на
+телефоне подхватывалась старая CSS формы визита («почему с браузера телефона отличается»,
+2026-09-10). Все `<link rel=stylesheet>` и `<script src>` в шаблонах (`_styles.html`,
+`base.html`/`base_ambassador.html`/`base_auth.html`, `ambassador/app.html`, `analytics/*`)
+ходят через `asset()` — **новый `<link>`/`<script>` добавлять так же**, не голым путём.
+`asset()` резолвит mtime от `app/static/<path>`; если файла нет — `?v=0`, не падает.
+
 **Выбор периода — постраничный пейджер по годам**, не плоский список и не аккордеон
 (оба промежуточных варианта уже заменены). Общий Jinja-макрос
 [includes/month_year_picker.html](app/templates/includes/month_year_picker.html)
