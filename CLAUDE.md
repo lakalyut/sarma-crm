@@ -188,10 +188,12 @@ template, ctx)`, который сам достаёт `current_user` по cookie
 `Sale` хранит **копию** названия товара (`sale.sku`/`sale.name`, проставляется при импорте/
 матче); `edit_product` меняет `Product`, но эти копии **не трогает** → аналитика через
 `sku_expr()` (`coalesce(Sale.sku, …)` первым) показывает старое имя после правки бренда/
-линии. `get_drift_groups()` собирает сопоставленные строки, где `sale.sku` ≠ актуальный
-`canonical_sku`, сгруппированные по товару; `resync_product_sales()` / `resync_all()`
-пересчитывают `sku`/`name` из `product_id` (вес — из `raw_name`/`default_weight_g`, как
-импорт; `raw_name`/`raw_sku` не трогаем). Пересинхронизация **ручная** (решение
+линии. `get_drift_groups()` — **чистый SQL** (GROUP BY по `Sale.sku != Product.canonical_sku`,
+`require_admin`): первая версия грузила `db.query(Sale, Product).all()` в ORM и легла OOM
+на боевой `sales` — не грузить эту таблицу целиком. `resync_product_sales()` / `resync_all()`
+— `UPDATE` (по товару, число товаров ограничено), ставят `sale.sku = canonical_sku`.
+`sale.name` **не сверяем/не чиним** — в `sku_expr` он 4-й после `sku`/`raw_sku`, у
+сопоставленных строк не участвует. `raw_name`/`raw_sku` (что реально было в XLSX) не трогаем. Пересинхронизация **ручная** (решение
 пользователя): кнопка на `/admin/products/edit/{id}` (плашка «продаж с прежним названием:
 N») и на странице ревизии (пачкой / по товару). Плюс `flavor_collision()` — при
 создании/правке товара, если тот же `norm_flavor` уже есть у товара с другим `norm_brand`

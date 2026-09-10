@@ -109,25 +109,20 @@ def resync_product_sales(db: Session, product_id: int) -> int:
 
 
 def resync_all(db: Session) -> int:
-    """Пачкой по товарам — по одному UPDATE на товар (число товаров
-    ограничено, в отличие от числа продаж)."""
-    total = 0
-    for pid, canon in db.query(Product.id, Product.canonical_sku).all():
-        if not canon:
-            continue
-        res = db.execute(
-            update(Sale)
-            .where(
-                Sale.product_id == pid,
-                Sale.matched.is_(True),
-                Sale.sku.is_(None) | (Sale.sku != canon),
-            )
-            .values(sku=canon)
-            .execution_options(synchronize_session=False)
+    """Один `UPDATE … FROM products` — компилируется и в Postgres, и в SQLite
+    (3.33+). Без пер-товарного цикла и без скана `sales` на каждый товар."""
+    res = db.execute(
+        update(Sale)
+        .where(
+            Sale.product_id == Product.id,
+            Sale.matched.is_(True),
+            Sale.sku.is_(None) | (Sale.sku != Product.canonical_sku),
         )
-        total += res.rowcount or 0
+        .values(sku=Product.canonical_sku)
+        .execution_options(synchronize_session=False)
+    )
     db.commit()
-    return total
+    return res.rowcount or 0
 
 
 def flavor_collision(db: Session, product: Product) -> Product | None:
