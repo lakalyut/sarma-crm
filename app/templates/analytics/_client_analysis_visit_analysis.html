@@ -104,6 +104,8 @@
     </form>
 </div>
 
+{% set va_is_admin = current_user and current_user.role == "admin" %}
+{% set va_back = request.url.path ~ ("?" ~ request.url.query if request.url.query else "") %}
 {% if visit_rows %}
     <div class="filter-summary" style="margin: 4px 0 10px;">Визитов: {{ visit_rows|length }}</div>
     <div class="sheet-wrapper">
@@ -120,6 +122,7 @@
                         <th>Ароматов<br>показано</th>
                         <th>Комментарий</th>
                         <th>Амбассадор</th>
+                        {% if va_is_admin %}<th>Действия</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -138,6 +141,20 @@
                             <td>{{ v.aromas_count }}</td>
                             <td class="va-comment-cell">{{ v.comment }}</td>
                             <td>{{ v.ambassador }}</td>
+                            {% if va_is_admin %}
+                            <td class="va-actions-cell">
+                                <a class="btn-secondary" href="/admin/visits/{{ v.id }}/edit" style="padding:5px 10px;">Изменить</a>
+                                <form
+                                    method="post"
+                                    action="/admin/visits/{{ v.id }}/delete"
+                                    style="display:inline;"
+                                    onsubmit="return confirm('Удалить визит {{ v.client }} от {{ v.date }}? Это необратимо.');"
+                                >
+                                    <input type="hidden" name="back_url" value="{{ va_back }}">
+                                    <button type="submit" class="btn-secondary" style="padding:5px 10px; color: var(--danger); border-color: var(--danger-border);">Удалить</button>
+                                </form>
+                            </td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>

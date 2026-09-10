@@ -135,3 +135,13 @@
     min-width: 220px;
     max-width: 360px;
 }
+
+#va-table .va-actions-cell {
+    white-space: nowrap;
+}
+
+#va-table .va-actions-cell a,
+#va-table .va-actions-cell form {
+    display: inline-block;
+    margin-right: 4px;
+}

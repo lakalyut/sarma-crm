@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card-narrow">
+  <h1>Редактирование визита</h1>
+
+  {% include "includes/messages.html" %}
+
+  <div class="page-subtitle" style="margin-bottom: 16px;">
+    {{ visit.city }} · {{ ambassador_name }} · записан {{ visit.created_at.strftime("%d.%m.%Y %H:%M") }}
+  </div>
+
+  <form method="post" action="/admin/visits/{{ visit.id }}/edit" id="visit-form">
+    <input type="hidden" name="back_url" value="{{ back_url }}">
+
+    <div class="field">
+      <label>Клиент</label>
+      <select name="client" class="js-custom-select">
+        {% for c in clients %}
+          <option value="{{ c }}" {% if c == f.client %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+        {% if f.client and f.client not in clients %}
+          <option value="{{ f.client }}" selected>{{ f.client }} (нет в справочнике города)</option>
+        {% endif %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Тип точки</label>
+      <select name="sale_type" class="js-custom-select">
+        {% for t in types %}
+          <option value="{{ t }}" {% if t == f.sale_type %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+        {% if f.sale_type and f.sale_type not in types %}
+          <option value="{{ f.sale_type }}" selected>{{ f.sale_type }} (нет в справочнике города)</option>
+        {% endif %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Дата визита</label>
+      <input type="date" name="visit_date" value="{{ f.visit_date }}">
+      <div class="field-hint">Влияет на попадание визита в месяц лидерборда и вкладки «Анализ визита».</div>
+    </div>
+
+    <div class="field">
+      <label>Кол-во SKU на полке (по линейкам)</label>
+      <div class="visit-sku-grid">
+        <label class="visit-sku-item">
+          <span>Классическая</span>
+          <input type="number" name="sku_classic" min="0" step="1" inputmode="numeric" value="{{ f.sku_classic }}" required>
+        </label>
+        <label class="visit-sku-item">
+          <span>Крепкая</span>
+          <input type="number" name="sku_strong" min="0" step="1" inputmode="numeric" value="{{ f.sku_strong }}" required>
+        </label>
+        <label class="visit-sku-item">
+          <span>Лёгкая</span>
+          <input type="number" name="sku_light" min="0" step="1" inputmode="numeric" value="{{ f.sku_light }}" required>
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Кол-во человек на мероприятии</label>
+      <input type="number" name="people_count" min="0" step="1" inputmode="numeric" value="{{ f.people_count }}" required>
+    </div>
+
+    <div class="field">
+      <label>Цель визита</label>
+      <div id="goal-chips" class="visit-goal-chips">
+        {% for g in visit_goals %}
+          <button type="button" class="visit-goal-chip" data-goal="{{ g }}">{{ g }}</button>
+        {% endfor %}
+      </div>
+      <input type="text" name="goal" id="goal-input" value="{{ f.goal }}" autocomplete="off" required>
+    </div>
+
+    <div class="field">
+      <label>Комментарий</label>
+      <textarea name="comment" rows="3" required>{{ f.comment }}</textarea>
+    </div>
+
+    <div class="field">
+      <label>Ароматы <span class="field-hint" style="display:inline;">(<span id="aromas-count">{{ f.product_ids|length }}</span> выбрано)</span></label>
+      <div class="visit-aromas-box">
+        {% set ns = namespace(cat=None) %}
+        {% for p in products %}
+          {% if p.category != ns.cat %}
+            {% set ns.cat = p.category %}
+            <div class="field-hint" style="margin: 8px 0 2px;">{{ p.category }}</div>
+          {% endif %}
+          <label class="product-row" style="display:flex; align-items:center; gap:8px; padding:5px 0;">
+            <input type="checkbox" name="product_ids" value="{{ p.id }}" {% if p.id in f.product_ids %}checked{% endif %}>
+            <span>{{ p.brand }} — {{ p.flavor }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="flex-row actions-split" style="margin-top: 18px;">
+      <a class="btn btn-secondary" href="{{ back_url }}">Отмена</a>
+      <button type="submit">Сохранить</button>
+    </div>
+  </form>
+
+  <form
+    method="post"
+    action="/admin/visits/{{ visit.id }}/delete"
+    style="margin-top: 14px;"
+    onsubmit="return confirm('Удалить визит {{ visit.client }} от {{ visit.created_at.strftime('%d.%m.%Y') }}? Это необратимо.');"
+  >
+    <input type="hidden" name="back_url" value="{{ back_url }}">
+    <button type="submit" class="btn-secondary" style="color: var(--danger); border-color: var(--danger-border);">Удалить визит</button>
+  </form>
+</div>
+
+<style>
+  .visit-aromas-box {
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 8px 12px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const goalInput = document.getElementById("goal-input");
+    document.querySelectorAll("#goal-chips .visit-goal-chip").forEach(chip => {
+        chip.addEventListener("click", () => { goalInput.value = chip.dataset.goal; });
+    });
+
+    const countEl = document.getElementById("aromas-count");
+    const boxes = document.querySelectorAll('.visit-aromas-box input[type="checkbox"]');
+    function updateCount() {
+        countEl.textContent = document.querySelectorAll('.visit-aromas-box input[type="checkbox"]:checked').length;
+    }
+    boxes.forEach(cb => cb.addEventListener("change", updateCount));
+});
+</script>
+{% endblock %}

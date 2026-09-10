@@ -45,6 +45,7 @@ def get_visit_analysis(
 
     return [
         {
+            "id": v.id,
             "date": v.created_at.strftime("%d.%m.%Y"),
             "client": v.client,
             "sale_type": v.sale_type,
