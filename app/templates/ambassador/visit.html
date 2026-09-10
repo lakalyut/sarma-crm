@@ -53,36 +53,37 @@
     <div class="visit-sku-grid">
       <label class="visit-sku-item">
         <span>Классическая</span>
-        <input type="number" name="sku_classic" min="0" step="1" inputmode="numeric" required>
+        <input type="number" name="sku_classic" min="0" step="1" inputmode="numeric">
       </label>
       <label class="visit-sku-item">
         <span>Крепкая</span>
-        <input type="number" name="sku_strong" min="0" step="1" inputmode="numeric" required>
+        <input type="number" name="sku_strong" min="0" step="1" inputmode="numeric">
       </label>
       <label class="visit-sku-item">
         <span>Лёгкая</span>
-        <input type="number" name="sku_light" min="0" step="1" inputmode="numeric" required>
+        <input type="number" name="sku_light" min="0" step="1" inputmode="numeric">
       </label>
     </div>
   </div>
 
   <div class="field">
     <label>Кол-во человек на мероприятии</label>
-    <input type="number" name="people_count" min="0" step="1" inputmode="numeric" required>
+    <input type="number" name="people_count" min="0" step="1" inputmode="numeric">
   </div>
 
   <div class="field">
     <label>Цель визита</label>
     <div id="goal-chips" class="visit-goal-chips"></div>
-    <input type="text" name="goal" id="goal-input" placeholder="Или впишите свою цель" autocomplete="off" required>
+    <input type="text" name="goal" id="goal-input" placeholder="Или впишите свою цель" autocomplete="off">
   </div>
 
   <div class="field">
     <label>Комментарий</label>
-    <textarea name="comment" id="comment-input" rows="3" placeholder="Заметки по точке — увидят на следующем визите" required></textarea>
+    <textarea name="comment" id="comment-input" rows="3" placeholder="Заметки по точке — увидят на следующем визите"></textarea>
   </div>
 
-  <button type="submit" id="submit-btn" disabled>Записать визит</button>
+  <div class="message error" id="visit-invalid-note" hidden>Заполните выделенные поля — все поля визита обязательны.</div>
+  <button type="submit" id="submit-btn">Записать визит</button>
 </form>
 
 <script>
@@ -110,7 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
         chip.textContent = g;
         chip.addEventListener("click", () => {
             goalInput.value = g;
-            updateSubmitEnabled();
+            refreshValidity();
         });
         goalChips.appendChild(chip);
     });
@@ -190,13 +191,61 @@ document.addEventListener("DOMContentLoaded", function () {
         'input[name="sku_classic"], input[name="sku_strong"], input[name="sku_light"], input[name="people_count"], #goal-input, #comment-input'
     ));
 
-    function updateSubmitEnabled() {
-        const hasProducts = document.querySelectorAll('#products-list input[type="checkbox"]:checked').length > 0;
-        const surveyDone = surveyInputs.every(el => el.value.trim() !== "");
-        submitBtn.disabled = !(clientHidden.value && hasProducts && surveyDone);
+    // Кнопка «Записать визит» всегда активна. Раньше она блокировалась до
+    // заполнения всех полей — но без объяснения, что именно не заполнено.
+    // Теперь по клику подсвечиваем красным незаполненные обязательные поля.
+    const form = document.getElementById("visit-form");
+    const invalidNote = document.getElementById("visit-invalid-note");
+    let validationShown = false;
+
+    function requiredChecks() {
+        return [
+            { ok: !!clientHidden.value, el: clientInput.closest(".field") },
+            { ok: !!typeSelect.value, el: typeSelect.closest(".field") },
+            {
+                ok: document.querySelectorAll('#products-list input[type="checkbox"]:checked').length > 0,
+                el: document.getElementById("aromas-collapse"),
+                aromas: true,
+            },
+            { ok: form.sku_classic.value.trim() !== "", el: form.sku_classic },
+            { ok: form.sku_strong.value.trim() !== "", el: form.sku_strong },
+            { ok: form.sku_light.value.trim() !== "", el: form.sku_light },
+            { ok: form.people_count.value.trim() !== "", el: form.people_count.closest(".field") },
+            { ok: goalInput.value.trim() !== "", el: goalInput.closest(".field") },
+            { ok: document.getElementById("comment-input").value.trim() !== "", el: document.getElementById("comment-input").closest(".field") },
+        ];
     }
 
-    surveyInputs.forEach(el => el.addEventListener("input", updateSubmitEnabled));
+    function paintValidity() {
+        let firstBad = null;
+        let aromasBad = false;
+        requiredChecks().forEach(c => {
+            if (c.el) c.el.classList.toggle("is-invalid", !c.ok);
+            if (!c.ok && !firstBad) firstBad = c.el;
+            if (!c.ok && c.aromas) aromasBad = true;
+        });
+        if (invalidNote) invalidNote.hidden = !firstBad;
+        return { valid: !firstBad, firstBad, aromasBad };
+    }
+
+    function refreshValidity() {
+        if (validationShown) paintValidity();
+    }
+
+    surveyInputs.forEach(el => el.addEventListener("input", refreshValidity));
+
+    form.addEventListener("submit", function (e) {
+        validationShown = true;
+        const { valid, firstBad, aromasBad } = paintValidity();
+        if (!valid) {
+            e.preventDefault();
+            if (aromasBad) {
+                aromasBody.classList.remove("is-hidden");
+                aromasToggle.setAttribute("aria-expanded", "true");
+            }
+            (firstBad || invalidNote).scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    });
 
     function renderProducts() {
         const type = typeSelect.value;
@@ -218,12 +267,12 @@ document.addEventListener("DOMContentLoaded", function () {
         productsList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             cb.addEventListener("change", function () {
                 updateAromasCount();
-                updateSubmitEnabled();
+                refreshValidity();
             });
         });
         productSearch.value = "";
         updateAromasCount();
-        updateSubmitEnabled();
+        refreshValidity();
     }
 
     function filterProducts() {
@@ -258,7 +307,7 @@ document.addEventListener("DOMContentLoaded", function () {
         typeSelect.innerHTML = (options.types_by_city[currentCity()] || [])
             .map(t => '<option value="' + t + '">' + t + "</option>").join("");
         renderProducts();
-        updateSubmitEnabled();
+        refreshValidity();
     }
 
     clientInput.addEventListener("input", function (e) {
@@ -266,7 +315,7 @@ document.addEventListener("DOMContentLoaded", function () {
         selectedClientEl.style.display = "none";
         renderHistory([]);
         renderClientList(e.target.value);
-        updateSubmitEnabled();
+        refreshValidity();
     });
 
     clientDropdown.addEventListener("click", function (e) {
@@ -279,7 +328,7 @@ document.addEventListener("DOMContentLoaded", function () {
         selectedClientEl.textContent = "Выбрано: " + value;
         selectedClientEl.style.display = "block";
         loadHistory(value);
-        updateSubmitEnabled();
+        refreshValidity();
     });
 
     document.addEventListener("click", function (e) {

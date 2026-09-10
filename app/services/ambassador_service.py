@@ -91,6 +91,28 @@ def get_visit_options(db: Session, city: str) -> dict:
     }
 
 
+def get_visit_months(db: Session, city: str | None = None) -> list[str]:
+    """Месяцы, в которые были визиты (`Visit.created_at` → 'YYYY-MM-01').
+    Вкладки «Анализ визита»/«Эффективность визита» строят пикер периода из
+    объединения этого списка с `Sale.month`: визит текущего месяца иначе
+    невиден — за него ещё нет импорта продаж, а месяц берётся из `Sale`."""
+    query = db.query(Visit.created_at)
+    if city:
+        query = query.filter(Visit.city == city)
+    months = {dt.strftime("%Y-%m-01") for (dt,) in query if dt}
+    return sorted(months)
+
+
+def get_visit_clients(db: Session, city: str | None = None) -> list[str]:
+    """Клиенты, к которым были визиты — для дропдауна «Клиенты» на тех же
+    вкладках (Sale-справочник клиентов не знает про точку, где визит был, а
+    продажи ещё нет)."""
+    query = db.query(Visit.client).filter(Visit.client.isnot(None))
+    if city:
+        query = query.filter(Visit.city == city)
+    return sorted({row[0] for row in query.distinct() if row[0]})
+
+
 def get_client_visit_history(
     db: Session, city: str, client: str, limit: int = 15
 ) -> list[dict]:

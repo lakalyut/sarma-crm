@@ -12,6 +12,7 @@ from ..services.abc_service import (
     get_client_abc_overview,
     guess_default_segment,
 )
+from ..services.ambassador_service import get_visit_clients, get_visit_months
 from ..services.ambassadors_service import (
     build_ambassadors_report,
     get_distinct_skus,
@@ -26,7 +27,13 @@ from ..services.client_analysis_service import (
 from ..services.sales_options_service import get_cities, get_clients, get_months
 from ..services.visit_analysis_service import get_visit_analysis
 from ..services.visit_effectiveness_service import build_visit_effectiveness_report
+from ..utils.dates import month_sort_key
 from ..utils.params import get_int_param
+
+# Вкладки, которые про визиты, а не про продажи: их пикер периода и список
+# клиентов дополняются данными из Visit (месяц/клиент визита, за который
+# импорта Sale ещё нет, иначе не виден).
+_VISIT_TABS = ("visit_analysis", "visit_effectiveness")
 
 router = APIRouter()
 
@@ -98,6 +105,12 @@ def client_analysis_page(
         )
 
     all_months = get_months(db, city=city, reverse=True)
+    if active_tab in _VISIT_TABS:
+        all_months = sorted(
+            set(all_months) | set(get_visit_months(db, city)),
+            key=month_sort_key,
+            reverse=True,
+        )
 
     raw_selected_months = [m for m in (months or []) if m in all_months]
     selected_months = normalize_selected_months(
@@ -106,6 +119,8 @@ def client_analysis_page(
     )
 
     all_clients = get_clients(db, city=city, months=raw_selected_months)
+    if active_tab in _VISIT_TABS:
+        all_clients = sorted(set(all_clients) | set(get_visit_clients(db, city)))
     selected_clients = [c for c in (clients or []) if c in all_clients]
 
     if active_tab == "ambassadors":

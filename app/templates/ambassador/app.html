@@ -133,6 +133,12 @@
         cursor: pointer;
     }
     button.primary:disabled { background: #c4bfff; cursor: default; }
+    .field.is-invalid > label { color: #e7000b; }
+    .is-invalid, .visit-collapse.is-invalid { border-color: #e7000b; background: #fdecea; }
+    .invalid-note {
+        margin: 8px 0 0; padding: 8px 10px; border-radius: 8px;
+        background: #fdecea; color: #e7000b; font-size: 13px; font-weight: 600;
+    }
     button.secondary {
         width: 100%;
         padding: 13px;
@@ -237,7 +243,8 @@
             <textarea id="comment-input" rows="3" placeholder="Заметки по точке — увидят на следующем визите"></textarea>
         </div>
 
-        <button class="primary" id="submit-btn" disabled>Записать визит</button>
+        <div class="invalid-note is-hidden" id="invalid-note">Заполните выделенные поля — все поля визита обязательны.</div>
+        <button class="primary" id="submit-btn">Записать визит</button>
         <div id="submit-result" class="hint" style="margin-top: 10px;"></div>
     </div>
 
@@ -278,10 +285,6 @@ function escHtml(s) {
 
 function clearSurvey() {
     SURVEY_IDS.forEach(id => { document.getElementById(id).value = ''; });
-}
-
-function surveyComplete() {
-    return SURVEY_IDS.every(id => document.getElementById(id).value.trim() !== '');
 }
 
 function renderHistory(items) {
@@ -431,12 +434,55 @@ function filterProducts() {
     });
 }
 
+// Кнопка «Записать визит» всегда активна. По клику подсвечиваем красным
+// незаполненные обязательные поля — раньше кнопка просто блокировалась без
+// объяснения, что не так.
+let validationShown = false;
+
+function requiredChecks() {
+    const g = id => document.getElementById(id);
+    const filled = id => g(id).value.trim() !== '';
+    return [
+        { ok: !!selectedClient, el: g('client-field') },
+        { ok: !!g('type-select').value, el: g('type-field') },
+        {
+            ok: document.querySelectorAll('#products-list input[type="checkbox"]:checked').length > 0,
+            el: document.querySelector('#products-field .visit-collapse'),
+            aromas: true,
+        },
+        { ok: filled('sku-classic'), el: g('sku-classic') },
+        { ok: filled('sku-strong'), el: g('sku-strong') },
+        { ok: filled('sku-light'), el: g('sku-light') },
+        { ok: filled('people-count'), el: g('people-count') },
+        { ok: filled('goal-input'), el: g('goal-input') },
+        { ok: filled('comment-input'), el: g('comment-input') },
+    ];
+}
+
+function paintValidity() {
+    let firstBad = null;
+    let aromasBad = false;
+    requiredChecks().forEach(c => {
+        if (c.el) c.el.classList.toggle('is-invalid', !c.ok);
+        if (!c.ok && !firstBad) firstBad = c.el;
+        if (!c.ok && c.aromas) aromasBad = true;
+    });
+    document.getElementById('invalid-note').classList.toggle('is-hidden', !firstBad);
+    return { valid: !firstBad, firstBad, aromasBad };
+}
+
 function updateSubmitEnabled() {
-    const hasProducts = document.querySelectorAll('#products-list input[type="checkbox"]:checked').length > 0;
-    document.getElementById('submit-btn').disabled = !(selectedClient && hasProducts && surveyComplete());
+    if (validationShown) paintValidity();
+}
+
+function clearValidity() {
+    validationShown = false;
+    document.querySelectorAll('#visit-card .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    document.getElementById('invalid-note').classList.add('is-hidden');
 }
 
 function resetForm() {
+    clearValidity();
     selectedClient = '';
     document.getElementById('client-input').value = '';
     document.getElementById('selected-client').classList.add('is-hidden');
@@ -475,6 +521,18 @@ document.getElementById('product-search').addEventListener('input', filterProduc
 SURVEY_IDS.forEach(id => document.getElementById(id).addEventListener('input', updateSubmitEnabled));
 
 document.getElementById('submit-btn').addEventListener('click', () => {
+    validationShown = true;
+    const v = paintValidity();
+    if (!v.valid) {
+        if (v.aromasBad) {
+            document.getElementById('aromas-body').classList.remove('is-hidden');
+            document.getElementById('aromas-toggle').setAttribute('aria-expanded', 'true');
+        }
+        (v.firstBad || document.getElementById('invalid-note'))
+            .scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
     const city = document.getElementById('city-select').value;
     const saleType = document.getElementById('type-select').value;
     const productIds = Array.from(
@@ -509,12 +567,12 @@ document.getElementById('submit-btn').addEventListener('click', () => {
             } else {
                 document.getElementById('submit-result').innerHTML =
                     '<span class="fail">' + (body.detail || res.status) + '</span>';
-                updateSubmitEnabled();
+                btn.disabled = false;
             }
         })
         .catch((err) => {
             document.getElementById('submit-result').innerHTML = '<span class="fail">Сеть/сервер: ' + err + '</span>';
-            updateSubmitEnabled();
+            btn.disabled = false;
         });
 });
 

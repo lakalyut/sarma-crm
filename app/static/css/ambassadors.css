@@ -414,6 +414,21 @@
     padding: 10px 12px;
 }
 
+/* Подсветка незаполненных обязательных полей после клика «Записать визит».
+   Кнопка больше не блокируется — вместо этого поля краснеют. */
+#visit-form .field.is-invalid > label {
+    color: var(--danger);
+}
+
+#visit-form .field.is-invalid input,
+#visit-form .field.is-invalid textarea,
+#visit-form .field.is-invalid .custom-select-display,
+#visit-form input.is-invalid,
+#visit-form .visit-collapse.is-invalid {
+    border-color: var(--danger);
+    background: var(--danger-bg);
+}
+
 /* Раскрывающаяся карточка «Ароматы» */
 .visit-collapse {
     border: 1px solid var(--input-border);
