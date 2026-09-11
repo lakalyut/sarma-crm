@@ -7,14 +7,17 @@ SKU, см. `build_client_sku_status` в `ambassadors_service.py`) за выбр�
 календарной даты «сегодня» — продажи грузятся с опозданием на месяц, см.
 CLAUDE.md), не переиспользуем саму функцию напрямую (список статусов и
 приоритеты разошлись — на уровне SKU это лишний риск сломать отчёты
-"Амбассадорский отчёт"/детализация клиента), но два статуса, которых у
-SKU-версии нет:
-- **slowing** («Замедляется») — в конце окна уже есть разрыв без продаж, но
-  ещё короче `lost_months`: ранний сигнал раньше, чем клиент официально
-  «потерян».
-- **winback** («Вернулся») — где-то внутри окна был разрыв длиной
-  `lost_months` и больше (то есть по факту клиент «уходил»), но к концу окна
-  снова активен.
+"Амбассадорский отчёт"/детализация клиента), но статусы всего 4 — столько
+же, сколько у SKU-версии (New/Lost/Unstable/Existing), специально ради
+единообразия.
+
+**История:** первая версия (2026-09-11) заводила 6 статусов — отдельно
+"slowing" (хвостовой разрыв короче `lost_months`) и "winback" (был разрыв
+длиной `lost_months`+ внутри окна, но клиент снова активен). По фидбеку
+пользователя («смущает такое большое количество статусов») слиты в один
+"unstable" — сама подсказка (`_status_reason`) при наведении по-прежнему
+называет конкретную причину (хвостовой разрыв или разрыв внутри периода),
+просто это больше не отдельный статус/цвет плашки.
 """
 
 from collections import defaultdict
@@ -33,17 +36,15 @@ DEFAULT_STATUS_SETTINGS = {
 
 STATUS_LABELS = {
     "lost": "Потерян",
-    "slowing": "Замедляется",
     "unstable": "Нестабильный",
-    "winback": "Вернулся",
     "new": "Новый",
     "existing": "Активен",
     "empty": "Нет продаж",
 }
 
-# Порядок статусов по умолчанию — тревожные и «интересные» сигналы сверху,
-# спокойные (existing) внизу. Тот же список задаёт и порядок status_counts.
-STATUS_ORDER = ["lost", "slowing", "unstable", "winback", "new", "existing", "empty"]
+# Порядок статусов по умолчанию — тревожные сигналы сверху, спокойные
+# (existing) внизу. Тот же список задаёт и порядок status_counts.
+STATUS_ORDER = ["lost", "unstable", "new", "existing", "empty"]
 
 
 def detect_client_status(
@@ -109,13 +110,11 @@ def detect_client_status(
     if is_new:
         return "new", STATUS_LABELS["new"], details
 
-    if max_gap_inside >= lost_months:
-        return "winback", STATUS_LABELS["winback"], details
-
-    if missing_months_at_end > 0:
-        return "slowing", STATUS_LABELS["slowing"], details
-
-    if max_gap_inside >= unstable_gap_months:
+    # Любая нестабильность короче "потерян" — хвостовой разрыв (ещё не
+    # дотянул до lost_months) или разрыв внутри периода (был перебой,
+    # сейчас снова покупает) — один статус "Нестабильный", причину уточняет
+    # _status_reason() в подсказке на плашке, не отдельным цветом.
+    if missing_months_at_end > 0 or max_gap_inside >= unstable_gap_months:
         return "unstable", STATUS_LABELS["unstable"], details
 
     return "existing", STATUS_LABELS["existing"], details
@@ -156,20 +155,19 @@ def _status_reason(
             f"это последние {status_settings.get('new_client_months', 2)} мес. периода"
         )
 
-    if status == "winback":
+    if status == "unstable":
+        # Хвостовой разрыв (клиент замолчал недавно, но ещё не "потерян") —
+        # более срочный сигнал, чем разрыв где-то в середине периода,
+        # поэтому если есть оба — говорим про хвостовой.
+        if details["missing_months_at_end"] > 0:
+            return (
+                f"Нет продаж последние {details['missing_months_at_end']} мес. — "
+                f"последняя покупка была в {month_at(details['last_active_index'])}"
+            )
         return (
             f"Был перерыв без продаж {gap_range()} "
-            f"({details['max_gap_inside']} мес.), затем снова покупки"
+            f"({details['max_gap_inside']} мес.) внутри периода, затем снова покупки"
         )
-
-    if status == "slowing":
-        return (
-            f"Нет продаж последние {details['missing_months_at_end']} мес. — "
-            f"последняя покупка была в {month_at(details['last_active_index'])}"
-        )
-
-    if status == "unstable":
-        return f"Перерыв без продаж {gap_range()} ({details['max_gap_inside']} мес.) внутри периода"
 
     return (
         "Стабильные продажи весь период, без перерывов от "

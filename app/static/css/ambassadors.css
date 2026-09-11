@@ -397,9 +397,11 @@
 /* =========================
    Здоровье клиентской базы: статус клиента ЦЕЛИКОМ (не отдельного SKU —
    см. client_health_service.py). Те же токены цвета, что у amb-sku-status-*
-   выше, плюс два новых статуса без SKU-аналога (slowing/winback) — новый
-   набор классов, а не переиспользование amb-sku-status-*, чтобы разметка не
-   намекала на «это про SKU» там, где это про клиента целиком.
+   выше — новый набор классов, а не переиспользование amb-sku-status-*,
+   чтобы разметка не намекала на «это про SKU» там, где это про клиента
+   целиком. Изначально (2026-09-11) было 6 статусов — slowing/winback слиты
+   в unstable по фидбеку «много статусов», причина осталась в подсказке
+   (title) на плашке, отдельного цвета для неё больше нет.
 ========================= */
 
 .client-status-badge {
@@ -419,19 +421,9 @@
     background: var(--status-lost-badge-bg);
 }
 
-.client-status-badge-slowing {
-    color: var(--status-slowing-text);
-    background: var(--status-slowing-badge-bg);
-}
-
 .client-status-badge-unstable {
     color: var(--status-unstable-text);
     background: var(--status-unstable-badge-bg);
-}
-
-.client-status-badge-winback {
-    color: var(--status-winback-text);
-    background: var(--status-winback-badge-bg);
 }
 
 .client-status-badge-new {

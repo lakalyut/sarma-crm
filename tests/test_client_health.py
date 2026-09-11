@@ -1,5 +1,6 @@
 """«Здоровье клиентской базы» — статус клиента целиком (не по SKU):
-активен/новый/потерян/замедляется/нестабильный/вернулся."""
+активен/новый/нестабильный/потерян. (Было 6 статусов, слиты в 4 по фидбеку
+пользователя — см. докстринг client_health_service.py.)"""
 
 DEFAULT_SETTINGS = {
     "new_client_months": 2,
@@ -48,29 +49,30 @@ def test_detect_client_status_lost():
     assert status == "lost"
 
 
-def test_detect_client_status_slowing():
+def test_detect_client_status_unstable_trailing_gap():
     """Хвостовой разрыв есть, но короче lost_months — ранний сигнал,
-    ещё не «Потерян»."""
+    ещё не «Потерян» (было бы «Замедляется» до слияния статусов)."""
     from app.services.client_health_service import detect_client_status
 
     status, _, _ = detect_client_status([1, 1, 1, 0], DEFAULT_SETTINGS)
-    assert status == "slowing"
+    assert status == "unstable"
 
 
-def test_detect_client_status_unstable():
+def test_detect_client_status_unstable_internal_gap():
     from app.services.client_health_service import detect_client_status
 
     status, _, _ = detect_client_status([1, 0, 1, 1], DEFAULT_SETTINGS)
     assert status == "unstable"
 
 
-def test_detect_client_status_winback():
+def test_detect_client_status_unstable_after_long_dropout():
     """Разрыв внутри периода длиной lost_months и больше, но к концу окна
-    клиент снова активен — вернулся после ухода."""
+    клиент снова активен (было бы «Вернулся» до слияния статусов) — тоже
+    «Нестабильный», причина уточняется в тексте подсказки, не в статусе."""
     from app.services.client_health_service import detect_client_status
 
     status, _, _ = detect_client_status([1, 0, 0, 1], DEFAULT_SETTINGS)
-    assert status == "winback"
+    assert status == "unstable"
 
 
 def test_detect_client_status_empty():
@@ -111,7 +113,7 @@ def test_status_reason_mentions_gap_and_last_month(db_session):
     health = build_client_health(db_session, city="Иркутск", selected_months=months)
     row = health["rows"][0]
 
-    assert row["status"] == "winback"
+    assert row["status"] == "unstable"
     assert "Июль 2026" in row["status_reason"]
     assert "Август 2026" in row["status_reason"]
     assert "2 мес." in row["status_reason"]

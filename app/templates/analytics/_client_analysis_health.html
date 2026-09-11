@@ -225,14 +225,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const statusLabels = {
         all: "Все",
         lost: "Потерян",
-        slowing: "Замедляется",
         unstable: "Нестабильный",
-        winback: "Вернулся",
         new: "Новый",
         existing: "Активен",
         empty: "Нет продаж"
     };
-    const statusOrder = ["lost", "slowing", "unstable", "winback", "new", "existing", "empty"];
+    const statusOrder = ["lost", "unstable", "new", "existing", "empty"];
     const present = new Set(rows.map(row => row.dataset.status));
     const availableStatuses = ["all", ...statusOrder.filter(status => present.has(status))];
 
