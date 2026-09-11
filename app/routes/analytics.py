@@ -18,12 +18,14 @@ from ..services.ambassadors_service import (
     normalize_selected_months,
 )
 from ..services.charts_service import get_charts_metrics_data
+from ..services.client_health_service import build_client_health
 from ..services.clients_service import (
     get_client_detail_data,
     get_clients_summary_data,
 )
 from ..services.sale_filters import build_sale_filters
 from ..services.sales_options_service import get_cities, get_months, get_types
+from ..utils.dates import month_sort_key
 from ..utils.params import get_int_param
 
 router = APIRouter()
@@ -88,6 +90,7 @@ def analytics_clients(
                 },
                 "type_cards": [],
                 "monthly_by_client": {},
+                "client_health_by_key": {},
                 "empty_state": {
                     "hint": "Выберите регион в фильтре выше — здесь появится сводка по клиентам"
                 },
@@ -124,6 +127,21 @@ def analytics_clients(
     type_cards = clients_data["type_cards"]
     monthly_by_client = clients_data["monthly_by_client"]
 
+    # Статус клиента («Активен»/«Замедляется»/«Потерян»/...) — всегда по
+    # ПОЛНОЙ истории города (all_months), не по текущему фильтру периода
+    # таблицы: это сигнал «в целом со временем», а не срез за выбранный
+    # отчётный диапазон, см. client_health_service.py.
+    client_health_by_key = {}
+    if all_months:
+        health = build_client_health(
+            db=db,
+            city=city,
+            selected_months=sorted(all_months, key=month_sort_key),
+        )
+        client_health_by_key = {
+            (r["client"], r["sale_type"]): r for r in health["rows"]
+        }
+
     matched_flag = None
     if matched == "1":
         matched_flag = True
@@ -146,6 +164,7 @@ def analytics_clients(
             "summary": summary,
             "type_cards": type_cards,
             "monthly_by_client": monthly_by_client,
+            "client_health_by_key": client_health_by_key,
             **layout,
         },
     )

@@ -175,10 +175,12 @@ table.sheet-table tbody tr:hover td {
         height: 52px;
     }
 
-/* 9 колонок: чекбокс, Тип точки, Клиент, Количество, Вес, SKU, Динамика,
-   Δ период, Подробности — индексы ниже считаны от этого порядка (коммит
-   e29e593 добавил колонку-чекбокс первой и сдвинул все остальные на 1, эти
-   правила изначально написаны под старый порядок и не были пересчитаны). */
+/* 10 колонок: чекбокс, Тип точки, Клиент, Статус, Количество, Вес, SKU,
+   Динамика, Δ период, Подробности — индексы ниже считаны от этого порядка
+   (коммит e29e593 добавил колонку-чекбокс первой и сдвинул все остальные на
+   1; «Здоровье базы» 2026-09-11 добавила колонку-4 «Статус» и сдвинула
+   бывшие 4-9 на 5-10 — при добавлении/удалении колонки пересчитывать все
+   nth-child ниже, не только соседние). */
 #clients-table th:nth-child(1),
 #clients-table td:nth-child(1) {
         width: 40px;
@@ -189,7 +191,7 @@ table.sheet-table tbody tr:hover td {
 
 /* Амбассадорский вид «Клиентов» — без чекбоксов «Сформировать свод», первая
    колонка пустая, прячем её целиком (nth-child остальных колонок считает
-   DOM-позицию, ширины 2-9 не съезжают). */
+   DOM-позицию, ширины 2-10 не съезжают). */
 #clients-table.clients-table-noselect th:nth-child(1),
 #clients-table.clients-table-noselect td:nth-child(1) {
         display: none;
@@ -212,41 +214,48 @@ table.sheet-table tbody tr:hover td {
 
 #clients-table th:nth-child(4),
 #clients-table td:nth-child(4) {
+        width: 128px;
+        min-width: 128px;
+        max-width: 128px;
+    }
+
+#clients-table th:nth-child(5),
+#clients-table td:nth-child(5) {
         width: 108px;
         min-width: 108px;
         max-width: 108px;
     }
 
-#clients-table th:nth-child(5),
-#clients-table td:nth-child(5) {
+#clients-table th:nth-child(6),
+#clients-table td:nth-child(6) {
         width: 70px;
         min-width: 70px;
         max-width: 70px;
     }
 
-#clients-table th:nth-child(6),
-#clients-table td:nth-child(6) {
+#clients-table th:nth-child(7),
+#clients-table td:nth-child(7) {
         width: 56px;
         min-width: 56px;
         max-width: 56px;
     }
 
-#clients-table th:nth-child(7),
-#clients-table td:nth-child(7) {
+#clients-table th:nth-child(8),
+#clients-table td:nth-child(8) {
         width: 132px;
         min-width: 132px;
         max-width: 132px;
     }
 
-#clients-table th:nth-child(8),
-#clients-table td:nth-child(8) {
+#clients-table th:nth-child(9),
+#clients-table td:nth-child(9) {
         width: 150px;
         min-width: 150px;
         max-width: 150px;
     }
 
-#clients-table th:nth-child(9),
-#clients-table td:nth-child(9) {
+#clients-table th:nth-child(10),
+#clients-table td:nth-child(10) {
         width: 96px;
         min-width: 96px;
         max-width: 96px;

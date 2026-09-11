@@ -393,6 +393,62 @@
     background: var(--status-assortment-new-badge-bg);
     font-weight: 700;
 }
+
+/* =========================
+   Здоровье клиентской базы: статус клиента ЦЕЛИКОМ (не отдельного SKU —
+   см. client_health_service.py). Те же токены цвета, что у amb-sku-status-*
+   выше, плюс два новых статуса без SKU-аналога (slowing/winback) — новый
+   набор классов, а не переиспользование amb-sku-status-*, чтобы разметка не
+   намекала на «это про SKU» там, где это про клиента целиком.
+========================= */
+
+.client-status-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.client-status-badge-lost {
+    color: var(--status-lost-text);
+    background: var(--status-lost-badge-bg);
+}
+
+.client-status-badge-slowing {
+    color: var(--status-slowing-text);
+    background: var(--status-slowing-badge-bg);
+}
+
+.client-status-badge-unstable {
+    color: var(--status-unstable-text);
+    background: var(--status-unstable-badge-bg);
+}
+
+.client-status-badge-winback {
+    color: var(--status-winback-text);
+    background: var(--status-winback-badge-bg);
+}
+
+.client-status-badge-new {
+    color: var(--status-new-text);
+    background: var(--status-new-badge-bg);
+}
+
+.client-status-badge-existing {
+    color: var(--status-existing-text);
+    background: var(--status-existing-badge-bg);
+    font-weight: 400;
+}
+
+.client-status-badge-empty {
+    color: var(--status-existing-text);
+    background: var(--status-existing-badge-bg);
+    font-weight: 400;
+}
 /* --- Форма визита амбассадора: анкета (SKU по линейкам, цель, история) --- */
 
 /* Все контролы формы визита — как поле «Клиент» (обведённые, белый фон),
