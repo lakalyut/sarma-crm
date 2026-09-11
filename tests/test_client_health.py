@@ -210,52 +210,6 @@ def test_build_client_health_empty_without_city_or_months(db_session):
     )
 
 
-def test_client_health_tab_renders(admin_client, db_session):
-    _sale(db_session, "Кафе Потеряшка", "HoReCa", "2026-07-01")
-    # у города есть продажи и в августе, и в сентябре (от другого клиента) —
-    # иначе get_months() вообще не знает про эти месяцы, и «Кафе Потеряшка»
-    # классифицируется в единственном известном месяце (июль) как «Активен»,
-    # а не «Потерян».
-    _sale(db_session, "Кафе Другое", "HoReCa", "2026-08-01")
-    _sale(db_session, "Кафе Другое", "HoReCa", "2026-09-01")
-
-    resp = admin_client.get(
-        "/analytics/client-analysis?tab=client_health"
-        "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
-        "&months=2026-07-01&months=2026-08-01&months=2026-09-01"
-    )
-    assert resp.status_code == 200
-    assert "Здоровье базы" in resp.text
-    assert "Кафе Потеряшка" in resp.text
-    assert 'data-status="lost"' in resp.text
-    assert 'title="Нет продаж' in resp.text
-
-
-def test_client_health_tab_defaults_to_last_quarter(admin_client, db_session):
-    """Без явного выбора периода вкладка сама берёт последние 3 доступных
-    месяца (запрос пользователя, 2026-09-11), а не всю историю — и это видно
-    и в применённом статусе, и в подписи «Месяцы: ...» под фильтрами."""
-    for month in ["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01"]:
-        _sale(db_session, "Кафе Старое", "HoReCa", month)
-    for month in ["2026-07-01", "2026-08-01", "2026-09-01"]:
-        _sale(db_session, "Кафе Свежее", "HoReCa", month)
-
-    resp = admin_client.get(
-        "/analytics/client-analysis?tab=client_health"
-        "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
-    )
-    assert resp.status_code == 200
-    # «Кафе Старое» продавало только в янв-апр — вне последнего квартала
-    # (июль-сентябрь) — должно быть «Потерян», не пропасть из списка
-    assert "Кафе Старое" in resp.text
-    assert "Кафе Свежее" in resp.text
-    # подпись «Месяцы: ...» под фильтрами — честно показывает применённый
-    # период (квартал), не «Все месяцы» и не янв-февраль
-    assert "Месяцы: <span" in resp.text
-    assert "Июль 2026, Август 2026, Сентябрь 2026" in resp.text
-    assert "client-status-badge-lost" in resp.text
-
-
 def test_clients_summary_status_follows_months_filter(admin_client, db_session):
     """Явно выбранный в фильтре «Месяцы» период — статус считается по нему,
     не по умолчанию (квартал) и не по всей истории (запрос пользователя,
@@ -310,3 +264,18 @@ def test_clients_summary_shows_status_badge(admin_client, db_session):
     # STATUS_ORDER, не текст статуса)
     assert 'data-sort="status_rank"' in resp.text
     assert 'data-status_rank="' in resp.text
+
+
+def test_client_analysis_health_tab_removed(admin_client, db_session):
+    """Вкладка «Здоровье базы» на «Анализе по клиентам» убрана (излишний
+    функционал — запрос пользователя, 2026-09-11): статус клиента остаётся
+    только колонкой на «Клиентах». ?tab=client_health больше не валидная
+    вкладка — роут тихо откатывается на «Свод», не падает."""
+    _sale(db_session, "Кафе Убрано", "HoReCa", "2026-09-01")
+
+    resp = admin_client.get(
+        "/analytics/client-analysis?tab=client_health"
+        "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
+    )
+    assert resp.status_code == 200
+    assert "Здоровье базы" not in resp.text

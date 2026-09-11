@@ -24,7 +24,6 @@ from ..services.client_analysis_service import (
     get_summary_totals,
     get_types_rollup,
 )
-from ..services.client_health_service import build_client_health
 from ..services.sales_options_service import get_cities, get_clients, get_months
 from ..services.sku_presence_service import build_sku_presence, get_sku_options
 from ..services.visit_analysis_service import get_visit_analysis
@@ -62,7 +61,6 @@ def client_analysis_page(
             "visit_effectiveness",
             "visit_analysis",
             "sku_presence",
-            "client_health",
         )
         else "summary"
     )
@@ -113,7 +111,6 @@ def client_analysis_page(
                 "selected_skus": [],
                 "selected_segment_id": None,
                 "sku_presence": {"rows": [], "sku_count": 0},
-                "health": {"months": [], "rows": [], "status_counts": {}},
                 "empty_state": {
                     "hint": "Выберите регион в фильтре выше — здесь появится анализ по клиентам"
                 },
@@ -306,51 +303,6 @@ def client_analysis_page(
                 "selected_skus": selected_skus,
                 "selected_segment_id": selected_segment_id,
                 "sku_presence": presence,
-            },
-        )
-
-    if active_tab == "client_health":
-        status_settings = {
-            "new_client_months": get_int_param(request, "new_client_months", 2),
-            "lost_months": get_int_param(request, "lost_months", 2),
-            "unstable_gap_months": get_int_param(request, "unstable_gap_months", 1),
-        }
-
-        # Период по умолчанию — последний квартал (последние 3 доступных
-        # месяца), не вся история: статус — это «как дела сейчас», не
-        # накопленный с начала времён итог (запрос пользователя, 2026-09-11).
-        # Явный выбор пользователя в пикере (raw_selected_months) — как есть,
-        # normalize_selected_months() уже дал бы «всю историю», если бы тут
-        # ничего не было выбрано — для этой вкладки такой дефолт не годится.
-        if raw_selected_months:
-            health_selected_months = selected_months
-            health_raw_selected_months = raw_selected_months
-        else:
-            health_raw_selected_months = sorted(all_months[:3], key=month_sort_key)
-            health_selected_months = health_raw_selected_months
-
-        health = build_client_health(
-            db=db,
-            city=city,
-            selected_months=health_selected_months,
-            status_settings=status_settings,
-        )
-
-        return render(
-            request,
-            "analytics/client_analysis.html",
-            {
-                "title": "Аналитика по клиентам — Пульс",
-                "active_tab": active_tab,
-                "cities": cities,
-                "all_months": all_months,
-                "all_clients": all_clients,
-                "selected_city": city,
-                "selected_months": health_selected_months,
-                "raw_selected_months": health_raw_selected_months,
-                "selected_clients": selected_clients,
-                "status_settings": status_settings,
-                "health": health,
             },
         )
 

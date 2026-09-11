@@ -26,10 +26,6 @@
         href="/analytics/client-analysis?tab=sku_presence&{{ _tab_qs }}"
         class="chart-tab {% if active_tab == 'sku_presence' %}active{% endif %}"
     >Представленность SKU</a>
-    <a
-        href="/analytics/client-analysis?tab=client_health&{{ _tab_qs }}"
-        class="chart-tab {% if active_tab == 'client_health' %}active{% endif %}"
-    >Здоровье базы</a>
 </div>
 
 {% if active_tab == "ambassadors" %}
@@ -40,8 +36,6 @@
 {% include "analytics/_client_analysis_visit_analysis.html" %}
 {% elif active_tab == "sku_presence" %}
 {% include "analytics/_client_analysis_sku_presence.html" %}
-{% elif active_tab == "client_health" %}
-{% include "analytics/_client_analysis_health.html" %}
 {% else %}
 
 <div class="filters-card">
