@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ревизия типов точек</h1>
+
+<div class="page-subtitle" style="margin-bottom: 12px;">
+    Клиенты, у которых «Тип точки» (<code>HoReCa</code>/<code>Розница</code>/...) отличается от месяца
+    к месяцу — обычно там, где регион не присылает тип в исходных данных и он проставляется
+    вручную по эвристике (средний вес заказа). Эталона здесь нет — выбор «правильного» типа
+    всегда за вами, система только считает статистику и предлагает дефолт (самый частый по
+    числу строк). Выравнивание меняет <code>Sale.type</code> для всех продаж клиента; сырые
+    данные из XLSX не трогаются.
+</div>
+
+{% if resynced is not none %}
+    <div class="message ok">Выровнено продаж: {{ resynced }}.</div>
+{% endif %}
+
+{% if not groups %}
+    <div class="message ok">Расхождений по типам точек не найдено 🎉</div>
+{% else %}
+    <div class="message error">
+        Клиентов с расхождением: <b>{{ groups|length }}</b>, строк продаж под ними: <b>{{ total }}</b>.
+    </div>
+
+    <div class="sheet-wrapper">
+        <div class="sheet-scroller">
+            <table class="sheet-table">
+                <thead>
+                    <tr>
+                        <th>Город</th>
+                        <th>Клиент</th>
+                        <th>Встречавшиеся типы (строк)</th>
+                        <th>Действие</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in groups %}
+                        <tr>
+                            <td>{{ g.city }}</td>
+                            <td>{{ g.client }}</td>
+                            <td>
+                                {% for t, cnt in g.types %}
+                                    <span class="filter-tag" style="margin: 0 4px 4px 0;">{{ t or "— (пусто)" }} ({{ cnt }})</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <form method="post" action="/admin/point-types/review/resync" style="margin:0; display:flex; align-items:center; gap:6px;">
+                                    <input type="hidden" name="city" value="{{ g.city }}">
+                                    <input type="hidden" name="client" value="{{ g.client }}">
+                                    <select name="correct_type" class="js-custom-select">
+                                        {% for t, cnt in g.type_options %}
+                                            <option value="{{ t }}" {% if t == g.default_type %}selected{% endif %}>{{ t }} ({{ cnt }})</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn-secondary btn-small">Выровнять</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
