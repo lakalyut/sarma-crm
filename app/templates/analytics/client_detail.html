@@ -24,7 +24,7 @@
     <div class="message" style="margin-top: 12px;">Нет данных по этому клиенту под выбранные фильтры.</div>
 {% else %}
 
-    {% if monthly and monthly|length > 1 %}
+    {% if monthly %}
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
@@ -307,7 +307,7 @@
         </div>
     {% endif %}
 
-    {% if monthly and monthly|length > 1 %}
+    {% if monthly %}
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">

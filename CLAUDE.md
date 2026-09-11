@@ -241,6 +241,10 @@ SKU-статусы (New/Lost/Unstable — `build_client_sku_status()` в
 Количество/Вес/Уникальные SKU, переключатель Линия/Гистограмма). Настройки
 порогов SKU-статусов (`new_client_months`/`lost_months`/`unstable_gap_months`) — через
 `get_int_param()` в [app/utils/params.py](app/utils/params.py).
+**Карточки «Динамика по месяцам» и «График» показываются и при 1 месяце в выборке**
+(правка 2026-09-11, репорт «пропала карточка с таблицей продаж» — было `{% if monthly
+and monthly|length > 1 %}`, требовало ≥2 месяцев без явной причины, Chart.js и таблица
+прекрасно рендерят один месяц/одну точку). Условие теперь просто `{% if monthly %}`.
 
 **«Анализ по клиентам»** (`/analytics/client-analysis`,
 [app/routes/client_analysis.py](app/routes/client_analysis.py) +
