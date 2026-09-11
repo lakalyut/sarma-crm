@@ -325,7 +325,7 @@
                                     <td>
                                         {% set health_row = client_health_by_key.get((r.client, r.type)) %}
                                         {% if health_row %}
-                                            <span class="client-status-badge client-status-badge-{{ health_row.status }}">{{ health_row.status_label }}</span>
+                                            <span class="client-status-badge client-status-badge-{{ health_row.status }}" title="{{ health_row.status_reason }}">{{ health_row.status_label }}</span>
                                         {% else %}
                                             —
                                         {% endif %}

@@ -411,6 +411,7 @@
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
+    cursor: help;
 }
 
 .client-status-badge-lost {

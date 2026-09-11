@@ -30,21 +30,21 @@ def _sale(db_session, client, sale_type, month, weight=10.0, city="Иркутс�
 def test_detect_client_status_existing():
     from app.services.client_health_service import detect_client_status
 
-    status, _ = detect_client_status([1, 1, 1, 1], DEFAULT_SETTINGS)
+    status, _, _ = detect_client_status([1, 1, 1, 1], DEFAULT_SETTINGS)
     assert status == "existing"
 
 
 def test_detect_client_status_new():
     from app.services.client_health_service import detect_client_status
 
-    status, _ = detect_client_status([0, 0, 0, 1], DEFAULT_SETTINGS)
+    status, _, _ = detect_client_status([0, 0, 0, 1], DEFAULT_SETTINGS)
     assert status == "new"
 
 
 def test_detect_client_status_lost():
     from app.services.client_health_service import detect_client_status
 
-    status, _ = detect_client_status([1, 1, 0, 0], DEFAULT_SETTINGS)
+    status, _, _ = detect_client_status([1, 1, 0, 0], DEFAULT_SETTINGS)
     assert status == "lost"
 
 
@@ -53,14 +53,14 @@ def test_detect_client_status_slowing():
     ещё не «Потерян»."""
     from app.services.client_health_service import detect_client_status
 
-    status, _ = detect_client_status([1, 1, 1, 0], DEFAULT_SETTINGS)
+    status, _, _ = detect_client_status([1, 1, 1, 0], DEFAULT_SETTINGS)
     assert status == "slowing"
 
 
 def test_detect_client_status_unstable():
     from app.services.client_health_service import detect_client_status
 
-    status, _ = detect_client_status([1, 0, 1, 1], DEFAULT_SETTINGS)
+    status, _, _ = detect_client_status([1, 0, 1, 1], DEFAULT_SETTINGS)
     assert status == "unstable"
 
 
@@ -69,14 +69,14 @@ def test_detect_client_status_winback():
     клиент снова активен — вернулся после ухода."""
     from app.services.client_health_service import detect_client_status
 
-    status, _ = detect_client_status([1, 0, 0, 1], DEFAULT_SETTINGS)
+    status, _, _ = detect_client_status([1, 0, 0, 1], DEFAULT_SETTINGS)
     assert status == "winback"
 
 
 def test_detect_client_status_empty():
     from app.services.client_health_service import detect_client_status
 
-    status, _ = detect_client_status([0, 0, 0, 0], DEFAULT_SETTINGS)
+    status, _, _ = detect_client_status([0, 0, 0, 0], DEFAULT_SETTINGS)
     assert status == "empty"
 
 
@@ -99,6 +99,24 @@ def test_build_client_health_groups_by_client_and_type(db_session):
     assert health["status_counts"]["new"] == 1
 
 
+def test_status_reason_mentions_gap_and_last_month(db_session):
+    """Причина статуса — то, что уходит в title-тултип на плашке — должна
+    называть конкретный месяц/длину перерыва, а не быть общей фразой."""
+    from app.services.client_health_service import build_client_health
+
+    _sale(db_session, "Кафе Перерыв", "HoReCa", "2026-06-01")
+    _sale(db_session, "Кафе Перерыв", "HoReCa", "2026-09-01")
+
+    months = ["2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"]
+    health = build_client_health(db_session, city="Иркутск", selected_months=months)
+    row = health["rows"][0]
+
+    assert row["status"] == "winback"
+    assert "Июль 2026" in row["status_reason"]
+    assert "Август 2026" in row["status_reason"]
+    assert "2 мес." in row["status_reason"]
+
+
 def test_build_client_health_empty_without_city_or_months(db_session):
     from app.services.client_health_service import build_client_health
 
@@ -114,6 +132,12 @@ def test_build_client_health_empty_without_city_or_months(db_session):
 
 def test_client_health_tab_renders(admin_client, db_session):
     _sale(db_session, "Кафе Потеряшка", "HoReCa", "2026-07-01")
+    # у города есть продажи и в августе, и в сентябре (от другого клиента) —
+    # иначе get_months() вообще не знает про эти месяцы, и «Кафе Потеряшка»
+    # классифицируется в единственном известном месяце (июль) как «Активен»,
+    # а не «Потерян».
+    _sale(db_session, "Кафе Другое", "HoReCa", "2026-08-01")
+    _sale(db_session, "Кафе Другое", "HoReCa", "2026-09-01")
 
     resp = admin_client.get(
         "/analytics/client-analysis?tab=client_health"
@@ -123,7 +147,8 @@ def test_client_health_tab_renders(admin_client, db_session):
     assert resp.status_code == 200
     assert "Здоровье базы" in resp.text
     assert "Кафе Потеряшка" in resp.text
-    assert "Потерян" in resp.text
+    assert 'data-status="lost"' in resp.text
+    assert 'title="Нет продаж' in resp.text
 
 
 def test_clients_summary_shows_status_badge(admin_client, db_session):
@@ -135,3 +160,6 @@ def test_clients_summary_shows_status_badge(admin_client, db_session):
     assert resp.status_code == 200
     assert "Кафе Значок" in resp.text
     assert "client-status-badge" in resp.text
+    # единственный доступный месяц в городе — статус "Активен" (не с чего
+    # отсчитывать "новый"), причина — во всплывающей подсказке title=...
+    assert 'title="Стабильные продажи' in resp.text
