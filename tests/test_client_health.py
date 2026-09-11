@@ -122,6 +122,33 @@ def test_build_client_health_groups_by_client_and_type(db_session):
     assert health["status_counts"]["new"] == 1
 
 
+def test_build_client_health_marks_silent_known_client_as_lost(db_session):
+    """Регресс (запрос пользователя, 2026-09-11): статус теперь может
+    считаться за короткое окно (квартал), не за всю историю. Клиент,
+    покупавший только ДО этого окна (в городе он точно известен), не должен
+    просто пропасть из выдачи с пустой плашкой — это однозначно «Потерян»,
+    не «нет данных»."""
+    from app.services.client_health_service import build_client_health
+
+    _sale(db_session, "Кафе Давно", "HoReCa", "2026-01-01")
+    _sale(db_session, "Кафе Давно", "HoReCa", "2026-02-01")
+    # у города есть продажи и в окне (от другого клиента), иначе сами месяцы
+    # окна не «существуют» для параметра selected_months в этом тесте
+    _sale(db_session, "Кафе Свежее", "HoReCa", "2026-08-01")
+    _sale(db_session, "Кафе Свежее", "HoReCa", "2026-09-01")
+
+    quarter = ["2026-07-01", "2026-08-01", "2026-09-01"]
+    health = build_client_health(db_session, city="Иркутск", selected_months=quarter)
+    by_client = {r["client"]: r for r in health["rows"]}
+
+    assert by_client["Кафе Давно"]["status"] == "lost"
+    assert by_client["Кафе Давно"]["weight_total"] == 0.0
+    assert (
+        by_client["Кафе Давно"]["status_reason"]
+        == "Нет продаж за весь выбранный период"
+    )
+
+
 def test_build_client_health_new_point_mid_history_is_active(db_session):
     """Сквозной регресс (не только на голой функции): в городе есть долгая
     история (другой клиент торгует с января), «Кафе Новое» открылось в июне
@@ -202,6 +229,68 @@ def test_client_health_tab_renders(admin_client, db_session):
     assert "Кафе Потеряшка" in resp.text
     assert 'data-status="lost"' in resp.text
     assert 'title="Нет продаж' in resp.text
+
+
+def test_client_health_tab_defaults_to_last_quarter(admin_client, db_session):
+    """Без явного выбора периода вкладка сама берёт последние 3 доступных
+    месяца (запрос пользователя, 2026-09-11), а не всю историю — и это видно
+    и в применённом статусе, и в подписи «Месяцы: ...» под фильтрами."""
+    for month in ["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01"]:
+        _sale(db_session, "Кафе Старое", "HoReCa", month)
+    for month in ["2026-07-01", "2026-08-01", "2026-09-01"]:
+        _sale(db_session, "Кафе Свежее", "HoReCa", month)
+
+    resp = admin_client.get(
+        "/analytics/client-analysis?tab=client_health"
+        "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
+    )
+    assert resp.status_code == 200
+    # «Кафе Старое» продавало только в янв-апр — вне последнего квартала
+    # (июль-сентябрь) — должно быть «Потерян», не пропасть из списка
+    assert "Кафе Старое" in resp.text
+    assert "Кафе Свежее" in resp.text
+    # подпись «Месяцы: ...» под фильтрами — честно показывает применённый
+    # период (квартал), не «Все месяцы» и не янв-февраль
+    assert "Месяцы: <span" in resp.text
+    assert "Июль 2026, Август 2026, Сентябрь 2026" in resp.text
+    assert "client-status-badge-lost" in resp.text
+
+
+def test_clients_summary_status_follows_months_filter(admin_client, db_session):
+    """Явно выбранный в фильтре «Месяцы» период — статус считается по нему,
+    не по умолчанию (квартал) и не по всей истории (запрос пользователя,
+    2026-09-11)."""
+    _sale(db_session, "Кафе Фильтр", "HoReCa", "2026-01-01")
+    _sale(db_session, "Кафе Фильтр", "HoReCa", "2026-02-01")
+    _sale(db_session, "Кафе Другое", "HoReCa", "2026-09-01")
+
+    resp = admin_client.get(
+        "/analytics/clients?city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
+        "&months=2026-01-01&months=2026-02-01"
+    )
+    assert resp.status_code == 200
+    assert "client-status-badge-existing" in resp.text
+    assert "client-status-badge-lost" not in resp.text
+
+
+def test_clients_summary_default_quarter_marks_old_client_lost(
+    admin_client, db_session
+):
+    """Без явного фильтра статус по умолчанию считается за последний квартал
+    (не за всю историю) — клиент, продававший только задолго до него, должен
+    показать «Потерян», а не пропасть с пустой плашкой «—»."""
+    _sale(db_session, "Кафе Давнее", "HoReCa", "2026-01-01")
+    # заполняем город продажами вплоть до сентября (от другого клиента),
+    # чтобы «последний квартал» (июль-сентябрь) реально не включал январь
+    for month in ["2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"]:
+        _sale(db_session, "Кафе Свежее", "HoReCa", month)
+
+    resp = admin_client.get(
+        "/analytics/clients?city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
+    )
+    assert resp.status_code == 200
+    assert "Кафе Давнее" in resp.text
+    assert "client-status-badge-lost" in resp.text
 
 
 def test_clients_summary_shows_status_badge(admin_client, db_session):

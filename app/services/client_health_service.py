@@ -191,6 +191,16 @@ def build_client_health(
     selected_months: list[str],
     status_settings: dict | None = None,
 ) -> dict:
+    """`selected_months` теперь может быть коротким окном (квартал, а не вся
+    история города — запрос пользователя, 2026-09-11), из-за чего возникает
+    отдельный случай: клиент, у которого в этом окне вообще нет продаж, но
+    который точно существует (продавал раньше, за пределами окна) — это не
+    «нет данных», а однозначно «Потерян». Различаем через `known_pairs`
+    (отдельный, не завязанный на `selected_months` запрос: какие (клиент, тип
+    точки) вообще когда-либо продавали в городе) — без этого такой клиент
+    просто не попал бы в `rows` (запрос ниже фильтрует по `selected_months`
+    и вернёт по нему ноль строк), и на «Клиентах»/«Здоровье базы» вместо
+    честного «Потерян» была бы пустая плашка «—»."""
     status_settings = status_settings or DEFAULT_STATUS_SETTINGS
 
     empty_result: dict = {
@@ -223,6 +233,14 @@ def build_client_health(
         sale_type = row.type or "—"
         weight_by_key[(client, sale_type)][row.month] += float(row.weight or 0)
 
+    known_pairs = (
+        db.query(Sale.client, Sale.type).filter(Sale.city == city).distinct().all()
+    )
+    for row in known_pairs:
+        client = row.client or "Без клиента"
+        sale_type = row.type or "—"
+        weight_by_key[(client, sale_type)]  # noqa: B018 — просто создать ключ
+
     status_counts = dict.fromkeys(STATUS_ORDER, 0)
     rows = []
 
@@ -231,9 +249,17 @@ def build_client_health(
         status, status_label, details = detect_client_status(
             months_data, status_settings
         )
-        status_reason = _status_reason(
-            status, details, selected_months, status_settings
-        )
+
+        if status == "empty":
+            # Ноль продаж во ВСЁМ окне, но пара (клиент, тип точки) известна
+            # по городу целиком (см. known_pairs выше) — значит покупали
+            # раньше, за пределами окна. Это не «нет данных», это «Потерян».
+            status, status_label = "lost", STATUS_LABELS["lost"]
+            status_reason = "Нет продаж за весь выбранный период"
+        else:
+            status_reason = _status_reason(
+                status, details, selected_months, status_settings
+            )
         status_counts[status] += 1
 
         first_month = next(

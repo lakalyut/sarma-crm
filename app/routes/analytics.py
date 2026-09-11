@@ -127,16 +127,21 @@ def analytics_clients(
     type_cards = clients_data["type_cards"]
     monthly_by_client = clients_data["monthly_by_client"]
 
-    # Статус клиента («Активен»/«Замедляется»/«Потерян»/...) — всегда по
-    # ПОЛНОЙ истории города (all_months), не по текущему фильтру периода
-    # таблицы: это сигнал «в целом со временем», а не срез за выбранный
-    # отчётный диапазон, см. client_health_service.py.
+    # Статус клиента («Активен»/«Нестабильный»/«Потерян»/...) подчиняется
+    # тому же фильтру «Месяцы», что и остальная таблица (запрос пользователя,
+    # 2026-09-11 — обычно смотрят поквартально, статус «за всю историю» не
+    # отвечал на этот вопрос). Если период явно не выбран — по умолчанию
+    # последний квартал (последние 3 доступных месяца), не вся история:
+    # статус — это «как дела сейчас», а не накопленный с начала времён итог.
+    # `all_months` уже отсортирован по убыванию (reverse=True выше), поэтому
+    # `all_months[:3]` — это и есть последние три месяца.
     client_health_by_key = {}
     if all_months:
+        health_months = selected_months or all_months[:3]
         health = build_client_health(
             db=db,
             city=city,
-            selected_months=sorted(all_months, key=month_sort_key),
+            selected_months=sorted(health_months, key=month_sort_key),
         )
         client_health_by_key = {
             (r["client"], r["sale_type"]): {

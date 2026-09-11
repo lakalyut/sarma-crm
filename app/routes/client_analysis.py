@@ -316,10 +316,23 @@ def client_analysis_page(
             "unstable_gap_months": get_int_param(request, "unstable_gap_months", 1),
         }
 
+        # Период по умолчанию — последний квартал (последние 3 доступных
+        # месяца), не вся история: статус — это «как дела сейчас», не
+        # накопленный с начала времён итог (запрос пользователя, 2026-09-11).
+        # Явный выбор пользователя в пикере (raw_selected_months) — как есть,
+        # normalize_selected_months() уже дал бы «всю историю», если бы тут
+        # ничего не было выбрано — для этой вкладки такой дефолт не годится.
+        if raw_selected_months:
+            health_selected_months = selected_months
+            health_raw_selected_months = raw_selected_months
+        else:
+            health_raw_selected_months = sorted(all_months[:3], key=month_sort_key)
+            health_selected_months = health_raw_selected_months
+
         health = build_client_health(
             db=db,
             city=city,
-            selected_months=selected_months,
+            selected_months=health_selected_months,
             status_settings=status_settings,
         )
 
@@ -333,8 +346,8 @@ def client_analysis_page(
                 "all_months": all_months,
                 "all_clients": all_clients,
                 "selected_city": city,
-                "selected_months": selected_months,
-                "raw_selected_months": raw_selected_months,
+                "selected_months": health_selected_months,
+                "raw_selected_months": health_raw_selected_months,
                 "selected_clients": selected_clients,
                 "status_settings": status_settings,
                 "health": health,
