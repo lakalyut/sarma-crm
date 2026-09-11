@@ -288,7 +288,9 @@
                                 </div>
                             </th>
                             <th>Клиент</th>
-                            <th>Статус</th>
+                            <th data-sort="status_rank" class="sortable">
+                                Статус <span class="sort-icon">↕</span>
+                            </th>
                             <th data-sort="qty" class="sortable">
                                 Количество <span class="sort-icon">↕</span>
                             </th>
@@ -309,6 +311,7 @@
                             {% for r in rows %}
                                 {% set client_key = r.type ~ '|' ~ r.client %}
                                 {% set client_monthly = monthly_by_client.get(client_key, []) %}
+                                {% set health_row = client_health_by_key.get((r.client, r.type)) %}
                                 <tr
                                     class="client-row"
                                     data-type="{{ r.type }}"
@@ -317,13 +320,13 @@
                                     data-weight="{{ r.weight }}"
                                     data-sku="{{ r.sku_count }}"
                                     data-delta="0"
+                                    data-status_rank="{{ health_row.status_rank if health_row else 99 }}"
                                     data-monthly="{{ client_monthly|tojson }}"
                                 >
                                     <td>{% if not ambassador_mode %}<input type="checkbox" class="ca-row-select" data-client="{{ r.client }}">{% endif %}</td>
                                     <td>{{ r.type }}</td>
                                     <td class="client-name-cell">{{ r.client }}</td>
                                     <td>
-                                        {% set health_row = client_health_by_key.get((r.client, r.type)) %}
                                         {% if health_row %}
                                             <span class="client-status-badge client-status-badge-{{ health_row.status }}" title="{{ health_row.status_reason }}">{{ health_row.status_label }}</span>
                                         {% else %}

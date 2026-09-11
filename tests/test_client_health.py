@@ -163,3 +163,8 @@ def test_clients_summary_shows_status_badge(admin_client, db_session):
     # единственный доступный месяц в городе — статус "Активен" (не с чего
     # отсчитывать "новый"), причина — во всплывающей подсказке title=...
     assert 'title="Стабильные продажи' in resp.text
+    # колонка сортируется кликом на заголовок — data-sort="status_rank" на
+    # <th> и одноимённый data-status_rank на строке (existing = ранг из
+    # STATUS_ORDER, не текст статуса)
+    assert 'data-sort="status_rank"' in resp.text
+    assert 'data-status_rank="' in resp.text

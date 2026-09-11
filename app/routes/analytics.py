@@ -18,7 +18,7 @@ from ..services.ambassadors_service import (
     normalize_selected_months,
 )
 from ..services.charts_service import get_charts_metrics_data
-from ..services.client_health_service import build_client_health
+from ..services.client_health_service import STATUS_ORDER, build_client_health
 from ..services.clients_service import (
     get_client_detail_data,
     get_clients_summary_data,
@@ -139,7 +139,11 @@ def analytics_clients(
             selected_months=sorted(all_months, key=month_sort_key),
         )
         client_health_by_key = {
-            (r["client"], r["sale_type"]): r for r in health["rows"]
+            (r["client"], r["sale_type"]): {
+                **r,
+                "status_rank": STATUS_ORDER.index(r["status"]),
+            }
+            for r in health["rows"]
         }
 
     matched_flag = None
