@@ -42,6 +42,27 @@ def test_detect_client_status_new():
     assert status == "new"
 
 
+def test_detect_client_status_ignores_months_before_first_sale():
+    """Регресс (репорт 2026-09-11): точка открылась в середине общей истории
+    города («весь загруженный период») и с тех пор продаёт каждый месяц без
+    единого реального пропуска — месяцы ДО открытия не должны считаться
+    разрывом в её закупках."""
+    from app.services.client_health_service import detect_client_status
+
+    months_data = [0, 0, 0, 0, 0, 0, 5, 5, 5, 5]
+    status, _, details = detect_client_status(months_data, DEFAULT_SETTINGS)
+    assert status == "existing"
+    assert details["max_gap_inside"] == 0
+
+    # но настоящий разрыв ПОСЛЕ открытия по-прежнему ловится
+    months_data_with_real_gap = [0, 0, 0, 0, 0, 0, 5, 0, 0, 5]
+    status2, _, details2 = detect_client_status(
+        months_data_with_real_gap, DEFAULT_SETTINGS
+    )
+    assert status2 == "unstable"
+    assert details2["max_gap_inside"] == 2
+
+
 def test_detect_client_status_lost():
     from app.services.client_health_service import detect_client_status
 
@@ -99,6 +120,36 @@ def test_build_client_health_groups_by_client_and_type(db_session):
     assert by_key[("Кафе А", "Розница")]["status"] == "new"
     assert health["status_counts"]["existing"] == 1
     assert health["status_counts"]["new"] == 1
+
+
+def test_build_client_health_new_point_mid_history_is_active(db_session):
+    """Сквозной регресс (не только на голой функции): в городе есть долгая
+    история (другой клиент торгует с января), «Кафе Новое» открылось в июне
+    и с тех пор продаёт каждый месяц без пропусков — статус должен быть
+    «Активен», а не «Нестабильный» из-за месяцев до открытия."""
+    from app.services.client_health_service import build_client_health
+
+    for month in ["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01"]:
+        _sale(db_session, "Кафе Старое", "HoReCa", month)
+
+    for month in ["2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"]:
+        _sale(db_session, "Кафе Новое", "HoReCa", month)
+
+    months = [
+        "2026-01-01",
+        "2026-02-01",
+        "2026-03-01",
+        "2026-04-01",
+        "2026-05-01",
+        "2026-06-01",
+        "2026-07-01",
+        "2026-08-01",
+        "2026-09-01",
+    ]
+    health = build_client_health(db_session, city="Иркутск", selected_months=months)
+    by_client = {r["client"]: r for r in health["rows"]}
+
+    assert by_client["Кафе Новое"]["status"] == "existing"
 
 
 def test_status_reason_mentions_gap_and_last_month(db_session):
