@@ -103,6 +103,21 @@ def test_detect_client_status_empty():
     assert status == "empty"
 
 
+def test_detect_client_status_is_new_override():
+    """`is_new=True` явно переданный извне (так делает build_client_health,
+    см. регресс ниже) перебивает позиционный расчёт по самому окну —
+    даже когда первая продажа в 1-й позиции массива (то, что раньше
+    ГАРАНТИРОВАННО означало «не новый»)."""
+    from app.services.client_health_service import detect_client_status
+
+    # первая позиция активна — без override никогда не «Новый»
+    status_default, _, _ = detect_client_status([5, 5], DEFAULT_SETTINGS)
+    assert status_default == "existing"
+
+    status_forced, _, _ = detect_client_status([5, 5], DEFAULT_SETTINGS, is_new=True)
+    assert status_forced == "new"
+
+
 def test_build_client_health_groups_by_client_and_type(db_session):
     from app.services.client_health_service import build_client_health
 
@@ -120,6 +135,39 @@ def test_build_client_health_groups_by_client_and_type(db_session):
     assert by_key[("Кафе А", "Розница")]["status"] == "new"
     assert health["status_counts"]["existing"] == 1
     assert health["status_counts"]["new"] == 1
+
+
+def test_build_client_health_new_checked_against_full_history_not_window(db_session):
+    """Регресс (запрос пользователя, 2026-09-11: «для новых — надо проверять
+    весь период, был ли он до этого»). Окно — август-сентябрь (2 месяца,
+    как раз new_client_months). У города есть более ранняя история
+    («Кафе Старое» продаёт с января) — «Кафе Августовское» впервые продало
+    именно в августе, первом месяце ЭТОГО окна. По старой (window-only)
+    логике первая продажа в 1-й позиции массива никогда не «Новый» — а тут
+    клиент буквально только что появился. build_client_health должен видеть
+    это по полной истории города и всё равно поставить «Новый»."""
+    from app.services.client_health_service import build_client_health
+
+    for month in [
+        "2026-01-01",
+        "2026-02-01",
+        "2026-03-01",
+        "2026-04-01",
+        "2026-05-01",
+        "2026-06-01",
+        "2026-07-01",
+    ]:
+        _sale(db_session, "Кафе Старое", "HoReCa", month)
+
+    _sale(db_session, "Кафе Августовское", "HoReCa", "2026-08-01")
+    _sale(db_session, "Кафе Августовское", "HoReCa", "2026-09-01")
+
+    window = ["2026-08-01", "2026-09-01"]
+    health = build_client_health(db_session, city="Иркутск", selected_months=window)
+    by_client = {r["client"]: r for r in health["rows"]}
+
+    assert by_client["Кафе Августовское"]["status"] == "new"
+    assert "Август 2026" in by_client["Кафе Августовское"]["status_reason"]
 
 
 def test_build_client_health_marks_silent_known_client_as_lost(db_session):

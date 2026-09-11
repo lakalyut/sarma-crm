@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Sale
 from ..templating import format_month
+from ..utils.dates import month_sort_key
 
 DEFAULT_STATUS_SETTINGS = {
     "new_client_months": 2,
@@ -50,11 +51,23 @@ STATUS_ORDER = ["lost", "unstable", "new", "existing", "empty"]
 def detect_client_status(
     months_data: list[float],
     status_settings: dict,
+    is_new: bool | None = None,
 ) -> tuple[str, str, dict]:
     """Возвращает (status, label, details). `details` — сырые позиционные
     сигналы (индексы, не готовый текст) — из них `_status_reason()` ниже
     собирает подсказку для тултипа на плашке; тестам/другим вызывающим
-    достаточно первых двух элементов."""
+    достаточно первых двух элементов.
+
+    `is_new` — можно передать готовым (так делает `build_client_health`, см.
+    её докстринг: «Новый» проверяется по ПОЛНОЙ истории города, не по
+    короткому `months_data`-окну). Если не передан (`None`) — считается по
+    самому `months_data`, как раньше: первая продажа не с начала массива И
+    попала в последние `new_client_months`. Это годится только когда
+    `months_data` и есть «весь период» (изолированный вызов/тесты) — при
+    коротком окне (квартал) так пропускаются клиенты, чья самая первая
+    продажа в жизни пришлась ровно на 1-й месяц ЭТОГО окна: массив не может
+    отличить «появился прямо тут» от «был всегда, окно просто не видит
+    более раннюю историю» (баг/фидбек пользователя, 2026-09-11)."""
     active_indexes = [index for index, value in enumerate(months_data) if value > 0]
 
     if not active_indexes:
@@ -100,10 +113,12 @@ def detect_client_status(
         else:
             current_gap = 0
 
-    months_from_first_sale_to_end = len(months_data) - first_active_index
-    is_new = (
-        first_active_index > 0 and months_from_first_sale_to_end <= new_client_months
-    )
+    if is_new is None:
+        months_from_first_sale_to_end = len(months_data) - first_active_index
+        is_new = (
+            first_active_index > 0
+            and months_from_first_sale_to_end <= new_client_months
+        )
 
     details = {
         "first_active_index": first_active_index,
@@ -160,8 +175,18 @@ def _status_reason(
         )
 
     if status == "new":
+        # true_first_month — настоящая первая продажа по ВСЕЙ истории города
+        # (см. build_client_health), может лежать раньше окна (details['first_
+        # active_index'] тогда указывал бы на первый видимый в окне месяц, не
+        # на настоящую первую продажу) — предпочитаем её, если она известна.
+        true_first_month = details.get("true_first_month")
+        first_label = (
+            format_month(true_first_month)
+            if true_first_month
+            else month_at(details["first_active_index"])
+        )
         return (
-            f"Первая продажа — {month_at(details['first_active_index'])}, "
+            f"Первая продажа — {first_label}, "
             f"это последние {status_settings.get('new_client_months', 2)} мес. периода"
         )
 
@@ -191,16 +216,18 @@ def build_client_health(
     selected_months: list[str],
     status_settings: dict | None = None,
 ) -> dict:
-    """`selected_months` теперь может быть коротким окном (квартал, а не вся
-    история города — запрос пользователя, 2026-09-11), из-за чего возникает
-    отдельный случай: клиент, у которого в этом окне вообще нет продаж, но
-    который точно существует (продавал раньше, за пределами окна) — это не
-    «нет данных», а однозначно «Потерян». Различаем через `known_pairs`
-    (отдельный, не завязанный на `selected_months` запрос: какие (клиент, тип
-    точки) вообще когда-либо продавали в городе) — без этого такой клиент
-    просто не попал бы в `rows` (запрос ниже фильтрует по `selected_months`
-    и вернёт по нему ноль строк), и на «Клиентах»/«Здоровье базы» вместо
-    честного «Потерян» была бы пустая плашка «—»."""
+    """`selected_months` — короткое окно (квартал по умолчанию, не вся
+    история города — запрос пользователя, 2026-09-11). Это окно годится для
+    «Потерян»/«Нестабильный» (смотрим на недавние разрывы), но НЕ годится
+    само по себе для «Новый» — короткий массив не может отличить «появился
+    прямо в начале окна» от «был всегда, окно просто не видит более раннюю
+    историю» (баг/фидбек пользователя, 2026-09-11). Поэтому здесь отдельно,
+    без фильтра по `selected_months`, тянется ПОЛНАЯ история города —
+    `history_rows` даёт и список всех известных (клиент, тип точки) пар (для
+    случая «ноль продаж в окне, но клиент точно существует — это Потерян, не
+    нет данных»), и по каждой паре — её настоящую первую продажу когда-либо
+    (для честного «Новый»), и список всех месяцев города вообще (чтобы мерить
+    «давность» первой продажи в реальных, не window-относительных, шагах)."""
     status_settings = status_settings or DEFAULT_STATUS_SETTINGS
 
     empty_result: dict = {
@@ -233,30 +260,82 @@ def build_client_health(
         sale_type = row.type or "—"
         weight_by_key[(client, sale_type)][row.month] += float(row.weight or 0)
 
-    known_pairs = (
-        db.query(Sale.client, Sale.type).filter(Sale.city == city).distinct().all()
+    history_rows = (
+        db.query(Sale.client, Sale.type, Sale.month)
+        .filter(Sale.city == city)
+        .distinct()
+        .all()
     )
-    for row in known_pairs:
+
+    months_by_key: dict[tuple[str, str], set[str]] = defaultdict(set)
+    all_known_months: set[str] = set()
+
+    for row in history_rows:
         client = row.client or "Без клиента"
         sale_type = row.type or "—"
-        weight_by_key[(client, sale_type)]  # noqa: B018 — просто создать ключ
+        key = (client, sale_type)
+        weight_by_key[key]  # noqa: B018 — просто создать ключ, даже без продаж в окне
+        if row.month:
+            months_by_key[key].add(row.month)
+            all_known_months.add(row.month)
+
+    sorted_known_months = sorted(all_known_months, key=month_sort_key)
+    window_end_month = max(selected_months, key=month_sort_key)
+
+    def _new_signal(key: tuple[str, str]) -> tuple[bool, str | None]:
+        """(is_new по полной истории, настоящий месяц первой продажи)."""
+        months_ever = months_by_key.get(key)
+        if (
+            not months_ever
+            or not sorted_known_months
+            or window_end_month not in sorted_known_months
+        ):
+            return False, None
+
+        true_first_month = min(months_ever, key=month_sort_key)
+        if true_first_month not in sorted_known_months:
+            return False, true_first_month
+
+        if true_first_month == sorted_known_months[0]:
+            # Их первая продажа совпадает с самым первым известным месяцем
+            # города вообще — доказать «раньше их точно не было» нечем
+            # (данных «до этого» просто нет), поэтому не считаем «Новый»,
+            # как и раньше не считали, если первая продажа была в начале
+            # массива (тот же принцип, перенесённый с окна на всю историю).
+            return False, true_first_month
+
+        # +1 — считаем месяцы ОТ первой продажи ДО конца окна включительно
+        # (тот же смысл, что months_from_first_sale_to_end в
+        # detect_client_status: разница индексов даёт число шагов МЕЖДУ
+        # месяцами, а не число месяцев «от и до»).
+        months_since_first_sale = (
+            sorted_known_months.index(window_end_month)
+            - sorted_known_months.index(true_first_month)
+            + 1
+        )
+        new_client_months = int(status_settings.get("new_client_months", 2))
+        return 0 < months_since_first_sale <= new_client_months, true_first_month
 
     status_counts = dict.fromkeys(STATUS_ORDER, 0)
     rows = []
 
-    for (client, sale_type), weight_by_month in weight_by_key.items():
+    for key, weight_by_month in weight_by_key.items():
+        client, sale_type = key
         months_data = [round(weight_by_month.get(m, 0.0), 2) for m in selected_months]
+        is_new, true_first_month = _new_signal(key)
         status, status_label, details = detect_client_status(
-            months_data, status_settings
+            months_data, status_settings, is_new=is_new
         )
 
         if status == "empty":
             # Ноль продаж во ВСЁМ окне, но пара (клиент, тип точки) известна
-            # по городу целиком (см. known_pairs выше) — значит покупали
+            # по городу целиком (см. history_rows выше) — значит покупали
             # раньше, за пределами окна. Это не «нет данных», это «Потерян».
             status, status_label = "lost", STATUS_LABELS["lost"]
             status_reason = "Нет продаж за весь выбранный период"
         else:
+            if true_first_month:
+                details["true_first_month"] = true_first_month
             status_reason = _status_reason(
                 status, details, selected_months, status_settings
             )
