@@ -111,6 +111,98 @@ def user_new_submit(
     )
 
 
+@router.get("/{user_id}/edit")
+def user_edit_form(
+    user_id: int,
+    request: Request,
+    saved: bool = False,
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
+
+    return render(
+        request,
+        "admin/user_edit.html",
+        {"title": "Пользователи — Пульс", "user": user, "saved": saved},
+    )
+
+
+@router.post("/{user_id}/edit")
+def user_edit_submit(
+    user_id: int,
+    request: Request,
+    email: str = Form(...),
+    telegram_id: str = Form(""),
+    city: str = Form(""),
+    first_name: str = Form(""),
+    last_name: str = Form(""),
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
+
+    email = email.strip().lower()
+    telegram_id = telegram_id.strip()
+    city = city.strip()
+    first_name = first_name.strip()
+    last_name = last_name.strip()
+
+    def _error(message: str):
+        return render(
+            request,
+            "admin/user_edit.html",
+            {
+                "title": "Пользователи — Пульс",
+                "user": user,
+                "error": message,
+                # то, что уже набрал админ — чтобы не пришлось вводить заново
+                "form": {
+                    "email": email,
+                    "telegram_id": telegram_id,
+                    "city": city,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                },
+            },
+        )
+
+    if not email:
+        return _error("Email не может быть пустым")
+
+    email_owner = db.query(User).filter(User.email == email, User.id != user.id).first()
+    if email_owner:
+        return _error("Этот email уже занят другим пользователем")
+
+    telegram_id_int = None
+    if telegram_id:
+        if not telegram_id.isdigit():
+            return _error("Telegram ID должен быть числом")
+        telegram_id_int = int(telegram_id)
+        tg_owner = (
+            db.query(User)
+            .filter(User.telegram_id == telegram_id_int, User.id != user.id)
+            .first()
+        )
+        if tg_owner:
+            return _error(f"Этот Telegram ID уже привязан к {tg_owner.email}")
+
+    user.email = email
+    user.telegram_id = telegram_id_int
+    user.city = city or None
+    user.first_name = first_name or None
+    user.last_name = last_name or None
+    db.commit()
+
+    return RedirectResponse(
+        f"/admin/users/{user.id}/edit?saved=1", status_code=HTTP_302_FOUND
+    )
+
+
 @router.post("/{user_id}/toggle-active")
 def user_toggle_active(
     user_id: int,

@@ -50,6 +50,8 @@
           </td>
           <td>{{ u.created_at.strftime("%d.%m.%Y %H:%M") }}</td>
           <td style="white-space: nowrap;">
+            <a href="/admin/users/{{u.id}}/edit" class="btn-secondary btn-small">Изменить</a>
+
             <form method="post" action="/admin/users/{{u.id}}/reset-link" style="display:inline;">
               <button type="submit" class="btn-secondary btn-small">Новая ссылка</button>
             </form>

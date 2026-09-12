@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card-narrow">
+  <h1>Редактирование пользователя</h1>
+
+  {% include "includes/messages.html" %}
+
+  {% if saved %}
+    <div class="message ok">Сохранено.</div>
+  {% endif %}
+  {% if error %}
+    <div class="message error">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/admin/users/{{ user.id }}/edit">
+    <div class="field">
+      <label>Email</label>
+      <input type="email" name="email" required value="{{ (form.email if form else user.email) }}">
+    </div>
+
+    <div class="field">
+      <label>Роль</label>
+      <input type="text" value="{{ user.role }}" disabled>
+      <div class="field-hint">
+        Роль меняется отдельно, из списка пользователей (выпадающий список + «Сохранить»).
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Telegram ID</label>
+      <input type="text" name="telegram_id" value="{{ (form.telegram_id if form else user.telegram_id) or '' }}" placeholder="Только для роли ambassador">
+      <div class="field-hint">
+        Числовой ID из Telegram (например, через @userinfobot). Нужен только
+        амбассадору, который пользуется Telegram-ботом — без него доступен
+        обычный браузерный вход по паролю. Оставить пустым, чтобы отвязать.
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Город</label>
+      <input type="text" name="city" value="{{ (form.city if form else user.city) or '' }}" placeholder="Только для роли ambassador">
+      <div class="field-hint">
+        Ограничивает амбассадору доступ к клиентам/визитам своим городом.
+        Обычно амбассадор заполняет сам при первом входе — здесь можно
+        поправить вручную (например, если ошибся при регистрации).
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Имя</label>
+      <input type="text" name="first_name" value="{{ (form.first_name if form else user.first_name) or '' }}">
+    </div>
+
+    <div class="field">
+      <label>Фамилия</label>
+      <input type="text" name="last_name" value="{{ (form.last_name if form else user.last_name) or '' }}">
+    </div>
+
+    <div class="flex-row actions-split">
+      <a class="btn btn-secondary" href="/admin/users">Назад</a>
+      <button type="submit">Сохранить</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

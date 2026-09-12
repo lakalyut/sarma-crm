@@ -204,3 +204,145 @@ def test_regular_user_still_has_analytics_access(client, db_session):
 
     resp = client.get("/events")
     assert resp.status_code == 200
+
+
+def test_user_edit_form_renders(admin_client, db_session):
+    from app.auth_models import User
+
+    user = User(email="amb@example.com", role="ambassador", is_active=True)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    resp = admin_client.get(f"/admin/users/{user.id}/edit")
+    assert resp.status_code == 200
+    assert "amb@example.com" in resp.text
+
+
+def test_user_edit_sets_telegram_id_and_city(admin_client, db_session):
+    from app.auth_models import User
+
+    user = User(email="amb@example.com", role="ambassador", is_active=True)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    resp = admin_client.post(
+        f"/admin/users/{user.id}/edit",
+        data={
+            "email": "amb@example.com",
+            "telegram_id": "777888999",
+            "city": "Иркутск",
+            "first_name": "Иван",
+            "last_name": "Иванов",
+            "csrf_token": CSRF_TOKEN,
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    db_session.expire_all()
+    updated = db_session.query(User).filter(User.id == user.id).first()
+    assert updated.telegram_id == 777888999
+    assert updated.city == "Иркутск"
+    assert updated.first_name == "Иван"
+    assert updated.last_name == "Иванов"
+
+
+def test_user_edit_can_clear_telegram_id(admin_client, db_session):
+    from app.auth_models import User
+
+    user = User(
+        email="amb@example.com",
+        role="ambassador",
+        is_active=True,
+        telegram_id=123123123,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    resp = admin_client.post(
+        f"/admin/users/{user.id}/edit",
+        data={
+            "email": "amb@example.com",
+            "telegram_id": "",
+            "csrf_token": CSRF_TOKEN,
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    db_session.expire_all()
+    updated = db_session.query(User).filter(User.id == user.id).first()
+    assert updated.telegram_id is None
+
+
+def test_user_edit_rejects_duplicate_telegram_id(admin_client, db_session):
+    from app.auth_models import User
+
+    taken = User(
+        email="taken@example.com",
+        role="ambassador",
+        is_active=True,
+        telegram_id=555000111,
+    )
+    editing = User(email="edit@example.com", role="ambassador", is_active=True)
+    db_session.add_all([taken, editing])
+    db_session.commit()
+    db_session.refresh(editing)
+
+    resp = admin_client.post(
+        f"/admin/users/{editing.id}/edit",
+        data={
+            "email": "edit@example.com",
+            "telegram_id": "555000111",
+            "csrf_token": CSRF_TOKEN,
+        },
+    )
+    assert resp.status_code == 200
+    assert "уже привязан" in resp.text
+
+    db_session.expire_all()
+    unchanged = db_session.query(User).filter(User.id == editing.id).first()
+    assert unchanged.telegram_id is None
+
+
+def test_user_edit_rejects_non_numeric_telegram_id(admin_client, db_session):
+    from app.auth_models import User
+
+    user = User(email="amb@example.com", role="ambassador", is_active=True)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    resp = admin_client.post(
+        f"/admin/users/{user.id}/edit",
+        data={
+            "email": "amb@example.com",
+            "telegram_id": "not-a-number",
+            "csrf_token": CSRF_TOKEN,
+        },
+    )
+    assert resp.status_code == 200
+    assert "числом" in resp.text
+
+
+def test_user_edit_rejects_duplicate_email(admin_client, db_session):
+    from app.auth_models import User
+
+    other = User(email="other@example.com", role="user", is_active=True)
+    editing = User(email="edit@example.com", role="user", is_active=True)
+    db_session.add_all([other, editing])
+    db_session.commit()
+    db_session.refresh(editing)
+
+    resp = admin_client.post(
+        f"/admin/users/{editing.id}/edit",
+        data={
+            "email": "other@example.com",
+            "csrf_token": CSRF_TOKEN,
+        },
+    )
+    assert resp.status_code == 200
+    assert "уже занят" in resp.text
