@@ -145,6 +145,26 @@ def test_sku_presence_zero_qty_not_counted(db_session):
     assert report["rows"][0]["is_present"] is False
 
 
+def test_build_sku_presence_filters_by_sale_type(db_session):
+    from app.services.sku_presence_service import build_sku_presence
+
+    _sale(db_session, "Сеть Х", "HoReCa", "S-1")
+    _sale(db_session, "Сеть Х", "Розница", "S-1")
+
+    report = build_sku_presence(
+        db_session,
+        city="Иркутск",
+        selected_months=["2026-09-01"],
+        selected_skus=["S-1"],
+        sale_type="HoReCa",
+    )
+
+    # без фильтра были бы обе строки (Сеть Х, HoReCa) и (Сеть Х, Розница) —
+    # с фильтром по типу только одна
+    assert len(report["rows"]) == 1
+    assert report["rows"][0]["sale_type"] == "HoReCa"
+
+
 def test_sku_presence_tab_renders(admin_client, db_session):
     _sale(db_session, "Кафе Маркер", "HoReCa", "SKU-MARK")
 
@@ -157,3 +177,28 @@ def test_sku_presence_tab_renders(admin_client, db_session):
     assert "Представленность SKU" in resp.text
     assert "Кафе Маркер" in resp.text
     assert "/analytics/client?city=" in resp.text
+
+
+def test_sku_presence_tab_sale_type_filter(admin_client, db_session):
+    _sale(db_session, "Сеть Игрек", "HoReCa", "SKU-Y")
+    _sale(db_session, "Сеть Игрек", "Розница", "SKU-Y")
+
+    resp = admin_client.get(
+        "/analytics/client-analysis?tab=sku_presence"
+        "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
+        "&months=2026-09-01&skus=SKU-Y&sale_type=HoReCa"
+    )
+    assert resp.status_code == 200
+    # выбранный тип отражается в фильтре и в подписи, второй тип — не показан
+    assert 'value="HoReCa" selected' in resp.text
+    assert "Тип точки: <span" in resp.text
+    assert resp.text.count("Сеть Игрек") == 1
+
+    resp_invalid = admin_client.get(
+        "/analytics/client-analysis?tab=sku_presence"
+        "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
+        "&months=2026-09-01&skus=SKU-Y&sale_type=НетТакогоТипа"
+    )
+    # несуществующий тип из query — тихо игнорируется, не 500 и не фильтрует
+    assert resp_invalid.status_code == 200
+    assert resp_invalid.text.count("Сеть Игрек") == 2

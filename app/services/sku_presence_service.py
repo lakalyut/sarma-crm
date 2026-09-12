@@ -1,9 +1,9 @@
 """«Представленность SKU» — 5-я вкладка «Аналитики по клиентам».
 
-Выбираем регион / период / несколько SKU → список (клиент, тип точки) с
-продажами за период, у каждого подсвечено: заказал ли клиент выбранные SKU.
-Зелёный — заказан хотя бы один, красный — ни одного. Зелёные сверху.
-По клику — детализация клиента (`/analytics/client`)."""
+Выбираем регион / период / тип точки (опционально) / несколько SKU → список
+(клиент, тип точки) с продажами за период, у каждого подсвечено: заказал ли
+клиент выбранные SKU. Зелёный — заказан хотя бы один, красный — ни одного.
+Зелёные сверху. По клику — детализация клиента (`/analytics/client`)."""
 
 from collections import defaultdict
 
@@ -76,6 +76,7 @@ def build_sku_presence(
     city: str | None,
     selected_months: list[str],
     selected_skus: list[str],
+    sale_type: str | None = None,
 ) -> dict:
     result = {"rows": [], "sku_count": len(selected_skus or []), "present_count": 0}
     if not city or not selected_skus:
@@ -88,6 +89,8 @@ def build_sku_presence(
     )
     if selected_months:
         query = query.filter(Sale.month.in_(selected_months))
+    if sale_type:
+        query = query.filter(Sale.type == sale_type)
 
     ordered_by_ct: dict[tuple, set] = defaultdict(set)
     all_ct: set[tuple] = set()

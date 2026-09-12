@@ -24,7 +24,12 @@ from ..services.client_analysis_service import (
     get_summary_totals,
     get_types_rollup,
 )
-from ..services.sales_options_service import get_cities, get_clients, get_months
+from ..services.sales_options_service import (
+    get_cities,
+    get_clients,
+    get_months,
+    get_types,
+)
 from ..services.sku_presence_service import build_sku_presence, get_sku_options
 from ..services.visit_analysis_service import get_visit_analysis
 from ..services.visit_effectiveness_service import build_visit_effectiveness_report
@@ -48,6 +53,7 @@ def client_analysis_page(
     clients: list[str] = Query(default=None),
     new_skus: list[str] = Query(default=None),
     skus: list[str] = Query(default=None),
+    sale_type: str | None = None,
     abc_segment: list[int] = Query(default=[]),
     db: Session = Depends(get_db),
     _user: User = Depends(require_analyst),
@@ -110,6 +116,7 @@ def client_analysis_page(
                 "sku_options": [],
                 "selected_skus": [],
                 "selected_segment_id": None,
+                "selected_sale_type": None,
                 "sku_presence": {"rows": [], "sku_count": 0},
                 "empty_state": {
                     "hint": "Выберите регион в фильтре выше — здесь появится анализ по клиентам"
@@ -281,8 +288,15 @@ def client_analysis_page(
         valid_skus = {o["sku"] for o in sku_options}
         selected_skus = [s for s in (skus or []) if s in valid_skus]
 
+        types = get_types(db, city=city, months=selected_months)
+        selected_sale_type = sale_type if sale_type in types else None
+
         presence = build_sku_presence(
-            db, city=city, selected_months=selected_months, selected_skus=selected_skus
+            db,
+            city=city,
+            selected_months=selected_months,
+            selected_skus=selected_skus,
+            sale_type=selected_sale_type,
         )
 
         return render(
@@ -302,6 +316,8 @@ def client_analysis_page(
                 "sku_options": sku_options,
                 "selected_skus": selected_skus,
                 "selected_segment_id": selected_segment_id,
+                "types": types,
+                "selected_sale_type": selected_sale_type,
                 "sku_presence": presence,
             },
         )

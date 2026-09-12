@@ -3,7 +3,7 @@
     <form method="get" id="sp-filters-form">
         <input type="hidden" name="tab" value="sku_presence">
 
-        <div class="filters-grid ambassadors-filters-grid">
+        <div class="filters-grid ambassadors-filters-grid sp-filters-grid">
             <div class="field filter-field filter-field-region-search">
                 <label for="sp-city-search">Регион</label>
                 <input type="hidden" name="city" id="sp-city-hidden" value="{{ selected_city or '' }}">
@@ -36,6 +36,16 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="field filter-field">
+                <label for="sp-sale-type">Тип точки</label>
+                <select name="sale_type" id="sp-sale-type" class="js-custom-select" onchange="this.form.submit()">
+                    <option value="" {% if not selected_sale_type %}selected{% endif %}>Все типы</option>
+                    {% for t in types %}
+                        <option value="{{ t }}" {% if t == selected_sale_type %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="field filter-field">
@@ -98,6 +108,9 @@
         <div class="selected-city-text">
             {% if selected_months %}Месяцы: <span class="selected-city-value">{{ selected_months|format_month_list }}</span>{% else %}<span>Все месяцы</span>{% endif %}
         </div>
+        {% if selected_sale_type %}
+        <div class="selected-city-text">Тип точки: <span class="selected-city-value">{{ selected_sale_type }}</span></div>
+        {% endif %}
         {% if selected_skus %}
         <div class="selected-city-text">SKU: <span class="selected-city-value">{{ selected_skus|length }}</span></div>
         {% endif %}
