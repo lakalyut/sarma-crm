@@ -23,6 +23,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
+      TELEGRAM_API_BASE_URL: ${TELEGRAM_API_BASE_URL:-https://api.telegram.org}
+      TELEGRAM_RELAY_SECRET: ${TELEGRAM_RELAY_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
