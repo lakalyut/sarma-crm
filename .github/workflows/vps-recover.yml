@@ -168,30 +168,13 @@ jobs:
                 echo "--- через воркер-релей ---"
                 curl -s -m 15 -H "X-Relay-Secret: ${SECRET}" "${BASE_URL}/bot${TOKEN}/getMe"
                 echo
-                WEBHOOK_INFO=$(curl -s -m 15 -H "X-Relay-Secret: ${SECRET}" "${BASE_URL}/bot${TOKEN}/getWebhookInfo")
-                echo "$WEBHOOK_INFO"
+                echo "--- getWebhookInfo (бот на long polling, app/telegram_poller.py — url должен быть ПУСТ, это норма, не проблема) ---"
+                curl -s -m 15 -H "X-Relay-Secret: ${SECRET}" "${BASE_URL}/bot${TOKEN}/getWebhookInfo"
                 echo
-
-                # Пустой url в getWebhookInfo — вебхук никогда не был
-                # зарегистрирован (не связано с блокировкой: setWebhook не
-                # требует исходящей связности именно с VPS, просто раньше
-                # никто его и не вызывал успешно). Регистрируем тем же
-                # релеем — идемпотентно, безопасно перезапускать этот режим
-                # повторно даже если уже зарегистрирован.
-                if echo "$WEBHOOK_INFO" | grep -q '"url":""'; then
-                  echo "--- вебхук пуст, регистрирую ---"
-                  WEBHOOK_SECRET=$(grep '^TELEGRAM_WEBHOOK_SECRET=' .env | head -1 | cut -d= -f2-)
-                  curl -s -m 15 -H "X-Relay-Secret: ${SECRET}" \
-                    --data-urlencode "url=https://sarma-crm.ru/telegram/webhook" \
-                    --data-urlencode "secret_token=${WEBHOOK_SECRET}" \
-                    "${BASE_URL}/bot${TOKEN}/setWebhook"
-                  echo
-                  echo "--- getWebhookInfo ещё раз, проверить ---"
-                  curl -s -m 15 -H "X-Relay-Secret: ${SECRET}" "${BASE_URL}/bot${TOKEN}/getWebhookInfo"
-                  echo
-                else
-                  echo "Вебхук уже зарегистрирован — ничего не меняю."
-                fi
+                echo "(режим только на чтение — раньше здесь была автоматическая регистрация"
+                echo " вебхука при пустом url; убрано 2026-09-12 при переходе на polling —"
+                echo " пустой url теперь ОЖИДАЕМОЕ состояние, регистрировать его обратно нельзя,"
+                echo " иначе конфликтует с getUpdates у поллера)."
               fi
             fi
             true
