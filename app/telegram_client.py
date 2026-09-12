@@ -8,13 +8,26 @@ TLS-хендшейк на :443 — нет). Три независимых бот
 `dziro_bot`, `guide_bot`) упираются в одно и то же — это не код, не конфиг
 бота, а сеть целиком. Обход — релей через Cloudflare Worker (запрос
 пользователя, 2026-09-12): `TELEGRAM_API_BASE_URL` в `.env` переключает базовый
-адрес с `https://api.telegram.org` на URL воркера (`ops/telegram_relay_worker.js`
+адрес с `https://api.telegram.org` на URL воркера (`deploy/telegram_relay_worker.js`
 — тот просто пробрасывает запрос дальше на `api.telegram.org`, у Cloudflare
 своя сеть, блокировка её не касается). `TELEGRAM_RELAY_SECRET` — опциональный
 общий секрет (заголовок `X-Relay-Secret`), которого требует воркер: без него
 URL воркера превращается в открытый прокси к Telegram Bot API для кого угодно,
 кто его узнает (сам токен бота — в пути запроса, но воркер не должен
-пересылать ЧУЖИЕ токены всем желающим)."""
+пересылать ЧУЖИЕ токены всем желающим).
+
+**Блокировка оказалась симметричной** (подтверждено 2026-09-12 через
+`getWebhookInfo`: `last_error_message: "Connection timed out"`, при этом в
+логах nginx — ни одной попытки обращения на `/telegram/webhook`; обычный
+входящий HTTPS-трафик к sarma-crm.ru при этом работает нормально) — серверы
+Telegram не могут достучаться ДО нас так же, как мы не могли достучаться ДО
+них. Воркер чинит только исходящую половину (мы → Telegram); входящую
+(Telegram → мы, доставка вебхука) он не чинит — воркер не встаёт «перед»
+нашим сервером. Поэтому `POST /telegram/webhook` в проде больше не
+используется — бот работает через long polling
+([app/telegram_poller.py](telegram_poller.py)): САМ регулярно спрашивает
+`getUpdates` (исходящий вызов, который релей уже умеет пробрасывать), вместо
+того чтобы Telegram стучался к нам."""
 
 import os
 
@@ -60,6 +73,34 @@ def answer_callback_query(
     httpx.post(
         _api_url("answerCallbackQuery"),
         json=payload,
+        timeout=_API_TIMEOUT,
+        headers=_relay_headers(),
+    )
+
+
+def get_updates(offset: int | None = None, timeout: int = 25) -> list[dict]:
+    """Long polling — блокируется на стороне Telegram до `timeout` секунд,
+    пока не появится апдейт (или до истечения). `httpx`-таймаут — с запасом
+    поверх `timeout`, чтобы не оборвать соединение раньше самого Telegram."""
+    payload: dict = {"timeout": timeout}
+    if offset is not None:
+        payload["offset"] = offset
+    resp = httpx.post(
+        _api_url("getUpdates"),
+        json=payload,
+        timeout=timeout + 10,
+        headers=_relay_headers(),
+    )
+    resp.raise_for_status()
+    return resp.json().get("result", [])
+
+
+def delete_webhook() -> None:
+    """Telegram запрещает getUpdates, пока активен вебхук (`Conflict`) —
+    вызывается один раз при старте поллера, идемпотентно (безопасно звать,
+    даже если вебхук уже снят)."""
+    httpx.post(
+        _api_url("deleteWebhook"),
         timeout=_API_TIMEOUT,
         headers=_relay_headers(),
     )

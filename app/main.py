@@ -34,6 +34,8 @@ from .routes.products import router as products_router
 from .routes.telegram_bot import router as telegram_bot_router
 from .routes.telegram_poc import router as telegram_poc_router
 from .startup import ensure_admin
+from .telegram_poller import start as start_telegram_poller
+from .telegram_poller import stop as stop_telegram_poller
 from .templating import templates
 
 load_dotenv()
@@ -50,7 +52,11 @@ async def lifespan(app: FastAPI):
         ensure_admin(db)
     finally:
         db.close()
-    yield
+    start_telegram_poller()
+    try:
+        yield
+    finally:
+        stop_telegram_poller()
 
 
 app = FastAPI(title="Пульс", lifespan=lifespan, dependencies=[Depends(csrf_guard)])
