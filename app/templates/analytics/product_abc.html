@@ -2,7 +2,7 @@
 {% block content %}
 <div class="home-header">
     <div>
-        <a href="/?year={{ year }}" style="font-size:12.5px;color:var(--text-muted);text-decoration:none;">← Главная</a>
+        <a href="/{% if year %}?year={{ year }}{% endif %}" style="font-size:12.5px;color:var(--text-muted);text-decoration:none;">← Главная</a>
         <div class="home-greeting" style="margin-top:4px;">{{ product.brand }} — {{ product.flavor }}</div>
     </div>
     <div class="home-year-tabs">
@@ -12,15 +12,19 @@
     </div>
 </div>
 <div class="home-period">
-    Расчётный ABC (правило 80/15/5 по весу, без учёта новинок) — по каждому городу отдельно, за {{ year }} год.
-    Помогает увидеть, где категория товара расходится с общей по бизнесу.
+    {% if year %}
+        Расчётный ABC (правило 80/15/5 по весу, без учёта новинок) — по каждому городу отдельно, за {{ year }} год.
+        Помогает увидеть, где категория товара расходится с общей по бизнесу.
+    {% else %}
+        По этому товару ещё нет ни одной продажи.
+    {% endif %}
 </div>
 
 <div class="home-card">
     <div class="home-card-head">
         <div class="home-card-title">По городам</div>
     </div>
-    <div class="home-list">
+    <div class="home-list" id="pa-cities-list">
         {% for row in rows %}
             <div class="home-row" style="cursor:default;">
                 <span class="home-row-name">{{ row.city }}</span>
@@ -38,5 +42,19 @@
             </div>
         {% endfor %}
     </div>
+    <button type="button" class="home-show-more" id="pa-cities-more" hidden>
+        Показать ещё
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    initExpandableList(
+        document.getElementById("pa-cities-list"),
+        document.getElementById("pa-cities-more"),
+        { visibleCount: 3 }
+    );
+});
+</script>
 {% endblock %}

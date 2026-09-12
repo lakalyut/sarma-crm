@@ -70,6 +70,15 @@
         color: inherit;
     }
 
+/* [hidden] — тот же принцип, что и .is-hidden в остальном проекте (см.
+   CLAUDE.md, "каскад ловили трижды"): авторский display на элементе,
+   который ещё и переключается через нативный hidden-атрибут, обязан
+   явно уступить [hidden], иначе побеждает как более поздний в каскаде
+   (attribute-селектор той же специфичности). */
+.home-row[hidden] {
+        display: none;
+    }
+
 .home-list > .home-row:last-child {
         border-bottom: none;
     }
@@ -132,4 +141,8 @@
 
 .home-show-more.is-open svg {
         transform: rotate(180deg);
+    }
+
+.home-show-more[hidden] {
+        display: none;
     }

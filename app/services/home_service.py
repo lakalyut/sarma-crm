@@ -27,17 +27,43 @@ from .sales_options_service import get_cities, get_months
 
 ABC_CATEGORIES = ("A", "B", "C")
 
+# Короткие метки линейки под тесную ABC-плашку (полное имя — в title=).
+# "" — Product.line пустой/NULL, тот же принцип, что уже был в
+# abc_service.get_abc_matrix_data (product.line or "Классическая линейка").
+_LINE_SHORT = {"": "Кл", "Легкая": "Лёг", "Крепкая": "Кр"}
 
-def get_available_years(db: Session) -> list[int]:
-    """Список лет, за которые вообще есть продажи (по всем городам), по
-    убыванию — под плашки года на главной. Год — через parse_month(), тот
-    же парсер обоих форматов Sale.month, что и everywhere в проекте."""
+
+def _line_key(product: Product) -> str:
+    return product.line or ""
+
+
+def _line_label(line_key: str) -> str:
+    return line_key or "Классическая"
+
+
+def _line_short(line_key: str) -> str:
+    return _LINE_SHORT.get(line_key, (line_key or "Кл")[:3])
+
+
+def _years_from_months(all_months: list[str]) -> list[int]:
+    """Чистая функция без похода в БД — используется и get_available_years(),
+    и внутренними расчётами, которым all_months и так уже нужен для
+    другого (не гонять get_months() дважды за один запрос страницы,
+    запрос пользователя 2026-09-13 — «страница долго грузится»)."""
     years: set[int] = set()
-    for m in get_months(db):
+    for m in all_months:
         parsed = parse_month(m)
         if parsed:
             years.add(parsed[0])
     return sorted(years, reverse=True)
+
+
+def get_available_years(db: Session) -> list[int]:
+    """Список лет, за которые вообще есть продажи (по всем городам), по
+    убыванию — под плашки года. Публичная обёртка над _years_from_months()
+    для вызова напрямую (вне get_home_overview/get_product_abc_by_city,
+    которые сами уже держат all_months и её не зовут)."""
+    return _years_from_months(get_months(db))
 
 
 def _months_for_year(all_months: list[str], year: int) -> list[str]:
@@ -126,8 +152,15 @@ def get_home_overview(db: Session, year: int | None) -> dict:
     веса по месяцам года, топ городов по весу, топ вкусов по весу с
     расчётным ABC. Год не завершён — дельта считается за те же прожитые
     месяцы прошлого года (напр. янв-сен 2025 против янв-сен 2026), не за
-    весь прошлый год целиком (решение пользователя, 2026-09-12)."""
-    available_years = get_available_years(db)
+    весь прошлый год целиком (решение пользователя, 2026-09-12).
+
+    get_months(db) зовём здесь ровно один раз за весь вызов (раньше звали
+    дважды — get_available_years(db) внутри себя тоже его звал — лишний
+    полный проход по sales; тут просто список различных строк month, не
+    сама агрегация, но всё равно лишний round-trip на каждую загрузку
+    страницы, устранили по фидбеку «страница долго грузится», 2026-09-13)."""
+    all_months = get_months(db)
+    available_years = _years_from_months(all_months)
     if not available_years:
         return {
             "available_years": [],
@@ -138,7 +171,6 @@ def get_home_overview(db: Session, year: int | None) -> dict:
     if year not in available_years:
         year = available_years[0]
 
-    all_months = get_months(db)
     year_months = _months_for_year(all_months, year)
     elapsed_month_numbers = {parse_month(m)[1] for m in year_months}
     prev_months = [
@@ -222,6 +254,21 @@ def get_home_overview(db: Session, year: int | None) -> dict:
         if weight_by_product
         else []
     )
+
+    # ABC по линейке (Классическая/Легкая/Крепкая — запрос пользователя
+    # 2026-09-13, "плашки где видно общее ABC и ABC по линейкам"): тот же
+    # compute_abc_ranking(), но на подмножестве весов внутри одной линейки —
+    # products и weight_by_product уже в памяти, доп. запросов в БД не
+    # нужно, сортировка/кумулятив по паре десятков товаров — не тот масштаб,
+    # что вообще стоит считать издержкой.
+    weight_by_line: dict[str, dict[int, float]] = defaultdict(dict)
+    for p in products:
+        weight_by_line[_line_key(p)][p.id] = weight_by_product[p.id]
+    ranking_by_line = {
+        key: compute_abc_ranking(weights, new_ids)
+        for key, weights in weight_by_line.items()
+    }
+
     top_flavors = sorted(
         (
             {
@@ -231,6 +278,9 @@ def get_home_overview(db: Session, year: int | None) -> dict:
                 "weight": weight_by_product[p.id],
                 "is_new": bool(p.is_new),
                 "category": ranking.get(p.id),
+                "line_label": _line_label(_line_key(p)),
+                "line_short": _line_short(_line_key(p)),
+                "line_category": ranking_by_line.get(_line_key(p), {}).get(p.id),
             }
             for p in products
         ),
@@ -274,18 +324,31 @@ def format_month_short_label(month: str) -> str:
     return names[mon - 1] if 1 <= mon <= 12 else month
 
 
-def get_product_abc_by_city(db: Session, product_id: int, year: int) -> dict | None:
+def get_product_abc_by_city(
+    db: Session, product_id: int, year: int | None
+) -> dict | None:
     """Разрез: тот же расчёт ABC (80/15/5 по весу, без новинок), но
     ПОРОЗДЕЛЬНО на каждый город — что покажет, если у товара, входящего в
     A по всему бизнесу сразу, есть города, где он едва продаётся (и был
     бы там C или вообще не продавался). Один запрос на все города сразу
-    (group by city, product_id), не N+1 по городам."""
+    (group by city, product_id), не N+1 по городам.
+
+    Сам разрешает year (None или год без данных → последний доступный) —
+    роут больше не зовёт get_available_years(db) отдельно перед этим
+    вызовом, как раньше (был третий лишний round-trip get_months() на эту
+    страницу, фидбег «долго грузится», 2026-09-13). Товар проверяем ДО
+    единственного похода за месяцами — на несуществующем product_id не
+    тратим этот запрос вообще."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         return None
 
     all_months = get_months(db)
-    year_months = _months_for_year(all_months, year)
+    available_years = _years_from_months(all_months)
+    if year not in available_years:
+        year = available_years[0] if available_years else None
+
+    year_months = _months_for_year(all_months, year) if year else []
     new_ids = _new_product_ids(db)
 
     rows = (
@@ -327,6 +390,6 @@ def get_product_abc_by_city(db: Session, product_id: int, year: int) -> dict | N
     return {
         "product": product,
         "year": year,
-        "available_years": get_available_years(db),
+        "available_years": available_years,
         "rows": result_rows,
     }

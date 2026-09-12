@@ -7,11 +7,7 @@ from ..auth_deps import get_current_user, require_analyst
 from ..auth_models import User
 from ..database import get_db
 from ..render import render
-from ..services.home_service import (
-    get_available_years,
-    get_home_overview,
-    get_product_abc_by_city,
-)
+from ..services.home_service import get_home_overview, get_product_abc_by_city
 
 router = APIRouter()
 
@@ -57,18 +53,12 @@ def product_abc_page(
     db: Session = Depends(get_db),
     _user: User = Depends(require_analyst),
 ):
-    available_years = get_available_years(db)
-    resolved_year = (
-        year
-        if year in available_years
-        else (available_years[0] if available_years else None)
-    )
-
-    data = (
-        get_product_abc_by_city(db, product_id, resolved_year)
-        if resolved_year
-        else None
-    )
+    # get_product_abc_by_city сам разрешает year (None/недоступный год —
+    # последний доступный) — роут больше не ходит за available_years
+    # заранее отдельным запросом (было 3 похода за месяцами на эту
+    # страницу суммарно, лишние 2 убрали, фидбек «долго грузится»,
+    # 2026-09-13). None возвращается только если product_id не существует.
+    data = get_product_abc_by_city(db, product_id, year)
     if not data:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND)
 

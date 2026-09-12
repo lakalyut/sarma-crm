@@ -62,8 +62,7 @@
     <div class="home-list" id="home-cities-list">
         {% for row in top_cities %}
             <a
-                class="home-row {% if loop.index > 3 %}home-extra-row{% endif %}"
-                {% if loop.index > 3 %}hidden{% endif %}
+                class="home-row"
                 href="/analytics/charts?city={{ row.city|urlencode }}{% for m in year_months %}&months={{ m }}{% endfor %}"
             >
                 <span class="home-row-name">{{ row.city }}</span>
@@ -75,34 +74,36 @@
             </a>
         {% endfor %}
     </div>
-    {% if top_cities|length > 3 %}
-        <button type="button" class="home-show-more" data-list="home-cities-list" data-count="{{ top_cities|length - 3 }}" onclick="homeToggleList(this)">
-            Показать ещё {{ top_cities|length - 3 }}
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </button>
-    {% endif %}
+    <button type="button" class="home-show-more" id="home-cities-more" hidden>
+        Показать ещё
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
 </div>
 
 <div class="home-card">
     <div class="home-card-head">
         <div class="home-card-title">
             Топ вкусов по весу за {{ year }} год
-            <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (правило 80/15/5 по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». Клик по вкусу — разрез по городам.">?</span>
+            <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (правило 80/15/5 по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». Вторая, приглушённая плашка — та же категория, но посчитанная только внутри линейки товара (Классическая/Лёгкая/Крепкая), не вперемешку со всем ассортиментом. Клик по вкусу — разрез по городам.">?</span>
         </div>
     </div>
     <div class="home-list" id="home-flavors-list">
         {% for row in top_flavors %}
             <a
-                class="home-row {% if loop.index > 3 %}home-extra-row{% endif %}"
-                {% if loop.index > 3 %}hidden{% endif %}
+                class="home-row"
                 href="/analytics/product-abc?product_id={{ row.product_id }}&year={{ year }}"
             >
                 <span class="home-row-name">
                     {{ row.flavor }}
                     {% if row.is_new %}
                         <span class="abc-badge abc-badge-new">NEW</span>
-                    {% elif row.category %}
-                        <span class="abc-badge abc-badge-{{ row.category|lower }}">{{ row.category }}</span>
+                    {% else %}
+                        {% if row.category %}
+                            <span class="abc-badge abc-badge-{{ row.category|lower }}" title="Общий ABC — по всему бизнесу сразу">{{ row.category }}</span>
+                        {% endif %}
+                        {% if row.line_category %}
+                            <span class="abc-badge abc-badge-{{ row.line_category|lower }}" style="opacity:.7;" title="ABC внутри линейки «{{ row.line_label }}» (без остальных линеек)">{{ row.line_short }} {{ row.line_category }}</span>
+                        {% endif %}
                     {% endif %}
                 </span>
                 <span class="home-row-right">
@@ -112,17 +113,26 @@
             </a>
         {% endfor %}
     </div>
-    {% if top_flavors|length > 3 %}
-        <button type="button" class="home-show-more" data-list="home-flavors-list" data-count="{{ top_flavors|length - 3 }}" onclick="homeToggleList(this)">
-            Показать ещё {{ top_flavors|length - 3 }}
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </button>
-    {% endif %}
+    <button type="button" class="home-show-more" id="home-flavors-more" hidden>
+        Показать ещё
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    initExpandableList(
+        document.getElementById("home-cities-list"),
+        document.getElementById("home-cities-more"),
+        { visibleCount: 3 }
+    );
+    initExpandableList(
+        document.getElementById("home-flavors-list"),
+        document.getElementById("home-flavors-more"),
+        { visibleCount: 3 }
+    );
+
     const el = document.getElementById("home-chart-data");
     const canvas = document.getElementById("homeWeightChart");
     if (!el || !canvas || !window.Chart) return;
@@ -140,12 +150,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 data: chart.weight,
                 borderColor: primary,
                 backgroundColor: primary + "18",
-                fill: true, tension: 0.3, borderWidth: 2, pointRadius: 0
+                fill: true, tension: 0.3, borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: primary,
+                pointHoverBorderColor: "#fff",
+                pointHoverBorderWidth: 2
             }]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: function (items) { return items[0].label; },
+                        label: function (ctx) {
+                            return Math.round(ctx.parsed.y).toLocaleString("ru-RU") + " кг";
+                        }
+                    }
+                }
+            },
             scales: {
                 y: { grid: { color: border }, ticks: { color: muted, font: { size: 10.5 } } },
                 x: { grid: { display: false }, ticks: { color: muted, font: { size: 10.5 } } }
@@ -153,16 +179,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
-
-function homeToggleList(btn) {
-    const list = document.getElementById(btn.dataset.list);
-    const count = btn.dataset.count;
-    const open = btn.classList.toggle("is-open");
-    list.querySelectorAll(".home-extra-row").forEach(function (row) {
-        row.hidden = !open;
-    });
-    btn.childNodes[0].nodeValue = open ? "Свернуть" : "Показать ещё " + count + " ";
-}
 </script>
 {% endif %}
 {% endblock %}

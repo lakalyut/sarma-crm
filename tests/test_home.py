@@ -3,12 +3,15 @@
 вкусов + разрез по городам на клике."""
 
 
-def _product(db_session, flavor, sku, brand="Сарма", is_new=False, is_active=True):
+def _product(
+    db_session, flavor, sku, brand="Сарма", is_new=False, is_active=True, line=None
+):
     from app.models import Product
 
     p = Product(
         category="Табак",
         brand=brand,
+        line=line,
         flavor=flavor,
         canonical_sku=sku,
         canonical_name=f"{brand} {flavor}",
@@ -162,6 +165,49 @@ def test_home_overview_unmatched_sales_excluded_from_flavors(db_session):
     assert overview["metrics"]["weight"] == 50
 
 
+def test_home_overview_line_scoped_abc(db_session):
+    """Плашка ABC по линейке (запрос 2026-09-13) — считается ТОЛЬКО среди
+    товаров той же линейки, а не вперемешку со всем ассортиментом, как
+    общий category. Пустой Product.line — линейка «Классическая»."""
+    from app.services.home_service import get_home_overview
+
+    classic_a = _product(db_session, "Мята", "S-1", line=None)
+    classic_b = _product(db_session, "Кола", "S-2", line=None)
+    light = _product(db_session, "Дыня", "S-3", line="Легкая")
+
+    _sale(db_session, "Иркутск", "2026-03-01", 80, product=classic_a)
+    _sale(db_session, "Иркутск", "2026-03-01", 20, product=classic_b)
+    _sale(db_session, "Иркутск", "2026-03-01", 5, product=light)
+
+    overview = get_home_overview(db_session, year=2026)
+    by_flavor = {r["flavor"]: r for r in overview["top_flavors"]}
+
+    # внутри "Классическая" (80+20=100, лёгкий товар в эту базу не входит):
+    # Мята 80% -> A, Кола 100% -> C
+    assert by_flavor["Мята"]["line_category"] == "A"
+    assert by_flavor["Мята"]["line_label"] == "Классическая"
+    assert by_flavor["Кола"]["line_category"] == "C"
+
+    # единственный товар в своей линейке — 100% этой линейки -> C по той
+    # же формуле cumulative-share, что и на уровне города (см. CLAUDE.md)
+    assert by_flavor["Дыня"]["line_category"] == "C"
+    assert by_flavor["Дыня"]["line_label"] == "Легкая"
+    assert by_flavor["Дыня"]["line_short"] == "Лёг"
+
+
+def test_home_overview_new_product_has_no_line_category(db_session):
+    from app.services.home_service import get_home_overview
+
+    p_new = _product(db_session, "Новинка", "S-1", is_new=True, line="Крепкая")
+    _sale(db_session, "Иркутск", "2026-03-01", 50, product=p_new)
+
+    overview = get_home_overview(db_session, year=2026)
+    row = overview["top_flavors"][0]
+    assert row["is_new"] is True
+    assert row["category"] is None
+    assert row["line_category"] is None
+
+
 def test_home_overview_year_over_year_delta(db_session):
     from app.services.home_service import get_home_overview
 
@@ -236,6 +282,22 @@ def test_get_product_abc_by_city_unknown_product(db_session):
     from app.services.home_service import get_product_abc_by_city
 
     assert get_product_abc_by_city(db_session, 999, 2026) is None
+
+
+def test_get_product_abc_by_city_resolves_none_year(db_session):
+    """year=None (или несуществующий год) — резолвится сам на последний
+    доступный, роут больше не разрешает год заранее отдельным запросом."""
+    from app.services.home_service import get_product_abc_by_city
+
+    p_a = _product(db_session, "Мята", "S-1")
+    _sale(db_session, "Иркутск", "2025-03-01", 40, product=p_a)
+    _sale(db_session, "Иркутск", "2026-03-01", 80, product=p_a)
+
+    data = get_product_abc_by_city(db_session, p_a.id, None)
+    assert data["year"] == 2026
+
+    data_bad_year = get_product_abc_by_city(db_session, p_a.id, 1999)
+    assert data_bad_year["year"] == 2026
 
 
 def test_home_page_requires_login(client):
