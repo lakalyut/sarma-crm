@@ -978,7 +978,7 @@ denied`) — не факт, что не сменится, но с этого н�
 проверять правила SG **в консоли Yandex Cloud**, из шелла это не видно.
 
 **[.github/workflows/vps-recover.yml](.github/workflows/vps-recover.yml)** —
-`workflow_dispatch` (`gh workflow run "VPS recover" -f mode=diag|recover|gitssh`),
+`workflow_dispatch` (`gh workflow run "VPS recover" -f mode=diag|recover|gitssh|telegram-relay`),
 заходит по SSH теми же секретами, что `deploy.yml`. `diag` — только показать
 (память/диск/`ufw`/`ss`/логи `nginx`/`web`/статус `caddy`); `recover` —
 `stop+disable caddy`, `ufw allow 22/80/443`, `git reset --hard origin/main`,
@@ -987,6 +987,19 @@ denied`) — не факт, что не сменится, но с этого н�
 `~/.ssh/gh_deploy`, перевод `origin` на `git@github.com`, проверка какой ключ
 принят при `git fetch`. Оставлен как ops-инструмент — им подняли прод
 2026-09-10, когда SSH с рабочих машин был недоступен.
+**`telegram-relay`** (запрос пользователя, 2026-09-12 — «нет прямого SSH к серверу
+с этого ПК», это единственный рабочий канал добраться до сервера без него):
+принимает `-f worker_url=https://...` (адрес Cloudflare Worker, не секрет, обычный
+input), читает `TELEGRAM_RELAY_SECRET` **из GitHub-секрета репозитория** (не из
+input — секрет никогда не проходит через чат/сессию, тот же принцип, что уже
+у `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY`; пользователь заводит секрет сам:
+Settings → Secrets and variables → Actions → New repository secret), пишет обе
+переменные (`TELEGRAM_API_BASE_URL`/`TELEGRAM_RELAY_SECRET`) в прод `.env`
+(идемпотентно — обновляет строку, если уже есть, иначе дописывает), затем
+`git fetch && reset --hard` (подтянуть `docker-compose.yml` с уже проброшенными
+переменными в `environment:` сервиса `web`) и `docker compose up -d --build
+--remove-orphans`. Значения из `.env` в лог не печатает (`grep -oE '^[A-Z_]+='` —
+только имена ключей).
 
 **Исходящий HTTPS к Telegram (`api.telegram.org:443`) с этого VPS может быть
 заблокирован на сетевом уровне — это не баг кода.** Пойманный симптом:
