@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% macro metric_delta(d) %}
+{% if d.pct is not none %}
+<div class="metric-delta delta-{{ d.direction }}">
+    {% if d.direction == "up" %}▲{% elif d.direction == "down" %}▼{% endif %}
+    {{ d.pct }}% год к году
+</div>
+{% else %}
+<div class="metric-delta delta-neutral">нет данных за прошлый год</div>
+{% endif %}
+{% endmacro %}
+{% block content %}
+{% if not has_data %}
+    {% include "includes/empty_state.html" %}
+{% else %}
+
+<div class="home-header">
+    <div class="home-greeting">Добрый день, {{ current_user.email }}</div>
+    <div class="home-year-tabs">
+        {% for y in available_years %}
+            <a href="/?year={{ y }}" class="chart-tab {% if y == year %}active{% endif %}">{{ y }}</a>
+        {% endfor %}
+    </div>
+</div>
+<div class="home-period">
+    Все города · {{ chart.labels|first }} – {{ chart.labels|last }} {{ year }}
+    {% if year == available_years[0] %}(год ещё не завершён, дельты — год к году за те же месяцы){% endif %}
+</div>
+
+<div class="metrics-cards">
+    <div class="metric-card">
+        <div class="metric-label">Вес</div>
+        <div class="metric-value">{{ "%.0f"|format(metrics.weight)|replace(",", " ") }} кг</div>
+        {{ metric_delta(metrics.weight_delta) }}
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Клиентов</div>
+        <div class="metric-value">{{ metrics.clients }}</div>
+        {{ metric_delta(metrics.clients_delta) }}
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Уникальных SKU</div>
+        <div class="metric-value">{{ metrics.unique_sku }}</div>
+    </div>
+</div>
+
+<div class="home-card">
+    <div class="home-card-head">
+        <div class="home-card-title">Динамика веса по месяцам {{ year }}</div>
+    </div>
+    <div class="home-chart-wrap">
+        <canvas id="homeWeightChart"></canvas>
+    </div>
+</div>
+<div id="home-chart-data" style="display:none;" data-chart="{{ chart|tojson }}"></div>
+
+<div class="home-card">
+    <div class="home-card-head">
+        <div class="home-card-title">Топ городов за {{ year }} год</div>
+        <div class="home-period" style="margin-bottom:0;">клик — детализация в «Графики»</div>
+    </div>
+    <div class="home-list" id="home-cities-list">
+        {% for row in top_cities %}
+            <a
+                class="home-row {% if loop.index > 3 %}home-extra-row{% endif %}"
+                {% if loop.index > 3 %}hidden{% endif %}
+                href="/analytics/charts?city={{ row.city|urlencode }}{% for m in year_months %}&months={{ m }}{% endfor %}"
+            >
+                <span class="home-row-name">{{ row.city }}</span>
+                <span class="home-row-right">
+                    <span class="home-row-share">{{ row.share }}%</span>
+                    <span class="home-row-value">{{ "%.0f"|format(row.weight)|replace(",", " ") }} кг</span>
+                    <svg class="home-row-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </span>
+            </a>
+        {% endfor %}
+    </div>
+    {% if top_cities|length > 3 %}
+        <button type="button" class="home-show-more" data-list="home-cities-list" data-count="{{ top_cities|length - 3 }}" onclick="homeToggleList(this)">
+            Показать ещё {{ top_cities|length - 3 }}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+    {% endif %}
+</div>
+
+<div class="home-card">
+    <div class="home-card-head">
+        <div class="home-card-title">
+            Топ вкусов по весу за {{ year }} год
+            <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (правило 80/15/5 по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». Клик по вкусу — разрез по городам.">?</span>
+        </div>
+    </div>
+    <div class="home-list" id="home-flavors-list">
+        {% for row in top_flavors %}
+            <a
+                class="home-row {% if loop.index > 3 %}home-extra-row{% endif %}"
+                {% if loop.index > 3 %}hidden{% endif %}
+                href="/analytics/product-abc?product_id={{ row.product_id }}&year={{ year }}"
+            >
+                <span class="home-row-name">
+                    {{ row.flavor }}
+                    {% if row.is_new %}
+                        <span class="abc-badge abc-badge-new">NEW</span>
+                    {% elif row.category %}
+                        <span class="abc-badge abc-badge-{{ row.category|lower }}">{{ row.category }}</span>
+                    {% endif %}
+                </span>
+                <span class="home-row-right">
+                    <span class="home-row-value">{{ "%.0f"|format(row.weight)|replace(",", " ") }} кг</span>
+                    <svg class="home-row-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </span>
+            </a>
+        {% endfor %}
+    </div>
+    {% if top_flavors|length > 3 %}
+        <button type="button" class="home-show-more" data-list="home-flavors-list" data-count="{{ top_flavors|length - 3 }}" onclick="homeToggleList(this)">
+            Показать ещё {{ top_flavors|length - 3 }}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const el = document.getElementById("home-chart-data");
+    const canvas = document.getElementById("homeWeightChart");
+    if (!el || !canvas || !window.Chart) return;
+    const chart = JSON.parse(el.dataset.chart);
+    const styles = getComputedStyle(document.documentElement);
+    const primary = styles.getPropertyValue("--primary").trim();
+    const muted = styles.getPropertyValue("--text-muted").trim();
+    const border = styles.getPropertyValue("--border").trim();
+
+    new Chart(canvas, {
+        type: "line",
+        data: {
+            labels: chart.labels,
+            datasets: [{
+                data: chart.weight,
+                borderColor: primary,
+                backgroundColor: primary + "18",
+                fill: true, tension: 0.3, borderWidth: 2, pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: border }, ticks: { color: muted, font: { size: 10.5 } } },
+                x: { grid: { display: false }, ticks: { color: muted, font: { size: 10.5 } } }
+            }
+        }
+    });
+});
+
+function homeToggleList(btn) {
+    const list = document.getElementById(btn.dataset.list);
+    const count = btn.dataset.count;
+    const open = btn.classList.toggle("is-open");
+    list.querySelectorAll(".home-extra-row").forEach(function (row) {
+        row.hidden = !open;
+    });
+    btn.childNodes[0].nodeValue = open ? "Свернуть" : "Показать ещё " + count + " ";
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -27,6 +27,7 @@ from .routes.analytics import router as analytics_router
 from .routes.client_analysis import router as client_analysis_router
 from .routes.dashboard import router as dashboard_router
 from .routes.events import router as events_router
+from .routes.home import router as home_router
 from .routes.imports import router as imports_router
 from .routes.leaderboard import router as leaderboard_router
 from .routes.misc import router as misc_router
@@ -76,6 +77,7 @@ app.include_router(admin_unmatched_router)
 app.include_router(admin_nomenclature_router)
 app.include_router(admin_type_review_router)
 app.include_router(misc_router)
+app.include_router(home_router)
 app.include_router(products_router)
 app.include_router(imports_router)
 app.include_router(analytics_router)

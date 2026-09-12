@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="home-header">
+    <div>
+        <a href="/?year={{ year }}" style="font-size:12.5px;color:var(--text-muted);text-decoration:none;">← Главная</a>
+        <div class="home-greeting" style="margin-top:4px;">{{ product.brand }} — {{ product.flavor }}</div>
+    </div>
+    <div class="home-year-tabs">
+        {% for y in available_years %}
+            <a href="/analytics/product-abc?product_id={{ product.id }}&year={{ y }}" class="chart-tab {% if y == year %}active{% endif %}">{{ y }}</a>
+        {% endfor %}
+    </div>
+</div>
+<div class="home-period">
+    Расчётный ABC (правило 80/15/5 по весу, без учёта новинок) — по каждому городу отдельно, за {{ year }} год.
+    Помогает увидеть, где категория товара расходится с общей по бизнесу.
+</div>
+
+<div class="home-card">
+    <div class="home-card-head">
+        <div class="home-card-title">По городам</div>
+    </div>
+    <div class="home-list">
+        {% for row in rows %}
+            <div class="home-row" style="cursor:default;">
+                <span class="home-row-name">{{ row.city }}</span>
+                <span class="home-row-right">
+                    {% if row.weight %}
+                        <span class="home-row-share">{{ row.share }}%</span>
+                        <span class="home-row-value">{{ "%.0f"|format(row.weight)|replace(",", " ") }} кг</span>
+                    {% else %}
+                        <span class="home-row-value" style="color:var(--text-muted);font-weight:400;">нет продаж</span>
+                    {% endif %}
+                    {% if row.category %}
+                        <span class="abc-badge abc-badge-{{ row.category|lower }}">{{ row.category }}</span>
+                    {% endif %}
+                </span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

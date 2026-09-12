@@ -12,6 +12,10 @@
     <nav class="sidebar-nav">
         <div class="sidebar-nav-group">
             <div class="sidebar-nav-label">Свод</div>
+            <a href="/" class="sidebar-nav-link {% if request.url.path == '/' %}active{% endif %}" title="Главная">
+                <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9v11h14V9"></path></svg>
+                <span class="sidebar-nav-text">Главная</span>
+            </a>
             <a href="/analytics/regions" class="sidebar-nav-link {% if request.url.path == '/analytics/regions' %}active{% endif %}" title="По регионам">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
                 <span class="sidebar-nav-text">По регионам</span>

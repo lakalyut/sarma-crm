@@ -1,0 +1,135 @@
+.home-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+
+.home-greeting {
+        font-size: 21px;
+        font-weight: 600;
+        color: var(--text-strong);
+    }
+
+.home-year-tabs {
+        display: flex;
+        gap: 4px;
+    }
+
+.home-period {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+    }
+
+.home-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        padding: 18px 20px;
+        margin-bottom: 14px;
+    }
+
+.home-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+
+.home-card-title {
+        font-size: 14.5px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+.home-chart-wrap {
+        position: relative;
+        height: 200px;
+    }
+
+.home-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+.home-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 4px;
+        border-bottom: 1px solid var(--border);
+        text-decoration: none;
+        color: inherit;
+    }
+
+.home-list > .home-row:last-child {
+        border-bottom: none;
+    }
+
+.home-row-name {
+        font-size: 13.5px;
+        color: var(--text-main);
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+.home-row-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+.home-row-value {
+        font-size: 13.5px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+.home-row-share {
+        font-size: 11.5px;
+        color: var(--text-muted);
+        min-width: 34px;
+        text-align: right;
+    }
+
+.home-row-arrow {
+        color: var(--text-muted);
+        flex-shrink: 0;
+    }
+
+.home-show-more {
+        width: 100%;
+        margin-top: 6px;
+        padding: 9px 4px 2px;
+        border: none;
+        background: none;
+        font-size: 12.5px;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-family: inherit;
+    }
+
+.home-show-more:hover {
+        color: var(--primary-hover);
+    }
+
+.home-show-more svg {
+        transition: transform 0.15s ease;
+    }
+
+.home-show-more.is-open svg {
+        transform: rotate(180deg);
+    }
