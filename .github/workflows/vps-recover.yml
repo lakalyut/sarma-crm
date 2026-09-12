@@ -11,6 +11,7 @@ on:
           - recover
           - gitssh
           - telegram-relay
+          - telegram-diag
         default: diag
       worker_url:
         description: "telegram-relay: адрес воркера (https://<имя>.<аккаунт>.workers.dev), без завершающего /"
@@ -144,5 +145,31 @@ jobs:
               sleep 20
               sudo docker compose ps 2>&1
               curl -s -o /dev/null -w "web /health -> %{http_code}\n" http://127.0.0.1/health
+            fi
+
+            if [ "${{ github.event.inputs.mode }}" = "telegram-diag" ]; then
+              echo "=== TELEGRAM DIAG (сквозь релей, с самого VPS) ==="
+              cd /home/ubuntu/sarma-crm
+              # Не читаем .env целиком (там и POSTGRES_PASSWORD/APP_SECRET_KEY) —
+              # только три нужные строки, значения не печатаем нигде.
+              TOKEN=$(grep '^TELEGRAM_TOKEN=' .env | head -1 | cut -d= -f2-)
+              BASE_URL=$(grep '^TELEGRAM_API_BASE_URL=' .env | head -1 | cut -d= -f2-)
+              SECRET=$(grep '^TELEGRAM_RELAY_SECRET=' .env | head -1 | cut -d= -f2-)
+
+              if [ -z "$TOKEN" ]; then
+                echo "TELEGRAM_TOKEN пуст в .env — дальше нечего проверять"
+              elif [ -z "$BASE_URL" ]; then
+                echo "TELEGRAM_API_BASE_URL пуст — релей ещё не прописан (см. mode=telegram-relay)"
+              else
+                echo "--- прямой api.telegram.org (ожидаемо не отвечает, для контраста) ---"
+                curl -s -m 8 -o /dev/null -w "direct getMe -> %{http_code} (timeout/000 — это и есть блокировка)\n" \
+                  "https://api.telegram.org/bot${TOKEN}/getMe"
+
+                echo "--- через воркер-релей ---"
+                curl -s -m 15 -H "X-Relay-Secret: ${SECRET}" "${BASE_URL}/bot${TOKEN}/getMe"
+                echo
+                curl -s -m 15 -H "X-Relay-Secret: ${SECRET}" "${BASE_URL}/bot${TOKEN}/getWebhookInfo"
+                echo
+              fi
             fi
             true
