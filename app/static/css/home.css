@@ -132,6 +132,10 @@
     }
 
 .home-show-more:hover {
+        /* явно держим background — общее правило button:hover в forms.css
+           красит фон в var(--primary-hover), а этот текст в тот же цвет,
+           получалась невидимая надпись на заливке того же оттенка */
+        background: none;
         color: var(--primary-hover);
     }
 

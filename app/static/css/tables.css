@@ -389,6 +389,14 @@ table.sheet-table tbody tr:hover td {
         font-weight: 700;
     }
 
+/* см. CLAUDE.md, "каскад ловили трижды" — авторский display на элементе,
+   переключаемом ещё и нативным hidden-атрибутом (главная, переключатель
+   ABC по линейке, 2026-09-13), обязан явно уступить [hidden], иначе
+   побеждает как более специфичный/поздний в каскаде. */
+.abc-badge[hidden] {
+        display: none;
+    }
+
 .abc-badge-a {
         background: var(--badge-green-bg);
         color: var(--success);

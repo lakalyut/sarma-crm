@@ -27,7 +27,12 @@
     <div class="home-list" id="pa-cities-list">
         {% for row in rows %}
             <div class="home-row" style="cursor:default;">
-                <span class="home-row-name">{{ row.city }}</span>
+                <span class="home-row-name">
+                    {{ row.city }}
+                    {% if row.city_category %}
+                        <span class="abc-badge abc-badge-{{ row.city_category|lower }}" style="opacity:.7;" title="ABC самого города — по общему весу всех товаров в нём, не только этого">{{ row.city_category }}</span>
+                    {% endif %}
+                </span>
                 <span class="home-row-right">
                     {% if row.weight %}
                         <span class="home-row-share">{{ row.share }}%</span>
@@ -36,7 +41,7 @@
                         <span class="home-row-value" style="color:var(--text-muted);font-weight:400;">нет продаж</span>
                     {% endif %}
                     {% if row.category %}
-                        <span class="abc-badge abc-badge-{{ row.category|lower }}">{{ row.category }}</span>
+                        <span class="abc-badge abc-badge-{{ row.category|lower }}" title="ABC этого товара в этом городе">{{ row.category }}</span>
                     {% endif %}
                 </span>
             </div>

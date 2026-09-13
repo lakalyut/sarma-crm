@@ -75,7 +75,7 @@ def test_compute_abc_ranking_80_15_5():
 
     # 100 всего: A(1)=80, B(2)=15, C(3)=5 — классика 80/15/5
     weights = {1: 80.0, 2: 15.0, 3: 5.0}
-    ranking = compute_abc_ranking(weights, new_product_ids=set())
+    ranking = compute_abc_ranking(weights, exclude_keys=set())
 
     assert ranking[1] == "A"
     assert ranking[2] == "B"
@@ -88,7 +88,7 @@ def test_compute_abc_ranking_excludes_new_products():
     # новинка (id=2) с большим весом не должна попасть в ranking вообще и
     # не должна раздувать базу для % остальных
     weights = {1: 80.0, 2: 500.0, 3: 20.0}
-    ranking = compute_abc_ranking(weights, new_product_ids={2})
+    ranking = compute_abc_ranking(weights, exclude_keys={2})
 
     assert 2 not in ranking
     # без учёта новинки база — 100 (80+20): 1 -> 80% -> A, 3 -> 100% -> C
@@ -99,8 +99,21 @@ def test_compute_abc_ranking_excludes_new_products():
 def test_compute_abc_ranking_empty_when_only_new_products():
     from app.services.home_service import compute_abc_ranking
 
-    ranking = compute_abc_ranking({1: 50.0}, new_product_ids={1})
+    ranking = compute_abc_ranking({1: 50.0}, exclude_keys={1})
     assert ranking == {}
+
+
+def test_compute_abc_ranking_works_with_string_keys():
+    """ABC по городам (запрос 2026-09-13) зовёт этот же расчёт с именами
+    городов вместо product_id — ключ должен быть просто hashable, не
+    обязательно int."""
+    from app.services.home_service import compute_abc_ranking
+
+    ranking = compute_abc_ranking(
+        {"Иркутск": 80.0, "Новосибирск": 20.0}, exclude_keys=set()
+    )
+    assert ranking["Иркутск"] == "A"
+    assert ranking["Новосибирск"] == "C"
 
 
 def test_home_overview_has_data_false_when_no_sales(db_session):
@@ -137,6 +150,17 @@ def test_home_overview_top_flavors_and_cities(db_session):
     cities = {r["city"]: r for r in overview["top_cities"]}
     assert cities["Иркутск"]["weight"] == 85
     assert cities["Новосибирск"]["weight"] == 20
+    # ABC по городам (запрос 2026-09-13): 85 из 105 -> 81% -> B; Новосибирск
+    # добивает кумулятив до 100% -> C
+    assert cities["Иркутск"]["category"] == "B"
+    assert cities["Новосибирск"]["category"] == "C"
+
+    # "Уникальных вкусов"/"Вкусов на клиента" — по product_id, не по
+    # sku_expr(): 2 вкуса участвуют (Мята, Кола), новинка исключена из
+    # ranking, но НЕ из подсчёта уникальных вкусов/на клиента — она тоже
+    # сопоставленная продажа с product_id, просто без ABC-категории
+    assert overview["metrics"]["unique_flavors"] == 3
+    assert overview["metrics"]["avg_flavors_per_client"] > 0
 
 
 def test_home_overview_unmatched_sales_excluded_from_flavors(db_session):
@@ -265,7 +289,7 @@ def test_get_product_abc_by_city(db_session):
         db_session,
         "Новосибирск",
         "2026-03-01",
-        95,
+        45,
         product=_product(db_session, "Дыня", "S-3"),
     )
 
@@ -275,7 +299,14 @@ def test_get_product_abc_by_city(db_session):
     assert data["product"].id == p_a.id
     by_city = {r["city"]: r for r in data["rows"]}
     assert by_city["Иркутск"]["category"] == "A"  # 80 из 100 — вся доля
-    assert by_city["Новосибирск"]["category"] == "C"  # 5 из 100 — хвост
+    assert by_city["Новосибирск"]["category"] == "C"  # 5 из 50 — хвост
+
+    # ABC самого города (запрос 2026-09-13, "подсветим ABC регионов"):
+    # Иркутск 100 из 150 (Иркутск+Новосибирск) -> 67% -> A, Новосибирск
+    # добивает кумулятив до 100% -> C — независимо от того, что этот
+    # конкретный товар (Мята) в Новосибирске сам по себе C
+    assert by_city["Иркутск"]["city_category"] == "A"
+    assert by_city["Новосибирск"]["city_category"] == "C"
 
 
 def test_get_product_abc_by_city_unknown_product(db_session):

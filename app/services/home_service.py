@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from ..models import Product, Sale
 from ..utils.dates import month_sort_key, parse_month
-from .charts_service import sku_expr
 from .sale_filters import build_sale_filters
 from .sales_options_service import get_cities, get_months
 
@@ -81,7 +80,6 @@ def _totals(db: Session, filters: list) -> dict:
         db.query(
             func.coalesce(func.sum(Sale.weight), 0.0).label("weight"),
             func.count(func.distinct(Sale.client)).label("clients"),
-            func.count(func.distinct(sku_expr())).label("unique_sku"),
         )
         .filter(*filters)
         .one()
@@ -89,7 +87,48 @@ def _totals(db: Session, filters: list) -> dict:
     return {
         "weight": float(row.weight or 0),
         "clients": int(row.clients or 0),
-        "unique_sku": int(row.unique_sku or 0),
+    }
+
+
+def _flavor_metrics(db: Session, filters: list, clients_count: int) -> dict:
+    """«Уникальных вкусов» и «Вкусов на клиента» — правка 2026-09-13:
+    были «Уникальных SKU» через sku_expr() (сырая/каноническая строка
+    названия из Sale), пользователь попросил считать по вкусам —
+    canonical-товарам (`Sale.product_id`), тот же принцип, что уже
+    использует «Топ вкусов» ниже, не сырые строки. Несопоставленные
+    продажи (product_id IS NULL) в обеих метриках не участвуют.
+    avg_per_client — тот же приём, что sku_per_client в
+    dashboard_service (сумма по клиентам различных product_id / число
+    клиентов), только по «вкусам», а не по SKU-строкам; знаменатель —
+    clients_count из _totals() (все клиенты, включая тех, что есть
+    только в несопоставленных продажах) — так же, как и в
+    dashboard_service, не отдельное более строгое определение."""
+    base_filters = [*filters, Sale.product_id.isnot(None)]
+    unique_flavors = (
+        db.query(func.count(func.distinct(Sale.product_id)))
+        .filter(*base_filters)
+        .scalar()
+        or 0
+    )
+
+    per_client = (
+        db.query(
+            Sale.client,
+            func.count(func.distinct(Sale.product_id)).label("flavor_count"),
+        )
+        .filter(*base_filters)
+        .group_by(Sale.client)
+        .subquery()
+    )
+    total_flavor_instances = (
+        db.query(func.coalesce(func.sum(per_client.c.flavor_count), 0)).scalar() or 0
+    )
+
+    return {
+        "unique_flavors": int(unique_flavors),
+        "avg_per_client": (
+            round(total_flavor_instances / clients_count, 1) if clients_count else 0.0
+        ),
     }
 
 
@@ -106,40 +145,41 @@ def _delta(current: float, previous: float | None) -> dict:
     return {"pct": round(pct), "direction": direction}
 
 
-def compute_abc_ranking(
-    weight_by_product: dict[int, float], new_product_ids: set[int]
-) -> dict[int, str]:
-    """Правило 80/15/5 по кумулятивной доле веса. Новинки (new_product_ids)
-    ПОЛНОСТЬЮ исключены — не участвуют ни в ранжировании, ни в базе для
-    расчёта долей остальных (иначе свежий, ещё не раскрученный товар с
-    маленьким весом искажал бы кумулятивный % устоявшегося ассортимента).
-    Решение пользователя, 2026-09-12: у новинки в UI — бейдж NEW вместо
-    буквы, ABC ей присваивают позже, когда она перестанет быть новинкой
-    (тот же принцип, что уже был у aromas_new в лидерборде амбассадоров)."""
+def compute_abc_ranking(weight_by_key: dict, exclude_keys: set) -> dict:
+    """Правило 80/15/5 по кумулятивной доле веса — ключ может быть
+    `product_id` (вкусы) ИЛИ `city` (города, запрос 2026-09-13, ABC по
+    городам «пока только вес» — там `exclude_keys` всегда пустой, у
+    города нет понятия «новинка»). Ключи из exclude_keys ПОЛНОСТЬЮ
+    исключены — не участвуют ни в ранжировании, ни в базе для расчёта
+    долей остальных (для товаров: иначе свежий, ещё не раскрученный товар
+    с маленьким весом искажал бы кумулятивный % устоявшегося ассортимента,
+    решение пользователя 2026-09-12 — у новинки в UI бейдж NEW вместо
+    буквы, тот же принцип, что уже был у aromas_new в лидерборде
+    амбассадоров)."""
     established = sorted(
         (
-            (pid, w)
-            for pid, w in weight_by_product.items()
-            if pid not in new_product_ids and w and w > 0
+            (key, w)
+            for key, w in weight_by_key.items()
+            if key not in exclude_keys and w and w > 0
         ),
         key=lambda pair: -pair[1],
     )
 
     total = sum(w for _, w in established)
-    ranking: dict[int, str] = {}
+    ranking: dict = {}
     if total <= 0:
         return ranking
 
     cumulative = 0.0
-    for pid, w in established:
+    for key, w in established:
         cumulative += w
         share = cumulative / total
         if share <= 0.80:
-            ranking[pid] = "A"
+            ranking[key] = "A"
         elif share <= 0.95:
-            ranking[pid] = "B"
+            ranking[key] = "B"
         else:
-            ranking[pid] = "C"
+            ranking[key] = "C"
     return ranking
 
 
@@ -185,15 +225,15 @@ def get_home_overview(db: Session, year: int | None) -> dict:
 
     cur_totals = _totals(db, cur_filters)
     prev_totals = (
-        _totals(db, prev_filters)
-        if prev_filters
-        else {"weight": 0, "clients": 0, "unique_sku": 0}
+        _totals(db, prev_filters) if prev_filters else {"weight": 0, "clients": 0}
     )
+    flavor_metrics = _flavor_metrics(db, cur_filters, cur_totals["clients"])
 
     metrics = {
         "weight": cur_totals["weight"],
         "clients": cur_totals["clients"],
-        "unique_sku": cur_totals["unique_sku"],
+        "unique_flavors": flavor_metrics["unique_flavors"],
+        "avg_flavors_per_client": flavor_metrics["avg_per_client"],
         "weight_delta": _delta(cur_totals["weight"], prev_totals["weight"]),
         "clients_delta": _delta(cur_totals["clients"], prev_totals["clients"]),
     }
@@ -232,6 +272,16 @@ def get_home_overview(db: Session, year: int | None) -> dict:
         for city, w in city_rows
         if city
     ]
+    # ABC по городам (запрос 2026-09-13, "пока только вес") — тот же
+    # compute_abc_ranking(), city вместо product_id как ключ, без исключений
+    # (у города нет понятия "новинка"); веса — те же top_cities.weight, что
+    # уже показаны на странице (несопоставленные продажи туда попадают,
+    # ключевое отличие от ABC вкусов ниже, где product_id обязателен).
+    city_ranking = compute_abc_ranking(
+        {row["city"]: row["weight"] for row in top_cities}, set()
+    )
+    for row in top_cities:
+        row["category"] = city_ranking.get(row["city"])
 
     # топ вкусов по весу + расчётный ABC (сопоставленные продажи, product_id
     # не NULL — сырые несопоставленные строки без canonical-названия сюда
@@ -278,6 +328,7 @@ def get_home_overview(db: Session, year: int | None) -> dict:
                 "weight": weight_by_product[p.id],
                 "is_new": bool(p.is_new),
                 "category": ranking.get(p.id),
+                "line_key": _line_key(p),
                 "line_label": _line_label(_line_key(p)),
                 "line_short": _line_short(_line_key(p)),
                 "line_category": ranking_by_line.get(_line_key(p), {}).get(p.id),
@@ -365,6 +416,16 @@ def get_product_abc_by_city(
         if city and pid:
             by_city[city][pid] = float(w or 0)
 
+    # ABC самого города (запрос 2026-09-13: «подсветим ABC регионов» на
+    # этой странице) — по ОБЩЕМУ весу города (сумма всех товаров в
+    # by_city[city], не только текущего product_id), не по top_cities
+    # с главной: там веса включают несопоставленные продажи, здесь —
+    # только сопоставленные (by_city строится из product_id IS NOT NULL
+    # выше в этой же функции) — числа поэтому могут чуть разойтись, это
+    # ожидаемо, не баг рассинхрона с главной.
+    city_totals = {city: sum(weights.values()) for city, weights in by_city.items()}
+    city_ranking = compute_abc_ranking(city_totals, set())
+
     all_cities = get_cities(db)
     result_rows = []
     for city in all_cities:
@@ -382,6 +443,7 @@ def get_product_abc_by_city(
                     if product_id in new_ids
                     else ranking.get(product_id) if weight > 0 else None
                 ),
+                "city_category": city_ranking.get(city),
             }
         )
 
