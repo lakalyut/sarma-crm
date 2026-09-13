@@ -345,6 +345,15 @@ def test_home_page_renders_for_admin(admin_client, db_session):
     assert "Главная" in resp.text or "Мята" in resp.text
 
 
+def test_sidebar_logo_links_to_home(admin_client):
+    """Клик по иконке «Пульс» в сайдбаре — на главную (запрос 2026-09-13),
+    не декоративный логотип без ссылки. Проверяем на любой странице, не
+    только на самой главной — иначе тест не поймал бы, если ссылку
+    случайно забыли бы добавить только для одного шаблона."""
+    resp = admin_client.get("/admin/products")
+    assert '<a href="/" class="sidebar-brand-link"' in resp.text
+
+
 def test_home_page_empty_state_when_no_sales(admin_client):
     resp = admin_client.get("/")
     assert resp.status_code == 200

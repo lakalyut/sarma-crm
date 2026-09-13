@@ -34,6 +34,22 @@
         margin-bottom: 20px;
     }
 
+.sidebar-brand-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        min-width: 0;
+    }
+
+.sidebar-brand-link:hover {
+        text-decoration: none;
+    }
+
+.sidebar-brand-link:hover .sidebar-brand-title {
+        color: var(--primary);
+    }
+
 .sidebar-logo {
         width: 26px;
         height: 26px;
