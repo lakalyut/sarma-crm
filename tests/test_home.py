@@ -155,11 +155,10 @@ def test_home_overview_top_flavors_and_cities(db_session):
     assert cities["Иркутск"]["category"] == "B"
     assert cities["Новосибирск"]["category"] == "C"
 
-    # "Уникальных вкусов"/"Вкусов на клиента" — по product_id, не по
-    # sku_expr(): 2 вкуса участвуют (Мята, Кола), новинка исключена из
-    # ranking, но НЕ из подсчёта уникальных вкусов/на клиента — она тоже
-    # сопоставленная продажа с product_id, просто без ABC-категории
-    assert overview["metrics"]["unique_flavors"] == 3
+    # "Вкусов на клиента" — по product_id, не по sku_expr(); карточку
+    # "Уникальных вкусов" убрали (не нужна, вместо неё "Уникальных
+    # клиентов" = переименованная "Клиентов" — та же метрика, без
+    # дублирования)
     assert overview["metrics"]["avg_flavors_per_client"] > 0
 
 

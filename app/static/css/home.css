@@ -1,3 +1,9 @@
+/* 3 карточки, не 4 (глобальный .metrics-cards в charts.css — под 4) —
+   тот же приём, что #ca-metric-cards.metrics-cards в client_analysis.css */
+#home-metrics-cards.metrics-cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
 .home-header {
         display: flex;
         align-items: center;

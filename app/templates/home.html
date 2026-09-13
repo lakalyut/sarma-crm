@@ -27,20 +27,16 @@
     {% if year == available_years[0] %}(год ещё не завершён, дельты — год к году за те же месяцы){% endif %}
 </div>
 
-<div class="metrics-cards">
+<div class="metrics-cards" id="home-metrics-cards">
     <div class="metric-card">
         <div class="metric-label">Вес</div>
         <div class="metric-value">{{ "%.0f"|format(metrics.weight)|replace(",", " ") }} кг</div>
         {{ metric_delta(metrics.weight_delta) }}
     </div>
     <div class="metric-card">
-        <div class="metric-label">Клиентов</div>
+        <div class="metric-label">Уникальных клиентов</div>
         <div class="metric-value">{{ metrics.clients }}</div>
         {{ metric_delta(metrics.clients_delta) }}
-    </div>
-    <div class="metric-card">
-        <div class="metric-label">Уникальных вкусов</div>
-        <div class="metric-value">{{ metrics.unique_flavors }}</div>
     </div>
     <div class="metric-card">
         <div class="metric-label">Вкусов на клиента</div>

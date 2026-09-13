@@ -90,27 +90,21 @@ def _totals(db: Session, filters: list) -> dict:
     }
 
 
-def _flavor_metrics(db: Session, filters: list, clients_count: int) -> dict:
-    """«Уникальных вкусов» и «Вкусов на клиента» — правка 2026-09-13:
-    были «Уникальных SKU» через sku_expr() (сырая/каноническая строка
-    названия из Sale), пользователь попросил считать по вкусам —
-    canonical-товарам (`Sale.product_id`), тот же принцип, что уже
-    использует «Топ вкусов» ниже, не сырые строки. Несопоставленные
-    продажи (product_id IS NULL) в обеих метриках не участвуют.
-    avg_per_client — тот же приём, что sku_per_client в
-    dashboard_service (сумма по клиентам различных product_id / число
-    клиентов), только по «вкусам», а не по SKU-строкам; знаменатель —
-    clients_count из _totals() (все клиенты, включая тех, что есть
-    только в несопоставленных продажах) — так же, как и в
-    dashboard_service, не отдельное более строгое определение."""
+def _avg_flavors_per_client(db: Session, filters: list, clients_count: int) -> float:
+    """«Вкусов на клиента» — правка 2026-09-13: считаем по вкусам
+    (canonical-товарам, `Sale.product_id`), тот же принцип, что уже
+    использует «Топ вкусов» ниже, не по сырой/канонической строке
+    названия (`sku_expr()`, как раньше называлось «SKU на клиента» до
+    двух правок фидбека в этот же день — сначала «Уникальных SKU» →
+    «Уникальных вкусов» + эта карточка, затем «Уникальных вкусов» убрали
+    как отдельную карточку целиком, оставили только это отношение).
+    Несопоставленные продажи (product_id IS NULL) не участвуют. Тот же
+    приём, что sku_per_client в dashboard_service (сумма по клиентам
+    различных product_id / число клиентов); знаменатель — clients_count
+    из _totals() (все клиенты, включая тех, что есть только в
+    несопоставленных продажах) — так же, как и в dashboard_service, не
+    отдельное более строгое определение."""
     base_filters = [*filters, Sale.product_id.isnot(None)]
-    unique_flavors = (
-        db.query(func.count(func.distinct(Sale.product_id)))
-        .filter(*base_filters)
-        .scalar()
-        or 0
-    )
-
     per_client = (
         db.query(
             Sale.client,
@@ -123,13 +117,7 @@ def _flavor_metrics(db: Session, filters: list, clients_count: int) -> dict:
     total_flavor_instances = (
         db.query(func.coalesce(func.sum(per_client.c.flavor_count), 0)).scalar() or 0
     )
-
-    return {
-        "unique_flavors": int(unique_flavors),
-        "avg_per_client": (
-            round(total_flavor_instances / clients_count, 1) if clients_count else 0.0
-        ),
-    }
+    return round(total_flavor_instances / clients_count, 1) if clients_count else 0.0
 
 
 def _delta(current: float, previous: float | None) -> dict:
@@ -227,13 +215,12 @@ def get_home_overview(db: Session, year: int | None) -> dict:
     prev_totals = (
         _totals(db, prev_filters) if prev_filters else {"weight": 0, "clients": 0}
     )
-    flavor_metrics = _flavor_metrics(db, cur_filters, cur_totals["clients"])
-
     metrics = {
         "weight": cur_totals["weight"],
         "clients": cur_totals["clients"],
-        "unique_flavors": flavor_metrics["unique_flavors"],
-        "avg_flavors_per_client": flavor_metrics["avg_per_client"],
+        "avg_flavors_per_client": _avg_flavors_per_client(
+            db, cur_filters, cur_totals["clients"]
+        ),
         "weight_delta": _delta(cur_totals["weight"], prev_totals["weight"]),
         "clients_delta": _delta(cur_totals["clients"], prev_totals["clients"]),
     }
