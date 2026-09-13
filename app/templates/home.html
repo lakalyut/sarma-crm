@@ -15,13 +15,35 @@
 {% else %}
 
 <div class="home-header">
-    <div class="home-greeting">Добрый день, {{ current_user.email }}</div>
+    <div class="home-greeting" id="home-greeting" data-name="{{ current_user.first_name or current_user.email }}">Добрый день, {{ current_user.first_name or current_user.email }}</div>
     <div class="home-year-tabs">
         {% for y in available_years %}
             <a href="/?year={{ y }}" class="chart-tab {% if y == year %}active{% endif %}">{{ y }}</a>
         {% endfor %}
     </div>
 </div>
+<script>
+(function () {
+    // По местному времени БРАУЗЕРА, не сервера — сервер (Yandex Cloud,
+    // UTC) может быть в другом часовом поясе, чем сибирские города
+    // бизнеса (Иркутск/Новосибирск/Красноярск — see test seeds), время
+    // суток должно быть про читающего, не про сервер. Инлайновый скрипт
+    // сразу после элемента — не внутри DOMContentLoaded ниже — чтобы не
+    // было видно вспышки статичного "Добрый день" из <noscript>-fallback
+    // в разметке.
+    var el = document.getElementById("home-greeting");
+    if (!el) return;
+    var hour = new Date().getHours();
+    var greeting = hour >= 5 && hour < 12
+        ? "Доброе утро"
+        : hour >= 12 && hour < 18
+        ? "Добрый день"
+        : hour >= 18 && hour < 23
+        ? "Добрый вечер"
+        : "Доброй ночи";
+    el.textContent = greeting + ", " + el.dataset.name;
+})();
+</script>
 <div class="home-period">
     Все города · {{ chart.labels|first }} – {{ chart.labels|last }} {{ year }}
     {% if year == available_years[0] %}(год ещё не завершён, дельты — год к году за те же месяцы){% endif %}

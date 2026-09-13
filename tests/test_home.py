@@ -350,6 +350,31 @@ def test_home_page_empty_state_when_no_sales(admin_client):
     assert resp.status_code == 200
 
 
+def test_home_page_greeting_uses_first_name_when_set(
+    admin_client, admin_user, db_session
+):
+    """Приветствие на главной — динамическое по времени суток (JS, по
+    местному времени браузера, не сервера) + имя пользователя, если оно
+    заполнено (запрос 2026-09-13), иначе email — server-side тестируем
+    только то, что реально рендерит Jinja: data-name и статичный
+    no-JS-фолбэк "Добрый день", саму подмену на утро/день/вечер/ночь
+    JS делает в браузере, серверными тестами не покрыта."""
+    admin_user.first_name = "Алексей"
+    db_session.commit()
+    _sale(db_session, "Иркутск", "2026-03-01", 10)
+
+    resp = admin_client.get("/")
+    assert 'data-name="Алексей"' in resp.text
+    assert "Добрый день, Алексей" in resp.text
+
+
+def test_home_page_greeting_falls_back_to_email(admin_client, admin_user, db_session):
+    _sale(db_session, "Иркутск", "2026-03-01", 10)
+
+    resp = admin_client.get("/")
+    assert f'data-name="{admin_user.email}"' in resp.text
+
+
 def test_ambassador_root_redirects_to_clients(client, db_session):
     # логин через /auth/login в тестах не используется нигде в проекте —
     # secure=True на session_id cookie не проходит через TestClient (тот же
