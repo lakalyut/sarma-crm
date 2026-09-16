@@ -183,5 +183,94 @@ def test_ambassador_app_verify_ok(db_session, client):
     )
     assert resp.status_code == 200
     body = resp.json()
+    assert body["role"] == "ambassador"
     assert body["first_name"] == "Анна"
     assert body["city"] == "Юг"
+
+
+def test_user_role_bot_access_no_city_needed(db_session, client):
+    """Расширение доступа на роль user (запрос 2026-09-16) — регистрация
+    считается завершённой по одному имени, город не нужен (в отличие от
+    ambassador)."""
+    from app.auth_models import User
+
+    user = User(
+        email="analyst@example.com",
+        role="user",
+        is_active=True,
+        telegram_id=444555,
+        first_name="Олег",
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    init_data = signed_init_data(444555)
+    resp = client.post(
+        "/ambassador/app/verify", headers={"Authorization": f"tma {init_data}"}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["role"] == "user"
+    assert body["city"] is None
+
+
+def test_user_role_without_name_not_registered(db_session, client):
+    from app.auth_models import User
+
+    user = User(
+        email="analyst2@example.com",
+        role="user",
+        is_active=True,
+        telegram_id=444556,
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    init_data = signed_init_data(444556)
+    resp = client.post(
+        "/ambassador/app/verify", headers={"Authorization": f"tma {init_data}"}
+    )
+    assert resp.status_code == 403
+
+
+def test_user_role_text_message_skips_city_step(db_session, monkeypatch):
+    """У роли user диалог саморегистрации заканчивается на имени — города
+    не спрашиваем (в отличие от ambassador, тест
+    test_text_message_saves_name_and_asks_city выше)."""
+    from app.auth_models import User
+    from app.services import telegram_bot_service as svc
+
+    user = User(
+        email="analyst3@example.com",
+        role="user",
+        is_active=True,
+        telegram_id=444557,
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    sent = []
+    menu = []
+    monkeypatch.setattr(svc, "send_message", lambda *a, **k: sent.append((a, k)))
+    monkeypatch.setattr(
+        svc, "set_chat_menu_button", lambda *a, **k: menu.append((a, k))
+    )
+
+    svc.handle_update(
+        db_session,
+        {
+            "message": {
+                "from": {"id": 444557},
+                "chat": {"id": 556},
+                "text": "Олег Петров",
+            }
+        },
+        BASE_URL,
+    )
+
+    db_session.refresh(user)
+    assert user.first_name == "Олег"
+    assert user.city is None
+    assert len(sent) == 1
+    assert "reply_markup" not in sent[0][1]  # не клавиатура городов
+    assert len(menu) == 1  # меню сразу открыто, без шага «город»

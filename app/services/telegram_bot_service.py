@@ -1,18 +1,20 @@
-"""Горизонт 13, Этап 2 — диалог саморегистрации амбассадора в Telegram-боте.
+"""Горизонт 13, Этап 2 — диалог саморегистрации в Telegram-боте.
 
-Состояние диалога не хранится отдельно (без aiogram/FSM — короткий, ровно
-двухшаговый диалог не оправдывает отдельную библиотеку/таблицу): читается из
-самих nullable-полей User — first_name IS NULL → ждём имя, city IS NULL
-(при заполненном имени) → ждём город, оба заполнены → зарегистрирован.
-Whitelist — сама таблица users (амбассадор заводится админом заранее на
-Этапе 1 с известным telegram_id), отдельной таблицы allowed_users, в отличие
-от guide_bot, не нужно — это одна и та же сущность.
+Состояние диалога не хранится отдельно (без aiogram/FSM — короткий диалог
+не оправдывает отдельную библиотеку/таблицу): читается из самих nullable-
+полей User — first_name IS NULL → ждём имя, дальше зависит от роли (см.
+ниже). Whitelist — сама таблица users (пользователь заводится админом
+заранее с известным telegram_id), отдельной таблицы allowed_users, в
+отличие от guide_bot, не нужно — это одна и та же сущность.
 
-Амбассадор привязан к одному конкретному городу (User.city — та же природа
-поле, что Sale.city/Visit.city), не к макро-региону — выбор всё ещё через
-инлайн-кнопки, не свободный текст (та же причина, что была у региона: город
-— граница доступа к списку клиентов, опечатка не должна давать несуществующий
-город)."""
+Изначально бот был только для `ambassador` (привязан к одному конкретному
+городу — User.city, та же природа поле, что Sale.city/Visit.city, не
+макро-регион; выбор через инлайн-кнопки, не свободный текст — город
+граница доступа к списку клиентов, опечатка не должна давать несуществующий
+город). **Доступ расширен на роль `user` (запрос 2026-09-16)** — аналитику
+город НЕ нужен (в мини-аппе выбирает сам, как в браузере, см.
+ambassador_app.py) — для него диалог заканчивается на имени, шаг «город»
+целиком пропускается."""
 
 from sqlalchemy.orm import Session
 
@@ -27,6 +29,9 @@ ASK_NAME_TEXT = (
 ASK_CITY_AGAIN_TEXT = "Пожалуйста, выберите город кнопкой ниже."
 ALREADY_REGISTERED_TEXT = (
     "Вы уже зарегистрированы. Открыть мини-апп можно кнопкой меню рядом с полем ввода."
+)
+NAME_SAVED_TEXT = (
+    "Отлично, {name}! Открыть мини-апп можно кнопкой меню рядом с полем ввода."
 )
 CITY_SAVED_TEXT = (
     "Город сохранён ✅. Открыть мини-апп можно кнопкой меню рядом с полем ввода."
@@ -45,10 +50,10 @@ def _city_keyboard(db: Session) -> dict:
     }
 
 
-def _find_ambassador(db: Session, telegram_id: int) -> User | None:
+def _find_bot_user(db: Session, telegram_id: int) -> User | None:
     return (
         db.query(User)
-        .filter(User.telegram_id == telegram_id, User.role == "ambassador")
+        .filter(User.telegram_id == telegram_id, User.role.in_(("ambassador", "user")))
         .first()
     )
 
@@ -68,7 +73,7 @@ def _handle_message(db: Session, message: dict, base_url: str) -> None:
     if telegram_id is None or chat_id is None:
         return
 
-    user = _find_ambassador(db, telegram_id)
+    user = _find_bot_user(db, telegram_id)
     if not user:
         send_message(chat_id, DENY_TEXT)
         return
@@ -84,10 +89,16 @@ def _handle_message(db: Session, message: dict, base_url: str) -> None:
         user.first_name = parts[0]
         user.last_name = parts[1] if len(parts) > 1 else ""
         db.commit()
-        send_message(chat_id, "Город:", reply_markup=_city_keyboard(db))
+        if user.role == "ambassador":
+            send_message(chat_id, "Город:", reply_markup=_city_keyboard(db))
+        else:
+            # role=user — города не спрашиваем, он выбирает его сам в
+            # мини-аппе на каждом заходе, не привязан к одному
+            send_message(chat_id, NAME_SAVED_TEXT.format(name=user.first_name))
+            set_chat_menu_button(chat_id, _ambassador_app_url(base_url))
         return
 
-    if not user.city:
+    if user.role == "ambassador" and not user.city:
         send_message(chat_id, ASK_CITY_AGAIN_TEXT, reply_markup=_city_keyboard(db))
         return
 
@@ -103,7 +114,7 @@ def _handle_callback_query(db: Session, callback_query: dict, base_url: str) -> 
     chat_id = callback_query.get("message", {}).get("chat", {}).get("id")
     data = callback_query.get("data") or ""
 
-    user = _find_ambassador(db, telegram_id) if telegram_id is not None else None
+    user = _find_bot_user(db, telegram_id) if telegram_id is not None else None
     if not user:
         answer_callback_query(callback_id, DENY_TEXT, show_alert=True)
         return

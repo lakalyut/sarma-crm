@@ -130,6 +130,148 @@ def test_client_detail_empty_for_wrong_city(db_session, client):
     assert body["rows"] == []
 
 
+def _make_analyst(db_session, telegram_id=888333, first_name="Ана"):
+    from app.auth_models import User
+
+    user = User(
+        email="clients-user@example.com",
+        role="user",
+        is_active=True,
+        telegram_id=telegram_id,
+        first_name=first_name,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+def test_ambassador_ignores_city_query_param(db_session, client):
+    """Амбассадор — город всегда user.city, ?city= из query игнорируется
+    (тот принцип, что и раньше, до расширения доступа на роль user)."""
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    _sale(db_session, "Новосибирск", "Кафе Б", "HoReCa", sku="S-2", name="Табак Б")
+    ambassador = _make_ambassador(db_session, "Иркутск")
+
+    init_data = signed_init_data(ambassador.telegram_id)
+    resp = client.get(
+        "/ambassador/app/clients?city=" + "Новосибирск",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    rows = resp.json()["rows"]
+    assert len(rows) == 1
+    assert rows[0]["client"] == "Кафе А"  # не Новосибирск, а свой город
+
+
+def test_user_role_clients_empty_without_city(db_session, client):
+    """Роль user (запрос 2026-09-16) без своего города — без явного
+    ?city= пустой список, не 500 и не чужие данные по умолчанию."""
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    analyst = _make_analyst(db_session)
+
+    init_data = signed_init_data(analyst.telegram_id)
+    resp = client.get(
+        "/ambassador/app/clients",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["rows"] == []
+
+
+def test_user_role_clients_uses_query_city(db_session, client):
+    """С явным ?city= роль user видит любой город — не зафиксирована на
+    одном, в отличие от ambassador."""
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    _sale(db_session, "Новосибирск", "Кафе Б", "HoReCa", sku="S-2", name="Табак Б")
+    analyst = _make_analyst(db_session)
+
+    init_data = signed_init_data(analyst.telegram_id)
+
+    resp_a = client.get(
+        "/ambassador/app/clients?city=Иркутск",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    assert [r["client"] for r in resp_a.json()["rows"]] == ["Кафе А"]
+
+    resp_b = client.get(
+        "/ambassador/app/clients?city=Новосибирск",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    assert [r["client"] for r in resp_b.json()["rows"]] == ["Кафе Б"]
+
+
+def test_user_role_client_detail_uses_query_city(db_session, client):
+    _sale(
+        db_session,
+        "Иркутск",
+        "Кафе А",
+        "HoReCa",
+        sku="S-1",
+        name="Табак Мята",
+        qty=2,
+        weight=10,
+    )
+    analyst = _make_analyst(db_session)
+
+    init_data = signed_init_data(analyst.telegram_id)
+    resp = client.get(
+        "/ambassador/app/client-detail"
+        "?client=%D0%9A%D0%B0%D1%84%D0%B5%20%D0%90&sale_type=HoReCa&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["summary"]["total_weight"] == 10.0
+
+
+def test_user_role_client_detail_empty_without_city(db_session, client):
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    analyst = _make_analyst(db_session)
+
+    init_data = signed_init_data(analyst.telegram_id)
+    resp = client.get(
+        "/ambassador/app/client-detail?client=%D0%9A%D0%B0%D1%84%D0%B5%20%D0%90&sale_type=HoReCa",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["summary"] is None
+    assert body["rows"] == []
+
+
+def test_user_role_cannot_access_visit_endpoints(db_session, client):
+    """«Визит» остаётся строго для ambassador — user получает 403, не
+    голую 500/400 (запрос 2026-09-16)."""
+    analyst = _make_analyst(db_session)
+    init_data = signed_init_data(analyst.telegram_id)
+    headers = {"Authorization": f"tma {init_data}"}
+
+    resp_options = client.get("/ambassador/app/options", headers=headers)
+    assert resp_options.status_code == 403
+
+    resp_post = client.post(
+        "/ambassador/app/visits",
+        headers=headers,
+        json={"city": "Иркутск", "client": "Кафе А", "sale_type": "HoReCa"},
+    )
+    assert resp_post.status_code == 403
+
+
+def test_cities_endpoint_available_to_both_roles(db_session, client):
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    analyst = _make_analyst(db_session)
+    ambassador = _make_ambassador(db_session, "Иркутск", telegram_id=888444)
+
+    for user in (analyst, ambassador):
+        init_data = signed_init_data(user.telegram_id)
+        resp = client.get(
+            "/ambassador/app/cities",
+            headers={"Authorization": f"tma {init_data}"},
+        )
+        assert resp.status_code == 200
+        assert "Иркутск" in resp.json()["cities"]
+
+
 def test_clients_endpoints_require_auth(client):
     """Без заголовка Authorization: tma — та же (уже существующая) картина,
     что у любого другого /ambassador/app/*-эндпоинта: get_current_ambassador

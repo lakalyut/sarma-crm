@@ -262,6 +262,10 @@
 
 <div class="card is-hidden" id="tab-clients">
     <div id="clients-list-view">
+        <div class="field is-hidden" id="clients-city-field">
+            <label>Город</label>
+            <select id="clients-city-select"></select>
+        </div>
         <input type="text" id="clients-search" placeholder="Поиск клиента" autocomplete="off" style="margin-bottom: 10px;">
         <div id="clients-list-content" class="hint">Загружаю...</div>
     </div>
@@ -296,6 +300,11 @@ function authHeader() {
 
 let options = null;
 let selectedClient = '';
+// role=ambassador — весь мини-апп как раньше (город фиксирован).
+// role=user (запрос 2026-09-16) — без вкладки «Визит», город на
+// «Клиентах» выбирает сам через clients-city-select, не зафиксирован.
+let currentRole = null;
+let selectedClientsCity = '';
 
 const SURVEY_IDS = ['sku-classic', 'sku-strong', 'sku-light', 'people-count', 'goal-input', 'comment-input'];
 
@@ -332,9 +341,11 @@ function renderHistoryInto(boxId, listId, items) {
     box.classList.remove('is-hidden');
 }
 
-function loadHistoryInto(boxId, listId, client) {
+function loadHistoryInto(boxId, listId, client, city) {
     if (!client) { renderHistoryInto(boxId, listId, []); return; }
-    fetch('/ambassador/app/visit-history?client=' + encodeURIComponent(client), { headers: authHeader() })
+    let url = '/ambassador/app/visit-history?client=' + encodeURIComponent(client);
+    if (city) url += '&city=' + encodeURIComponent(city);
+    fetch(url, { headers: authHeader() })
         .then(r => r.ok ? r.json() : { history: [] })
         .then(d => renderHistoryInto(boxId, listId, d.history))
         .catch(() => renderHistoryInto(boxId, listId, []));
@@ -636,7 +647,24 @@ function renderLeaderboard(rows) {
 }
 
 let clientsLoaded = false;
+let citiesLoaded = false;
 let allClientRows = [];
+
+function loadClientsForCity(city) {
+    const el = document.getElementById('clients-list-content');
+    el.innerHTML = 'Загружаю...';
+    let url = '/ambassador/app/clients';
+    if (city) url += '?city=' + encodeURIComponent(city);
+    fetch(url, { headers: authHeader() })
+        .then(res => res.json())
+        .then(body => {
+            allClientRows = body.rows;
+            renderClientsList(allClientRows);
+        })
+        .catch((err) => {
+            el.innerHTML = '<span class="fail">Сеть/сервер: ' + err + '</span>';
+        });
+}
 
 function renderClientsList(rows) {
     const el = document.getElementById('clients-list-content');
@@ -698,17 +726,17 @@ function openClientDetail(client, saleType) {
     document.getElementById('detail-summary').innerHTML = 'Загружаю...';
     document.getElementById('detail-sku-list').innerHTML = '';
 
-    fetch(
-        '/ambassador/app/client-detail?client=' + encodeURIComponent(client) + '&sale_type=' + encodeURIComponent(saleType),
-        { headers: authHeader() }
-    )
+    let url = '/ambassador/app/client-detail?client=' + encodeURIComponent(client) + '&sale_type=' + encodeURIComponent(saleType);
+    if (currentRole !== 'ambassador' && selectedClientsCity) url += '&city=' + encodeURIComponent(selectedClientsCity);
+
+    fetch(url, { headers: authHeader() })
         .then(r => r.json())
         .then(data => renderClientDetail(client, saleType, data))
         .catch(() => {
             document.getElementById('detail-summary').innerHTML = '<span class="fail">Сеть/сервер</span>';
         });
 
-    loadHistoryInto('detail-history', 'detail-history-list', client);
+    loadHistoryInto('detail-history', 'detail-history-list', client, currentRole !== 'ambassador' ? selectedClientsCity : undefined);
 }
 
 document.getElementById('clients-back-btn').addEventListener('click', () => {
@@ -744,19 +772,40 @@ function showTab(tab) {
     }
 
     if (tab === 'clients' && !clientsLoaded) {
-        clientsLoaded = true;
-        fetch('/ambassador/app/clients', { headers: authHeader() })
-            .then(res => res.json())
-            .then(body => {
-                allClientRows = body.rows;
-                renderClientsList(allClientRows);
-            })
-            .catch((err) => {
-                document.getElementById('clients-list-content').innerHTML =
-                    '<span class="fail">Сеть/сервер: ' + err + '</span>';
-            });
+        if (currentRole === 'ambassador') {
+            // город фиксирован — грузим сразу, пикер скрыт (is-hidden в разметке)
+            clientsLoaded = true;
+            loadClientsForCity(null);
+        } else if (!citiesLoaded) {
+            // роль user — города нет, ждём выбор в clients-city-select
+            citiesLoaded = true;
+            document.getElementById('clients-list-content').innerHTML = 'Выберите город выше.';
+            fetch('/ambassador/app/cities', { headers: authHeader() })
+                .then(res => res.json())
+                .then(body => {
+                    const sel = document.getElementById('clients-city-select');
+                    sel.innerHTML = '<option value="">— выберите —</option>' +
+                        body.cities.map(c => '<option value="' + escHtml(c) + '">' + escHtml(c) + '</option>').join('');
+                })
+                .catch((err) => {
+                    document.getElementById('clients-list-content').innerHTML =
+                        '<span class="fail">Сеть/сервер: ' + err + '</span>';
+                });
+        }
     }
 }
+
+document.getElementById('clients-city-select').addEventListener('change', function () {
+    selectedClientsCity = this.value;
+    if (selectedClientsCity) {
+        clientsLoaded = true;
+        loadClientsForCity(selectedClientsCity);
+    } else {
+        clientsLoaded = false;
+        allClientRows = [];
+        document.getElementById('clients-list-content').innerHTML = 'Выберите город выше.';
+    }
+});
 
 document.getElementById('tab-btn-visit').addEventListener('click', () => showTab('visit'));
 document.getElementById('tab-btn-leaderboard').addEventListener('click', () => showTab('leaderboard'));
@@ -775,12 +824,22 @@ if (!tg || !tg.initData) {
         .then(async (res) => {
             const body = await res.json();
             if (res.ok) {
+                currentRole = body.role;
                 contentEl.innerHTML =
                     line('Имя', (body.first_name || '') + ' ' + (body.last_name || '')) +
-                    line('Город', body.city);
+                    (body.city ? line('Город', body.city) : '');
                 document.getElementById('tabs').classList.remove('is-hidden');
 
-                return fetch('/ambassador/app/options', { headers: authHeader() });
+                if (currentRole === 'ambassador') {
+                    return fetch('/ambassador/app/options', { headers: authHeader() });
+                }
+
+                // роль user — без вкладки «Визит», город на «Клиентах» не
+                // зафиксирован (запрос 2026-09-16)
+                document.getElementById('tab-btn-visit').classList.add('is-hidden');
+                document.getElementById('clients-city-field').classList.remove('is-hidden');
+                showTab('leaderboard');
+                return null;
             } else {
                 contentEl.innerHTML = '<div class="fail">Ошибка: ' + (body.detail || res.status) + '</div>';
                 return null;

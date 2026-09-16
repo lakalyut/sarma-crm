@@ -80,11 +80,19 @@ def get_current_ambassador(
     authorization: str = Header(default=""),
     db: Session = Depends(get_db),
 ) -> User:
-    """Аутентификация мини-аппа амбассадора — заголовок Authorization: tma
-    <initData>, не cookie-сессия (initData сама по себе уже подписана
-    секретом бота, ambient-cookie тут не участвует). Требует, чтобы
-    telegram_id был известен (создан админом на Этапе 1) и чтобы
-    саморегистрация в боте (Этап 2) уже сохранила имя и регион."""
+    """Аутентификация мини-аппа — заголовок Authorization: tma <initData>,
+    не cookie-сессия (initData сама по себе уже подписана секретом бота,
+    ambient-cookie тут не участвует). Требует, чтобы telegram_id был
+    известен (проставлен админом) и чтобы саморегистрация в боте уже
+    сохранила имя.
+
+    Имя оставлено историческим (изначально мини-апп был только для
+    амбассадоров, горизонт 13) — доступ расширен на роль `user` (запрос
+    2026-09-16: аналитику тоже нужен бот, но без привязки к одному городу
+    и без вкладки «Визит», см. ambassador_app.py/app.html). `city`
+    обязателен только для `ambassador` — тот физически привязан к одному
+    городу; `user` в мини-аппе выбирает город каждый раз сам (как в
+    браузере), поле может быть пустым."""
     if not authorization.startswith("tma "):
         raise HTTPException(
             status_code=401, detail="Нет заголовка Authorization: tma <initData>"
@@ -104,13 +112,17 @@ def get_current_ambassador(
 
     user = (
         db.query(User)
-        .filter(User.telegram_id == telegram_id, User.role == "ambassador")
+        .filter(User.telegram_id == telegram_id, User.role.in_(("ambassador", "user")))
         .first()
     )
     if not user:
-        raise HTTPException(status_code=403, detail="Амбассадор не найден")
+        raise HTTPException(status_code=403, detail="Пользователь не найден")
 
-    if not user.first_name or not user.city:
+    if not user.first_name:
+        raise HTTPException(
+            status_code=403, detail="Регистрация в боте ещё не завершена"
+        )
+    if user.role == "ambassador" and not user.city:
         raise HTTPException(
             status_code=403, detail="Регистрация в боте ещё не завершена"
         )
