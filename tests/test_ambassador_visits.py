@@ -73,7 +73,7 @@ def test_get_visit_options_scoped_to_city(db_session):
     city = _make_sales(db_session)
     product = _make_product(db_session)
 
-    options = get_visit_options(db_session, city)
+    options = get_visit_options(db_session, [city])
 
     assert options["cities"] == ["Тестгород"]
     assert options["clients_by_city"]["Тестгород"] == ["Клиент А"]

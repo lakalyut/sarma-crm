@@ -191,6 +191,9 @@
 
 <div id="tab-visit">
     <div class="card is-hidden" id="visit-card">
+        <div class="hint is-hidden" id="demo-notice" style="margin-bottom: 12px; padding: 8px 10px; background: #eef2ff; border-radius: 8px; color: #5a4dd6;">
+            Демо-режим: форма и проверка полей настоящие, но визит в базу не сохраняется.
+        </div>
         <div class="field is-hidden" id="city-field">
             <label>Город</label>
             <select id="city-select"></select>
@@ -251,7 +254,7 @@
     </div>
 
     <div class="card is-hidden" id="success-card">
-        <div class="ok">Визит записан ✅</div>
+        <div class="ok" id="success-text">Визит записан ✅</div>
         <button class="secondary" id="again-btn">Записать ещё</button>
     </div>
 </div>
@@ -605,6 +608,9 @@ document.getElementById('submit-btn').addEventListener('click', () => {
             if (res.ok) {
                 visitCard.classList.add('is-hidden');
                 successCard.classList.remove('is-hidden');
+                document.getElementById('success-text').textContent = body.demo
+                    ? 'Демо: анкета прошла проверку, визит в базу не сохранён ✅'
+                    : 'Визит записан ✅';
             } else {
                 document.getElementById('submit-result').innerHTML =
                     '<span class="fail">' + (body.detail || res.status) + '</span>';
@@ -830,16 +836,15 @@ if (!tg || !tg.initData) {
                     (body.city ? line('Город', body.city) : '');
                 document.getElementById('tabs').classList.remove('is-hidden');
 
-                if (currentRole === 'ambassador') {
-                    return fetch('/ambassador/app/options', { headers: authHeader() });
+                // роль user (запрос 2026-09-16/17): «Визит» — полноценная
+                // вкладка (демо-режим, см. submit-btn ниже), город на ней
+                // и на «Клиентах» не зафиксирован — пикер, а не форс своего
+                if (currentRole !== 'ambassador') {
+                    document.getElementById('demo-notice').classList.remove('is-hidden');
+                    document.getElementById('clients-city-field').classList.remove('is-hidden');
                 }
 
-                // роль user — без вкладки «Визит», город на «Клиентах» не
-                // зафиксирован (запрос 2026-09-16)
-                document.getElementById('tab-btn-visit').classList.add('is-hidden');
-                document.getElementById('clients-city-field').classList.remove('is-hidden');
-                showTab('leaderboard');
-                return null;
+                return fetch('/ambassador/app/options', { headers: authHeader() });
             } else {
                 contentEl.innerHTML = '<div class="fail">Ошибка: ' + (body.detail || res.status) + '</div>';
                 return null;

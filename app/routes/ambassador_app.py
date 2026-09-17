@@ -1,18 +1,20 @@
 """Горизонт 13 — мини-апп амбассадора: подтверждение личности (Этап 2) и сам
 визит — выбор клиента/типа точки/ароматов (Этап 3).
 
-Доступ расширен на роль `user` (запрос 2026-09-16) — аналитику тоже нужен
-бот, но без привязки к одному городу (в браузере он и так видит все города
-сразу) и без вкладки «Визит» (полевых визитов не делает). Роуты ниже поэтому
-делятся на три группы:
-- «Визит» (`options`/`POST visits`) — по-прежнему строго `ambassador`,
-  403 остальным.
-- «Клиенты»/история по точке — общие, но город форсится на `user.city`
-  только для `ambassador`; `user` передаёт `city` явно в query (мини-апп
-  сам даёт выбрать, см. app.html), как на «Клиентах» в браузере.
+Доступ расширен на роль `user` (запрос 2026-09-16, доработано 2026-09-17)
+— аналитику тоже нужен бот, но без привязки к одному городу (в браузере он
+и так видит все города сразу). **Вкладка «Визит» у роли `user` теперь ЕСТЬ
+(полный мини-апп, «для демонстрации функционала», решение пользователя) —
+но визит не пишется в БД (`create_visit(..., dry_run=True)`, «не засорять
+БД»); валидация анкеты при этом та же самая, что у настоящего визита
+амбассадора. Роуты ниже поэтому делятся на две группы:
+- «Визит»/«Клиенты»/история по точке — общие для обеих ролей, но город
+  форсится на `user.city` только для `ambassador`; `user` передаёт `city`
+  явно в query/body (мини-апп сам даёт выбрать — `get_visit_options()`
+  отдаёт СПИСОК городов не-амбассадору, а не один).
 - «Лидерборд»/`verify`/`cities` — общие без изменений."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -61,9 +63,10 @@ def ambassador_app_cities(
     _user: User = Depends(get_current_ambassador),
     db: Session = Depends(get_db),
 ):
-    """Список городов под пикер «Клиентов» у роли `user` — амбассадору не
-    нужен (у него город фиксирован), но эндпоинт не гейтим ролью — не
-    секрет, тот же список, что и на всех фильтрах региона в браузере."""
+    """Список городов под пикеры «Клиентов»/«Визита» у роли `user` —
+    амбассадору не нужен (у него город фиксирован), но эндпоинт не гейтим
+    ролью — не секрет, тот же список, что и на всех фильтрах региона в
+    браузере."""
     return {"cities": get_cities(db)}
 
 
@@ -80,9 +83,12 @@ def ambassador_app_options(
     user: User = Depends(get_current_ambassador),
     db: Session = Depends(get_db),
 ):
-    if user.role != "ambassador":
-        raise HTTPException(status_code=403, detail="Доступно только амбассадорам")
-    return get_visit_options(db, user.city)
+    """Амбассадор — один свой город (как раньше). `user` — все города
+    сразу (см. `get_visit_options()`): форма визита сама даёт выбрать,
+    `populateCity()` в app.html уже умела показывать `<select>`, если
+    городов больше одного, просто раньше не срабатывало."""
+    cities = [user.city] if user.role == "ambassador" else get_cities(db)
+    return get_visit_options(db, cities)
 
 
 @router.get("/ambassador/app/clients")
@@ -168,9 +174,10 @@ async def ambassador_app_create_visit(
     user: User = Depends(get_current_ambassador),
     db: Session = Depends(get_db),
 ):
-    if user.role != "ambassador":
-        raise HTTPException(status_code=403, detail="Доступно только амбассадорам")
-
+    """`dry_run` — только для роли, отличной от `ambassador` (мини-апп,
+    демо-режим 2026-09-17): анкета валидируется полностью, но в БД ничего
+    не пишется — визиты роли `user` нужны только показать, как работает
+    функционал, не засорять реальные данные."""
     body = await request.json()
 
     try:
@@ -187,8 +194,9 @@ async def ambassador_app_create_visit(
             people_count=body.get("people_count"),
             comment=body.get("comment", ""),
             goal=body.get("goal", ""),
+            dry_run=user.role != "ambassador",
         )
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
-    return {"ok": True, "visit_id": visit.id}
+    return {"ok": True, "visit_id": visit.id if visit else None, "demo": visit is None}

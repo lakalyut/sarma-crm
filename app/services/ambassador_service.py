@@ -2,8 +2,20 @@
 
 Амбассадор привязан к одному конкретному городу (User.city — та же природа
 поле, что Sale.city/Visit.city, не отдельная сущность), не к макро-региону —
-поэтому все данные визита берутся строго по этому одному городу, без
-разворачивания в список городов региона."""
+поэтому все данные визита для него берутся строго по этому одному городу,
+без разворачивания в список городов региона.
+
+**Роль `user` — демо-режим** (запрос 2026-09-17): у аналитика нет
+фиксированного города, `get_visit_options()` поэтому принимает СПИСОК
+городов (не один — для `user` это все города сразу, чтобы форма визита
+сама показала выбор, тот же УЖЕ существовавший код `populateCity()` в
+app.html, который просто раньше не срабатывал: `cities.length > 1` при
+одном городе амбассадора всегда было false). `create_visit()` для
+`user`-аккаунта проходит ВСЮ ту же валидацию (реальный клиент/тип точки
+для выбранного города, реальные активные ароматы, анкета целиком), но
+**ничего не пишет в БД** — визиты роли user используются только для
+демонстрации функционала («не засорять БД»), возвращает `None` вместо
+`Visit`."""
 
 from sqlalchemy.orm import Session
 
@@ -39,16 +51,27 @@ def _parse_count(raw, label: str) -> int:
     return value
 
 
-def get_visit_options(db: Session, city: str) -> dict:
-    clients = sales_options_service.get_clients(db, city=city)
-    types = sales_options_service.get_types(db, city=city)
+def get_visit_options(db: Session, cities: list[str]) -> dict:
+    """`cities` — список: у амбассадора всегда один элемент (его
+    `user.city`), у роли `user` (демо-режим) — все города сразу, чтобы
+    форма сама дала выбрать (`populateCity()` в app.html уже показывает
+    `<select>`, если `cities.length > 1` — код был готов заранее, просто
+    не срабатывал при единственном городе амбассадора)."""
+    clients_by_city: dict[str, list[str]] = {}
+    types_by_city: dict[str, list[str]] = {}
+    for city in cities:
+        clients_by_city[city] = sales_options_service.get_clients(db, city=city)
+        types_by_city[city] = sales_options_service.get_types(db, city=city)
 
     segments = db.query(AbcSegment).order_by(AbcSegment.sort_order, AbcSegment.id).all()
     guessed_segment_by_type: dict[str, int] = {}
-    for sale_type in types:
-        segment = guess_default_segment(segments, sale_type)
-        if segment:
-            guessed_segment_by_type[sale_type] = segment.id
+    for city_types in types_by_city.values():
+        for sale_type in city_types:
+            if sale_type in guessed_segment_by_type:
+                continue
+            segment = guess_default_segment(segments, sale_type)
+            if segment:
+                guessed_segment_by_type[sale_type] = segment.id
 
     needed_segment_ids = set(guessed_segment_by_type.values())
     abc_by_segment: dict[int, dict[int, str]] = {}
@@ -71,9 +94,9 @@ def get_visit_options(db: Session, city: str) -> dict:
     )
 
     return {
-        "cities": [city],
-        "clients_by_city": {city: clients},
-        "types_by_city": {city: types},
+        "cities": cities,
+        "clients_by_city": clients_by_city,
+        "types_by_city": types_by_city,
         "guessed_segment_by_type": guessed_segment_by_type,
         "abc_by_segment": abc_by_segment,
         "visit_goals": VISIT_GOALS,
@@ -222,8 +245,18 @@ def create_visit(
     people_count=None,
     comment: str = "",
     goal: str = "",
-) -> Visit:
-    if city != ambassador.city:
+    dry_run: bool = False,
+) -> Visit | None:
+    """`dry_run=True` — демо-визит роли `user` в мини-аппе (запрос
+    2026-09-17, см. докстринг модуля): анкета проходит ТУ ЖЕ валидацию, что
+    и настоящий визит (реальный клиент/тип точки для выбранного города,
+    реальные активные ароматы), но в БД ничего не пишется (`None`) и город
+    не обязан совпадать с `ambassador.city` — у роли `user` такого
+    фиксированного города просто нет. **Не завязано на роль напрямую** —
+    браузерный путь (`ambassador_web.py`) `dry_run` не передаёт, там и
+    админ (`require_ambassador` пускает `admin`/`ambassador` оба), и
+    амбассадор по-прежнему пишут настоящие визиты, поведение не менялось."""
+    if not dry_run and city != ambassador.city:
         raise ValueError("Вы можете записывать визиты только в своём городе")
 
     fields = _validate_visit_payload(
@@ -239,6 +272,9 @@ def create_visit(
         comment=comment,
         goal=goal,
     )
+
+    if dry_run:
+        return None
 
     visit = Visit(
         ambassador_id=ambassador.id,

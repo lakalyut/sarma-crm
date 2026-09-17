@@ -50,7 +50,7 @@ def _edit_context(
     error: str | None = None,
     form: dict | None = None,
 ) -> dict:
-    options = get_visit_options(db, visit.city)
+    options = get_visit_options(db, [visit.city])
     fields = form or {
         "client": visit.client,
         "sale_type": visit.sale_type,

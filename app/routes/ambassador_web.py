@@ -106,7 +106,7 @@ def ambassador_visit_form(
         "ambassador/visit.html",
         {
             "title": "Визит — Пульс",
-            "options": get_visit_options(db, user.city),
+            "options": get_visit_options(db, [user.city]),
             "message": "Визит записан" if recorded else None,
         },
     )
@@ -152,7 +152,7 @@ def ambassador_visit_submit(
             "ambassador/visit.html",
             {
                 "title": "Визит — Пульс",
-                "options": get_visit_options(db, user.city),
+                "options": get_visit_options(db, [user.city]),
                 "error": str(exc),
             },
         )

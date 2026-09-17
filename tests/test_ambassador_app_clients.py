@@ -239,22 +239,132 @@ def test_user_role_client_detail_empty_without_city(db_session, client):
     assert body["rows"] == []
 
 
-def test_user_role_cannot_access_visit_endpoints(db_session, client):
-    """«Визит» остаётся строго для ambassador — user получает 403, не
-    голую 500/400 (запрос 2026-09-16)."""
+def test_user_role_options_returns_all_cities(db_session, client):
+    """«Визит» — полноценная вкладка и для роли user (запрос 2026-09-17,
+    «полный мини-ап, но визиты никуда не уходят»): options отдаёт ВСЕ
+    города сразу (не один, как амбассадору), форма визита сама даёт
+    выбрать."""
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    _sale(db_session, "Новосибирск", "Кафе Б", "Розница", sku="S-2", name="Табак Б")
+    analyst = _make_analyst(db_session)
+
+    init_data = signed_init_data(analyst.telegram_id)
+    resp = client.get(
+        "/ambassador/app/options",
+        headers={"Authorization": f"tma {init_data}"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body["cities"]) == {"Иркутск", "Новосибирск"}
+    assert body["clients_by_city"]["Иркутск"] == ["Кафе А"]
+    assert body["clients_by_city"]["Новосибирск"] == ["Кафе Б"]
+
+
+def test_user_role_visit_is_demo_not_persisted(db_session, client):
+    """Визит роли user проходит полную валидацию, но НЕ пишется в БД —
+    «для демонстрации функционала», «не засорять БД» (запрос 2026-09-17)."""
+    from app.models import Product, Visit
+
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    product = Product(
+        category="Табак",
+        brand="Сарма",
+        flavor="Мята",
+        canonical_sku="DEMO-SKU",
+        canonical_name="Сарма Мята",
+        norm_brand="сарма",
+        norm_flavor="мята",
+        is_active=True,
+    )
+    db_session.add(product)
+    db_session.commit()
+    db_session.refresh(product)
+
     analyst = _make_analyst(db_session)
     init_data = signed_init_data(analyst.telegram_id)
-    headers = {"Authorization": f"tma {init_data}"}
 
-    resp_options = client.get("/ambassador/app/options", headers=headers)
-    assert resp_options.status_code == 403
-
-    resp_post = client.post(
+    resp = client.post(
         "/ambassador/app/visits",
-        headers=headers,
-        json={"city": "Иркутск", "client": "Кафе А", "sale_type": "HoReCa"},
+        headers={"Authorization": f"tma {init_data}"},
+        json={
+            "city": "Иркутск",
+            "client": "Кафе А",
+            "sale_type": "HoReCa",
+            "product_ids": [product.id],
+            "sku_classic": "1",
+            "sku_strong": "1",
+            "sku_light": "1",
+            "people_count": "5",
+            "comment": "демо",
+            "goal": "демо",
+        },
     )
-    assert resp_post.status_code == 403
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["demo"] is True
+    assert body["visit_id"] is None
+    assert db_session.query(Visit).count() == 0
+
+
+def test_user_role_visit_still_validated(db_session, client):
+    """Демо-режим не отключает валидацию — несуществующий клиент всё
+    равно отклоняется с 400."""
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    analyst = _make_analyst(db_session)
+    init_data = signed_init_data(analyst.telegram_id)
+
+    resp = client.post(
+        "/ambassador/app/visits",
+        headers={"Authorization": f"tma {init_data}"},
+        json={"city": "Иркутск", "client": "Несуществующий", "sale_type": "HoReCa"},
+    )
+    assert resp.status_code == 400
+
+
+def test_ambassador_visit_still_persisted(db_session, client):
+    """Контроль: у ambassador визит по-прежнему настоящий (dry_run не
+    затронул основной путь)."""
+    from app.models import Product, Visit
+
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", sku="S-1", name="Табак А")
+    product = Product(
+        category="Табак",
+        brand="Сарма",
+        flavor="Мята",
+        canonical_sku="AMB-SKU",
+        canonical_name="Сарма Мята",
+        norm_brand="сарма",
+        norm_flavor="мята",
+        is_active=True,
+    )
+    db_session.add(product)
+    db_session.commit()
+    db_session.refresh(product)
+
+    ambassador = _make_ambassador(db_session, "Иркутск")
+    init_data = signed_init_data(ambassador.telegram_id)
+
+    resp = client.post(
+        "/ambassador/app/visits",
+        headers={"Authorization": f"tma {init_data}"},
+        json={
+            "city": "Иркутск",
+            "client": "Кафе А",
+            "sale_type": "HoReCa",
+            "product_ids": [product.id],
+            "sku_classic": "1",
+            "sku_strong": "1",
+            "sku_light": "1",
+            "people_count": "5",
+            "comment": "настоящий визит",
+            "goal": "проверка",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["demo"] is False
+    assert body["visit_id"] is not None
+    assert db_session.query(Visit).count() == 1
 
 
 def test_cities_endpoint_available_to_both_roles(db_session, client):
