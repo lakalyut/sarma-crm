@@ -80,11 +80,16 @@ def build_sku_presence(
     qty_from: float | None = None,
     qty_to: float | None = None,
 ) -> dict:
-    """`qty_from`/`qty_to` — диапазон по суммарному количеству заказанного
-    ИЗ ВЫБРАННЫХ SKU (не по всем продажам клиента). Фильтр применяется ко
-    всем строкам, включая красные (`ordered_qty == 0`) — `qty_from` больше
-    нуля естественным образом уберёт их из списка (решение пользователя,
-    запрос 2026-09-18)."""
+    """`qty_from`/`qty_to` — диапазон по количеству, заказанному **по
+    каждому выбранному SKU отдельно** — не по сумме сразу нескольких SKU
+    (правка 2026-09-18: первая версия суммировала qty по всем выбранным
+    SKU вместе, из-за чего клиент, взявший 3 шт. одного вкуса и 4 шт.
+    другого, проходил диапазон «5-10» при сумме 7, хотя по отдельности ни
+    один SKU туда не попадал — «не совсем корректно», репорт пользователя).
+    Клиент проходит диапазон, если **хотя бы один** выбранный SKU у него
+    в диапазоне (решение пользователя, не обязательно все сразу). Фильтр
+    применяется ко всем строкам, включая красные (пустой `sku_qty`) —
+    `qty_from` больше нуля естественным образом уберёт их из списка."""
     result = {"rows": [], "sku_count": len(selected_skus or []), "present_count": 0}
     if not city or not selected_skus:
         return result
@@ -99,8 +104,7 @@ def build_sku_presence(
     if sale_type:
         query = query.filter(Sale.type == sale_type)
 
-    ordered_by_ct: dict[tuple, set] = defaultdict(set)
-    qty_by_ct: dict[tuple, float] = defaultdict(float)
+    qty_by_ct_sku: dict[tuple, dict[str, float]] = defaultdict(dict)
     all_ct: set[tuple] = set()
 
     for client, row_type, sku, qty in query.all():
@@ -108,16 +112,23 @@ def build_sku_presence(
         all_ct.add(ct)
         key = (sku or "").strip()
         if key in selected_set and (qty or 0) > 0:
-            ordered_by_ct[ct].add(key)
-            qty_by_ct[ct] += qty or 0
+            per_sku = qty_by_ct_sku[ct]
+            per_sku[key] = per_sku.get(key, 0) + (qty or 0)
+
+    def _in_range(value: float) -> bool:
+        if qty_from is not None and value < qty_from:
+            return False
+        if qty_to is not None and value > qty_to:
+            return False
+        return True
 
     rows = []
     for client, row_type in all_ct:
-        got = ordered_by_ct.get((client, row_type), set())
-        ordered_qty = qty_by_ct.get((client, row_type), 0)
-        if qty_from is not None and ordered_qty < qty_from:
-            continue
-        if qty_to is not None and ordered_qty > qty_to:
+        sku_qty = qty_by_ct_sku.get((client, row_type), {})
+        got = set(sku_qty)
+        if (qty_from is not None or qty_to is not None) and not any(
+            _in_range(v) for v in sku_qty.values()
+        ):
             continue
         rows.append(
             {
@@ -126,7 +137,7 @@ def build_sku_presence(
                 "ordered_skus": sorted(got),
                 "missing_skus": sorted(selected_set - got),
                 "ordered_count": len(got),
-                "ordered_qty": ordered_qty,
+                "sku_qty": sku_qty,
                 "is_present": bool(got),
             }
         )

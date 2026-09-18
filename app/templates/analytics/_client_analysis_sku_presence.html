@@ -98,7 +98,9 @@
         </div>
 
         <div class="field filter-field sp-qty-range">
-            <label>Заказано выбранных SKU, шт.</label>
+            <label>Заказано выбранных SKU, шт.
+                <span class="hint-icon" title="Клиент проходит фильтр, если ХОТЯ БЫ ОДИН из выбранных SKU заказан в этом диапазоне (количество считается по каждому SKU отдельно, не суммой по всем выбранным)">?</span>
+            </label>
             <div class="sp-qty-range-inputs">
                 <input type="number" name="qty_from" min="0" step="any" placeholder="От"
                        value="{{ selected_qty_from if selected_qty_from is not none else '' }}">
@@ -168,10 +170,9 @@
                 </div>
                 <div class="sp-row-side">
                     <span class="sp-row-count">{{ r.ordered_count }} из {{ sku_presence.sku_count }}</span>
-                    <span class="sp-row-qty">{{ r.ordered_qty|format_ru_number }} шт.</span>
                 </div>
                 <div class="sp-row-skus">
-                    {% for sku in r.ordered_skus %}<span class="sp-sku-chip sp-sku-chip-ok">{{ sku }}</span>{% endfor %}
+                    {% for sku in r.ordered_skus %}<span class="sp-sku-chip sp-sku-chip-ok">{{ sku }} · {{ r.sku_qty[sku]|format_ru_number }} шт.</span>{% endfor %}
                     {% for sku in r.missing_skus %}<span class="sp-sku-chip sp-sku-chip-no">{{ sku }}</span>{% endfor %}
                 </div>
             </a>
