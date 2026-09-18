@@ -86,10 +86,14 @@ def build_sku_presence(
     SKU вместе, из-за чего клиент, взявший 3 шт. одного вкуса и 4 шт.
     другого, проходил диапазон «5-10» при сумме 7, хотя по отдельности ни
     один SKU туда не попадал — «не совсем корректно», репорт пользователя).
-    Клиент проходит диапазон, если **хотя бы один** выбранный SKU у него
-    в диапазоне (решение пользователя, не обязательно все сразу). Фильтр
-    применяется ко всем строкам, включая красные (пустой `sku_qty`) —
-    `qty_from` больше нуля естественным образом уберёт их из списка."""
+    Клиент проходит диапазон, только если **ВСЕ** заказанные им из
+    выбранных SKU по отдельности попадают в диапазон (вторая правка в тот
+    же день: «хотя бы один» пропускал клиентов, у которых лишь один SKU
+    из многих случайно оказывался в границах — задача фильтра сократить
+    выборку «купивших хотя бы раз», а не почти не сузить её). Пустой
+    `sku_qty` (красная строка, ничего из выбранного не заказано) не
+    проходит диапазон — `all()` на пустом множестве дал бы `True`, это
+    отдельно исключено ниже."""
     result = {"rows": [], "sku_count": len(selected_skus or []), "present_count": 0}
     if not city or not selected_skus:
         return result
@@ -126,10 +130,9 @@ def build_sku_presence(
     for client, row_type in all_ct:
         sku_qty = qty_by_ct_sku.get((client, row_type), {})
         got = set(sku_qty)
-        if (qty_from is not None or qty_to is not None) and not any(
-            _in_range(v) for v in sku_qty.values()
-        ):
-            continue
+        if qty_from is not None or qty_to is not None:
+            if not sku_qty or not all(_in_range(v) for v in sku_qty.values()):
+                continue
         rows.append(
             {
                 "client": client,
