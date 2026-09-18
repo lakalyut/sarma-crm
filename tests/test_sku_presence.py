@@ -185,29 +185,58 @@ def test_build_sku_presence_sku_qty_tracked_per_sku_not_summed(db_session):
     assert "ordered_qty" not in row
 
 
-def test_build_sku_presence_qty_range_filters_rows(db_session):
+def test_build_sku_presence_count_range_filters_by_number_of_distinct_skus(db_session):
+    """`count_from`/`count_to` — диапазон по ЧИСЛУ РАЗНЫХ SKU из выбранных,
+    которые заказал клиент (`ordered_count`, бейдж «N из M»), не по
+    количеству штук — третья правка в тот же день, пользователь пояснил:
+    «я выбрал нужные SKU без фильтра и увидел список клиентов — следующий
+    мой шаг — я хочу поработать с клиентами, у которых есть 10 SKU из
+    условных 25»."""
     from app.services.sku_presence_service import build_sku_presence
 
-    _sale(db_session, "Кафе Мало", "HoReCa", "S-1", qty=2)
-    _sale(db_session, "Кафе Средне", "HoReCa", "S-1", qty=10)
-    _sale(db_session, "Кафе Много", "HoReCa", "S-1", qty=50)
-    _sale(db_session, "Кафе Ноль", "HoReCa", "S-OTHER", qty=5)  # не заказывал S-1
+    _sale(db_session, "Кафе Мало Позиций", "HoReCa", "S-1", qty=5)  # 1 из 3
+    _sale(db_session, "Кафе Средне Позиций", "HoReCa", "S-1", qty=5)
+    _sale(db_session, "Кафе Средне Позиций", "HoReCa", "S-2", qty=5)  # 2 из 3
+    _sale(db_session, "Кафе Все Позиции", "HoReCa", "S-1", qty=5)
+    _sale(db_session, "Кафе Все Позиции", "HoReCa", "S-2", qty=5)
+    _sale(db_session, "Кафе Все Позиции", "HoReCa", "S-3", qty=5)  # 3 из 3
 
     report = build_sku_presence(
         db_session,
         city="Иркутск",
         selected_months=["2026-09-01"],
-        selected_skus=["S-1"],
-        qty_from=5,
-        qty_to=20,
+        selected_skus=["S-1", "S-2", "S-3"],
+        count_from=2,
+        count_to=2,
     )
     clients = {r["client"] for r in report["rows"]}
-    assert clients == {"Кафе Средне"}
+    assert clients == {"Кафе Средне Позиций"}
 
 
-def test_build_sku_presence_qty_from_only_excludes_red_rows(db_session):
-    """qty_from > 0 применяется ко всем строкам — красные (0 шт.)
-    естественно выпадают, отдельного флага не нужно."""
+def test_build_sku_presence_count_range_ignores_unit_quantity(db_session):
+    """Количество ШТУК не влияет на попадание в диапазон — только число
+    РАЗНЫХ заказанных SKU. Репорт-баг: клиент с одной позицией на 13 шт.
+    (в диапазоне 10-25 по количеству единиц) не должен считаться
+    подходящим под диапазон «от 2 до 3 SKU», если у него всего 1 SKU."""
+    from app.services.sku_presence_service import build_sku_presence
+
+    _sale(db_session, "Кафе Одна Позиция Много Штук", "HoReCa", "S-1", qty=13)
+
+    report = build_sku_presence(
+        db_session,
+        city="Иркутск",
+        selected_months=["2026-09-01"],
+        selected_skus=["S-1", "S-2"],
+        count_from=2,
+        count_to=2,
+    )
+    clients = {r["client"] for r in report["rows"]}
+    assert clients == set()
+
+
+def test_build_sku_presence_count_from_only_excludes_red_rows(db_session):
+    """`count_from` > 0 применяется ко всем строкам — красные (0 из M)
+    естественно выпадают."""
     from app.services.sku_presence_service import build_sku_presence
 
     _sale(db_session, "Кафе Взял", "HoReCa", "S-1", qty=5)
@@ -218,60 +247,10 @@ def test_build_sku_presence_qty_from_only_excludes_red_rows(db_session):
         city="Иркутск",
         selected_months=["2026-09-01"],
         selected_skus=["S-1"],
-        qty_from=1,
+        count_from=1,
     )
     clients = {r["client"] for r in report["rows"]}
     assert clients == {"Кафе Взял"}
-
-
-def test_build_sku_presence_qty_range_requires_all_selected_skus_in_range(db_session):
-    """При нескольких выбранных SKU клиент проходит диапазон, только если
-    ВСЕ заказанные им из выбранных SKU (каждый по отдельности) попадают в
-    диапазон — репорт пользователя: клиент с одним случайным попаданием
-    среди многих SKU вне диапазона не должен считаться «сокращённой
-    выборкой», иначе фильтр почти не сужает список."""
-    from app.services.sku_presence_service import build_sku_presence
-
-    # оба SKU этого клиента — в диапазоне 5-10
-    _sale(db_session, "Кафе Оба В Диапазоне", "HoReCa", "S-1", qty=8)
-    _sale(db_session, "Кафе Оба В Диапазоне", "HoReCa", "S-2", qty=6)
-
-    # S-1 = 8 (в диапазоне), но S-2 = 100 (вне) — не должен пройти
-    _sale(db_session, "Кафе Один Мимо", "HoReCa", "S-1", qty=8)
-    _sale(db_session, "Кафе Один Мимо", "HoReCa", "S-2", qty=100)
-
-    report = build_sku_presence(
-        db_session,
-        city="Иркутск",
-        selected_months=["2026-09-01"],
-        selected_skus=["S-1", "S-2"],
-        qty_from=5,
-        qty_to=10,
-    )
-    clients = {r["client"] for r in report["rows"]}
-    assert clients == {"Кафе Оба В Диапазоне"}
-
-
-def test_build_sku_presence_qty_range_all_applies_only_to_ordered_skus(db_session):
-    """`all()` проверяет только те выбранные SKU, что клиент реально
-    заказывал (`sku_qty`) — не все выбранные SKU вообще. Клиент, купивший
-    только S-1 (в диапазоне) и вовсе не трогавший S-2, проходит фильтр:
-    непокупка S-2 — не нарушение диапазона, а отсутствие данных."""
-    from app.services.sku_presence_service import build_sku_presence
-
-    _sale(db_session, "Кафе Частично", "HoReCa", "S-1", qty=8)
-    # S-2 не заказывал вовсе
-
-    report = build_sku_presence(
-        db_session,
-        city="Иркутск",
-        selected_months=["2026-09-01"],
-        selected_skus=["S-1", "S-2"],
-        qty_from=5,
-        qty_to=10,
-    )
-    clients = {r["client"] for r in report["rows"]}
-    assert clients == {"Кафе Частично"}
 
 
 def test_sku_presence_tab_renders(admin_client, db_session):
@@ -313,28 +292,29 @@ def test_sku_presence_tab_sale_type_filter(admin_client, db_session):
     assert resp_invalid.text.count("Сеть Игрек") == 2
 
 
-def test_sku_presence_tab_qty_range_filter(admin_client, db_session):
-    _sale(db_session, "Кафе Мало", "HoReCa", "SKU-Q", qty=2)
-    _sale(db_session, "Кафе Много", "HoReCa", "SKU-Q", qty=50)
+def test_sku_presence_tab_count_range_filter(admin_client, db_session):
+    _sale(db_session, "Кафе Одна SKU", "HoReCa", "SKU-Q1")
+    _sale(db_session, "Кафе Две SKU", "HoReCa", "SKU-Q1")
+    _sale(db_session, "Кафе Две SKU", "HoReCa", "SKU-Q2")
 
     resp = admin_client.get(
         "/analytics/client-analysis?tab=sku_presence"
         "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
-        "&months=2026-09-01&skus=SKU-Q&qty_from=10&qty_to=100"
+        "&months=2026-09-01&skus=SKU-Q1&skus=SKU-Q2&count_from=2&count_to=2"
     )
     assert resp.status_code == 200
-    assert "Кафе Много" in resp.text
-    assert "Кафе Мало" not in resp.text
-    assert "Заказано выбранных SKU" in resp.text
+    assert "Кафе Две SKU" in resp.text
+    assert "Кафе Одна SKU" not in resp.text
+    assert "Заказано SKU из выбранных" in resp.text
 
 
-def test_sku_presence_tab_qty_range_invalid_ignored(admin_client, db_session):
-    _sale(db_session, "Кафе Игрек", "HoReCa", "SKU-Q2", qty=2)
+def test_sku_presence_tab_count_range_invalid_ignored(admin_client, db_session):
+    _sale(db_session, "Кафе Игрек", "HoReCa", "SKU-Q3", qty=2)
 
     resp = admin_client.get(
         "/analytics/client-analysis?tab=sku_presence"
         "&city=%D0%98%D1%80%D0%BA%D1%83%D1%82%D1%81%D0%BA"
-        "&months=2026-09-01&skus=SKU-Q2&qty_from=не-число"
+        "&months=2026-09-01&skus=SKU-Q3&count_from=не-число"
     )
     # невалидное значение — тихо игнорируется, не 500 и не фильтрует
     assert resp.status_code == 200

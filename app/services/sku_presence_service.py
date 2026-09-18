@@ -77,23 +77,18 @@ def build_sku_presence(
     selected_months: list[str],
     selected_skus: list[str],
     sale_type: str | None = None,
-    qty_from: float | None = None,
-    qty_to: float | None = None,
+    count_from: int | None = None,
+    count_to: int | None = None,
 ) -> dict:
-    """`qty_from`/`qty_to` — диапазон по количеству, заказанному **по
-    каждому выбранному SKU отдельно** — не по сумме сразу нескольких SKU
-    (правка 2026-09-18: первая версия суммировала qty по всем выбранным
-    SKU вместе, из-за чего клиент, взявший 3 шт. одного вкуса и 4 шт.
-    другого, проходил диапазон «5-10» при сумме 7, хотя по отдельности ни
-    один SKU туда не попадал — «не совсем корректно», репорт пользователя).
-    Клиент проходит диапазон, только если **ВСЕ** заказанные им из
-    выбранных SKU по отдельности попадают в диапазон (вторая правка в тот
-    же день: «хотя бы один» пропускал клиентов, у которых лишь один SKU
-    из многих случайно оказывался в границах — задача фильтра сократить
-    выборку «купивших хотя бы раз», а не почти не сузить её). Пустой
-    `sku_qty` (красная строка, ничего из выбранного не заказано) не
-    проходит диапазон — `all()` на пустом множестве дал бы `True`, это
-    отдельно исключено ниже."""
+    """`count_from`/`count_to` — диапазон по ЧИСЛУ РАЗНЫХ SKU из выбранных,
+    которые клиент заказал (то самое число в бейдже «N из M», `ordered_count`)
+    — НЕ по количеству единиц (шт.). Например, при 25 выбранных SKU диапазон
+    «10-25» покажет клиентов, у которых представлено от 10 до 25 разных
+    позиций из этой корзины (запрос пользователя 2026-09-18, третья правка
+    в тот же день — первые две версии ошибочно фильтровали по количеству
+    ШТУК одного/всех SKU вместо широты ассортимента: «я выбрал нужные SKU
+    без фильтра и увидел список клиентов — следующий мой шаг — я хочу
+    поработать с клиентами, у которых есть 10 SKU [из выбранных]»)."""
     result = {"rows": [], "sku_count": len(selected_skus or []), "present_count": 0}
     if not city or not selected_skus:
         return result
@@ -119,27 +114,22 @@ def build_sku_presence(
             per_sku = qty_by_ct_sku[ct]
             per_sku[key] = per_sku.get(key, 0) + (qty or 0)
 
-    def _in_range(value: float) -> bool:
-        if qty_from is not None and value < qty_from:
-            return False
-        if qty_to is not None and value > qty_to:
-            return False
-        return True
-
     rows = []
     for client, row_type in all_ct:
         sku_qty = qty_by_ct_sku.get((client, row_type), {})
         got = set(sku_qty)
-        if qty_from is not None or qty_to is not None:
-            if not sku_qty or not all(_in_range(v) for v in sku_qty.values()):
-                continue
+        ordered_count = len(got)
+        if count_from is not None and ordered_count < count_from:
+            continue
+        if count_to is not None and ordered_count > count_to:
+            continue
         rows.append(
             {
                 "client": client,
                 "sale_type": row_type,
                 "ordered_skus": sorted(got),
                 "missing_skus": sorted(selected_set - got),
-                "ordered_count": len(got),
+                "ordered_count": ordered_count,
                 "sku_qty": sku_qty,
                 "is_present": bool(got),
             }
