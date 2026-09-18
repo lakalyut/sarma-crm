@@ -44,6 +44,20 @@ _VISIT_TABS = ("visit_analysis", "visit_effectiveness")
 router = APIRouter()
 
 
+def _parse_qty_param(raw: str | None) -> float | None:
+    """Пустое/некорректное значение — не фильтр (тот же принцип, что у
+    `abc_segment`/`skus`/`sale_type` на этой странице: невалидный
+    query-параметр тихо игнорируется, не 500)."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return value if value >= 0 else None
+
+
 @router.get("/analytics/client-analysis")
 def client_analysis_page(
     request: Request,
@@ -55,6 +69,8 @@ def client_analysis_page(
     skus: list[str] = Query(default=None),
     sale_type: str | None = None,
     abc_segment: list[int] = Query(default=[]),
+    qty_from: str | None = None,
+    qty_to: str | None = None,
     db: Session = Depends(get_db),
     _user: User = Depends(require_analyst),
 ):
@@ -291,12 +307,17 @@ def client_analysis_page(
         types = get_types(db, city=city, months=selected_months)
         selected_sale_type = sale_type if sale_type in types else None
 
+        qty_from_value = _parse_qty_param(qty_from)
+        qty_to_value = _parse_qty_param(qty_to)
+
         presence = build_sku_presence(
             db,
             city=city,
             selected_months=selected_months,
             selected_skus=selected_skus,
             sale_type=selected_sale_type,
+            qty_from=qty_from_value,
+            qty_to=qty_to_value,
         )
 
         return render(
@@ -318,6 +339,8 @@ def client_analysis_page(
                 "selected_segment_id": selected_segment_id,
                 "types": types,
                 "selected_sale_type": selected_sale_type,
+                "selected_qty_from": qty_from_value,
+                "selected_qty_to": qty_to_value,
                 "sku_presence": presence,
             },
         )

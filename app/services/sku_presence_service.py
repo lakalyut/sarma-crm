@@ -77,7 +77,14 @@ def build_sku_presence(
     selected_months: list[str],
     selected_skus: list[str],
     sale_type: str | None = None,
+    qty_from: float | None = None,
+    qty_to: float | None = None,
 ) -> dict:
+    """`qty_from`/`qty_to` — диапазон по суммарному количеству заказанного
+    ИЗ ВЫБРАННЫХ SKU (не по всем продажам клиента). Фильтр применяется ко
+    всем строкам, включая красные (`ordered_qty == 0`) — `qty_from` больше
+    нуля естественным образом уберёт их из списка (решение пользователя,
+    запрос 2026-09-18)."""
     result = {"rows": [], "sku_count": len(selected_skus or []), "present_count": 0}
     if not city or not selected_skus:
         return result
@@ -93,25 +100,33 @@ def build_sku_presence(
         query = query.filter(Sale.type == sale_type)
 
     ordered_by_ct: dict[tuple, set] = defaultdict(set)
+    qty_by_ct: dict[tuple, float] = defaultdict(float)
     all_ct: set[tuple] = set()
 
-    for client, sale_type, sku, qty in query.all():
-        ct = (client or "Без клиента", sale_type or "")
+    for client, row_type, sku, qty in query.all():
+        ct = (client or "Без клиента", row_type or "")
         all_ct.add(ct)
         key = (sku or "").strip()
         if key in selected_set and (qty or 0) > 0:
             ordered_by_ct[ct].add(key)
+            qty_by_ct[ct] += qty or 0
 
     rows = []
-    for client, sale_type in all_ct:
-        got = ordered_by_ct.get((client, sale_type), set())
+    for client, row_type in all_ct:
+        got = ordered_by_ct.get((client, row_type), set())
+        ordered_qty = qty_by_ct.get((client, row_type), 0)
+        if qty_from is not None and ordered_qty < qty_from:
+            continue
+        if qty_to is not None and ordered_qty > qty_to:
+            continue
         rows.append(
             {
                 "client": client,
-                "sale_type": sale_type,
+                "sale_type": row_type,
                 "ordered_skus": sorted(got),
                 "missing_skus": sorted(selected_set - got),
                 "ordered_count": len(got),
+                "ordered_qty": ordered_qty,
                 "is_present": bool(got),
             }
         )

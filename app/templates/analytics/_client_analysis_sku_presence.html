@@ -97,6 +97,18 @@
             {% endfor %}
         </div>
 
+        <div class="field filter-field sp-qty-range">
+            <label>Заказано выбранных SKU, шт.</label>
+            <div class="sp-qty-range-inputs">
+                <input type="number" name="qty_from" min="0" step="any" placeholder="От"
+                       value="{{ selected_qty_from if selected_qty_from is not none else '' }}">
+                <span>—</span>
+                <input type="number" name="qty_to" min="0" step="any" placeholder="До"
+                       value="{{ selected_qty_to if selected_qty_to is not none else '' }}">
+                <button type="submit" class="btn btn-secondary">Применить</button>
+            </div>
+        </div>
+
         <div class="selected-city-text">
             {% if selected_city %}
                 Регион: <span class="selected-city-value" id="sp-selected-city-label">{{ selected_city }}</span>
@@ -114,6 +126,17 @@
         {% if selected_skus %}
         <div class="selected-city-text">SKU: <span class="selected-city-value">{{ selected_skus|length }}</span></div>
         {% endif %}
+        {% if selected_qty_from is not none or selected_qty_to is not none %}
+        <div class="selected-city-text">
+            Заказано выбранных SKU:
+            <span class="selected-city-value">
+                {% if selected_qty_from is not none and selected_qty_to is not none %}от {{ selected_qty_from|format_ru_number }} до {{ selected_qty_to|format_ru_number }} шт.
+                {% elif selected_qty_from is not none %}от {{ selected_qty_from|format_ru_number }} шт.
+                {% else %}до {{ selected_qty_to|format_ru_number }} шт.
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
     </form>
 </div>
 
@@ -123,7 +146,11 @@
 {% elif not selected_skus %}
     <div class="message">Выбери один или несколько SKU и нажми «Показать».</div>
 {% elif not sku_presence.rows %}
-    <div class="message">За выбранный период у клиентов региона нет продаж.</div>
+    {% if selected_qty_from is not none or selected_qty_to is not none %}
+        <div class="message">Нет клиентов, у которых заказ выбранных SKU попадает в указанный диапазон.</div>
+    {% else %}
+        <div class="message">За выбранный период у клиентов региона нет продаж.</div>
+    {% endif %}
 {% else %}
     <div class="filter-summary" style="margin: 4px 0 10px;">
         Клиентов: {{ sku_presence.rows|length }} · представлены (заказан хотя бы один SKU):
@@ -141,6 +168,7 @@
                 </div>
                 <div class="sp-row-side">
                     <span class="sp-row-count">{{ r.ordered_count }} из {{ sku_presence.sku_count }}</span>
+                    <span class="sp-row-qty">{{ r.ordered_qty|format_ru_number }} шт.</span>
                 </div>
                 <div class="sp-row-skus">
                     {% for sku in r.ordered_skus %}<span class="sp-sku-chip sp-sku-chip-ok">{{ sku }}</span>{% endfor %}
