@@ -1,0 +1,21 @@
+{% extends "analytics/export/_export_base.html" %}
+{% block title %}Амбассадорский отчёт{% endblock %}
+{% block heading %}Амбассадорский отчёт{% endblock %}
+{% block meta %}
+    <dt>Регион</dt><dd>{{ selected_city }}</dd>
+    <dt>Период</dt><dd>{% if selected_months %}{{ selected_months|format_month_list }}{% else %}Все месяцы{% endif %}</dd>
+    <dt>Клиентов</dt><dd>{{ report.clients|length }}</dd>
+    <dt>Классификация SKU</dt>
+    <dd>новый — последние {{ status_settings.new_client_months }} мес.; пропал — нет продаж {{ status_settings.lost_months }} мес. подряд; нестабильный — пропусков от {{ status_settings.unstable_gap_months }}</dd>
+    {% if selected_new_skus %}
+    <dt>SKU-новинки</dt><dd>{{ selected_new_skus|join(", ") }}</dd>
+    {% endif %}
+{% endblock %}
+{% block content %}
+{% include "includes/amb_report_cards.html" %}
+{% endblock %}
+{% block scripts %}
+<script>
+{{ inline_static('js/sku_status_table.js', 'js/ambassadors_report.js') }}
+</script>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% if report and report.clients %}
+    {% if not export and download_url %}
+        <div class="report-actions">
+            <a class="btn btn-secondary" href="{{ download_url }}">Скачать HTML</a>
+        </div>
+    {% endif %}
+    <div class="amb-report-list">
+        {% for client in report.clients %}
+            <div class="amb-card">
+                <div class="amb-card-header">
+                    <div class="amb-card-title-wrap">
+                        {% if not export %}
+                        <button
+                            type="button"
+                            class="amb-toggle"
+                            data-target="amb-sku-{{ loop.index }}"
+                            aria-expanded="{% if client.expanded %}true{% else %}false{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        {% endif %}
+                        <h2 class="amb-card-title">{{ client.name }}</h2>
+                        {% if segments_json %}
+                            <span class="ca-segment-wrap">Сегмент:
+                                {% if export %}
+                                    {% for s in segments_json if s.id == segment_id_by_client.get(client.name) %}<strong>{{ s.name }}</strong>{% endfor %}
+                                {% else %}
+                                <select
+                                    class="ca-segment-select js-custom-select"
+                                    name="abc_segment"
+                                    form="ambassadors-filters-form"
+                                    onchange="document.getElementById('ambassadors-filters-form').requestSubmit()"
+                                >
+                                    {% for s in segments_json %}
+                                        <option value="{{ s.id }}" {% if s.id == segment_id_by_client.get(client.name) %}selected{% endif %}>{{ s.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% endif %}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="amb-card-badges">
+                        <span class="amb-badge amb-badge-blue">Всего SKU: {{ client.sku_total }}</span>
+                        <span class="amb-badge amb-badge-blue">Уникальных SKU: {{ client.unique_sku_total }}</span>
+                        <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(client.weight_total) }} кг</span>
+                    </div>
+                </div>
+
+                <div class="sheet-wrapper amb-summary-table">
+                    <div class="sheet-scroller">
+                        <table class="sheet-table">
+                            <thead>
+                                <tr>
+                                    <th>Метрика</th>
+                                    {% for month in report.months %}
+                                        <th>{{ month|format_month }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Всего SKU</strong></td>
+                                    {% for value in client.summary.sku %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td><strong>Вес, кг</strong></td>
+                                    {% for value in client.summary.weight %}
+                                        <td>{{ "%.2f"|format(value) }}</td>
+                                    {% endfor %}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {% if not export %}
+                <div class="amb-sku-toggle-line">
+                    <button
+                        type="button"
+                        class="amb-link-toggle"
+                        data-target="amb-sku-{{ loop.index }}"
+                        aria-expanded="{% if client.expanded %}true{% else %}false{% endif %}"
+                    >
+                        {% if client.expanded %}Скрыть SKU{% else %}Показать SKU{% endif %}
+                    </button>
+                </div>
+                {% endif %}
+
+                <div
+                    id="amb-sku-{{ loop.index }}"
+                    class="amb-sku-details {% if not export and not client.expanded %}is-hidden{% endif %}"
+                >
+                    <div class="amb-sku-subtitle">Детализация по SKU (вес, кг)</div>
+                    <div class="amb-status-filter" data-status-filter></div>
+
+                    <div class="sheet-wrapper">
+                        <div class="sheet-scroller">
+                            <table class="sheet-table">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th class="sortable" data-sort-type="status" data-sort-key="status">
+                                            Статус <span class="sort-icon">↕</span>
+                                        </th>
+                                        <th style="width: 70px;" class="sortable" data-sort-type="abc" data-sort-key="abc">
+                                            ABC <span class="sort-icon">↕</span>
+                                        </th>
+                                        {% for month in report.months %}
+                                            <th
+                                                class="sortable"
+                                                data-sort-type="number"
+                                                data-sort-key="month-{{ loop.index0 }}"
+                                            >
+                                                {{ month|format_month }} <span class="sort-icon">↕</span>
+                                            </th>
+                                        {% endfor %}
+                                        <th
+                                            class="sortable"
+                                            data-sort-type="number"
+                                            data-sort-key="total"
+                                        >
+                                            Итого вес, кг <span class="sort-icon">↕</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {% set client_ratings = rating_by_client.get(client.name, {}) %}
+                                    {% for sku_row in client.sku_details %}
+                                        {% set cat = client_ratings.get(sku_row.product_id) %}
+                                        <tr
+                                            class="amb-sku-row amb-sku-row-{{ sku_row.status }}"
+                                            data-status="{{ sku_row.status }}"
+                                            data-abc="{{ cat or '' }}"
+                                            data-total="{{ sku_row.total }}"
+                                            {% for value in sku_row.months_data %}
+                                                data-month-{{ loop.index0 }}="{{ value }}"
+                                            {% endfor %}
+                                        >
+                                            <td>{{ sku_row.sku }}</td>
+                                            <td>
+                                                {% if sku_row.is_assortment_new %}
+                                                    <span class="amb-sku-status amb-sku-status-assortment-new">NEW</span>
+                                                {% endif %}
+
+                                                <span class="amb-sku-status amb-sku-status-{{ sku_row.status }}">
+                                                    {{ sku_row.status_label }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if cat %}
+                                                    <span class="abc-badge abc-badge-{{ cat|lower }}">{{ cat }}</span>
+                                                {% else %}
+                                                    <span style="color: var(--text-muted);">—</span>
+                                                {% endif %}
+                                            </td>
+
+                                            {% for value in sku_row.months_data %}
+                                                <td>{{ "%.2f"|format(value) }}</td>
+                                            {% endfor %}
+                                            <td>{{ "%.2f"|format(sku_row.total) }}</td>
+                                        </tr>
+                                    {% endfor %}
+
+                                    <tr class="amb-sku-total-row">
+                                        <td><strong>Итого</strong></td>
+                                        <td></td>
+                                        <td></td>
+                                        {% for value in client.summary.weight %}
+                                            <td><strong>{{ "%.2f"|format(value) }}</strong></td>
+                                        {% endfor %}
+                                        <td><strong>{{ "%.2f"|format(client.weight_total) }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="message">Выбери регион, клиентов и месяцы для формирования отчета.</div>
+{% endif %}

@@ -1,5 +1,9 @@
+import re
+from datetime import date
+from urllib.parse import quote, urlencode
+
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from ..auth_deps import require_analyst
@@ -33,6 +37,7 @@ from ..services.sales_options_service import (
 from ..services.sku_presence_service import build_sku_presence, get_sku_options
 from ..services.visit_analysis_service import get_visit_analysis
 from ..services.visit_effectiveness_service import build_visit_effectiveness_report
+from ..templating import templates
 from ..utils.dates import month_sort_key, parse_month
 from ..utils.params import get_int_param
 
@@ -58,6 +63,40 @@ def _parse_count_param(raw: str | None) -> int | None:
     return value if value >= 0 else None
 
 
+def _download_url(request: Request) -> str:
+    """Ссылка на выгрузку текущего отчёта: те же query-параметры + `download=1`
+    (фильтры/период/клиенты/SKU уже лежат в URL страницы — второй набор
+    параметров вести не нужно)."""
+    params = [(k, v) for k, v in request.query_params.multi_items() if k != "download"]
+    params.append(("download", "1"))
+    return "/analytics/client-analysis?" + urlencode(params)
+
+
+def _html_download(
+    template: str, ctx: dict, base_name: str, city: str | None
+) -> Response:
+    """Автономный HTML-файл (стили и скрипты вшиты, см. `inline_static`) с
+    `Content-Disposition: attachment`. Имя файла с кириллицей идёт через
+    `filename*` (RFC 5987), рядом — ASCII-запасное `filename`."""
+    today = date.today()
+    html = templates.get_template(template).render(
+        **ctx, export=True, generated_at=today.strftime("%d.%m.%Y")
+    )
+    safe_city = re.sub(r'[\\/:*?"<>|\s]+', "_", city or "").strip("_")
+    full_name = "_".join(p for p in (base_name, safe_city, today.isoformat()) if p)
+    ascii_name = f"{base_name}_{today.isoformat()}.html"
+    return Response(
+        content=html,
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{ascii_name}"; '
+                f"filename*=UTF-8''{quote(full_name + '.html')}"
+            )
+        },
+    )
+
+
 @router.get("/analytics/client-analysis")
 def client_analysis_page(
     request: Request,
@@ -71,6 +110,7 @@ def client_analysis_page(
     abc_segment: list[int] = Query(default=[]),
     count_from: str | None = None,
     count_to: str | None = None,
+    download: int = 0,
     db: Session = Depends(get_db),
     _user: User = Depends(require_analyst),
 ):
@@ -217,28 +257,34 @@ def client_analysis_page(
             for client_name, segment_id in segment_id_by_client.items()
         }
 
-        return render(
-            request,
-            "analytics/client_analysis.html",
-            {
-                "title": "Аналитика по клиентам — Пульс",
-                "active_tab": active_tab,
-                "cities": cities,
-                "all_months": all_months,
-                "all_clients": all_clients,
-                "all_skus": all_skus,
-                "selected_city": city,
-                "selected_months": selected_months,
-                "raw_selected_months": raw_selected_months,
-                "selected_clients": selected_clients,
-                "selected_new_skus": selected_new_skus,
-                "status_settings": status_settings,
-                "report": report,
-                "segments_json": segments_json,
-                "rating_by_client": rating_by_client,
-                "segment_id_by_client": segment_id_by_client,
-            },
-        )
+        ctx = {
+            "title": "Аналитика по клиентам — Пульс",
+            "active_tab": active_tab,
+            "cities": cities,
+            "all_months": all_months,
+            "all_clients": all_clients,
+            "all_skus": all_skus,
+            "selected_city": city,
+            "selected_months": selected_months,
+            "raw_selected_months": raw_selected_months,
+            "selected_clients": selected_clients,
+            "selected_new_skus": selected_new_skus,
+            "status_settings": status_settings,
+            "report": report,
+            "segments_json": segments_json,
+            "rating_by_client": rating_by_client,
+            "segment_id_by_client": segment_id_by_client,
+        }
+        if report["clients"]:
+            if download:
+                return _html_download(
+                    "analytics/export/ambassadors_report.html",
+                    ctx,
+                    "ambassadors_report",
+                    city,
+                )
+            ctx["download_url"] = _download_url(request)
+        return render(request, "analytics/client_analysis.html", ctx)
 
     if active_tab == "visit_effectiveness":
         report = build_visit_effectiveness_report(
@@ -320,30 +366,36 @@ def client_analysis_page(
             count_to=count_to_value,
         )
 
-        return render(
-            request,
-            "analytics/client_analysis.html",
-            {
-                "title": "Аналитика по клиентам — Пульс",
-                "active_tab": active_tab,
-                "cities": cities,
-                "all_months": all_months,
-                "all_clients": all_clients,
-                "selected_city": city,
-                "selected_months": selected_months,
-                "raw_selected_months": raw_selected_months,
-                "selected_clients": selected_clients,
-                "segments_json": segments_json,
-                "sku_options": sku_options,
-                "selected_skus": selected_skus,
-                "selected_segment_id": selected_segment_id,
-                "types": types,
-                "selected_sale_type": selected_sale_type,
-                "selected_count_from": count_from_value,
-                "selected_count_to": count_to_value,
-                "sku_presence": presence,
-            },
-        )
+        ctx = {
+            "title": "Аналитика по клиентам — Пульс",
+            "active_tab": active_tab,
+            "cities": cities,
+            "all_months": all_months,
+            "all_clients": all_clients,
+            "selected_city": city,
+            "selected_months": selected_months,
+            "raw_selected_months": raw_selected_months,
+            "selected_clients": selected_clients,
+            "segments_json": segments_json,
+            "sku_options": sku_options,
+            "selected_skus": selected_skus,
+            "selected_segment_id": selected_segment_id,
+            "types": types,
+            "selected_sale_type": selected_sale_type,
+            "selected_count_from": count_from_value,
+            "selected_count_to": count_to_value,
+            "sku_presence": presence,
+        }
+        if presence["rows"]:
+            if download:
+                return _html_download(
+                    "analytics/export/sku_presence.html",
+                    ctx,
+                    "sku_presence",
+                    city,
+                )
+            ctx["download_url"] = _download_url(request)
+        return render(request, "analytics/client_analysis.html", ctx)
 
     types = get_types_rollup(
         db, city=city, months=selected_months, clients=selected_clients

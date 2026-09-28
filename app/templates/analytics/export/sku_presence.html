@@ -1,0 +1,18 @@
+{% extends "analytics/export/_export_base.html" %}
+{% block title %}Представленность SKU{% endblock %}
+{% block heading %}Представленность SKU{% endblock %}
+{% block meta %}
+    <dt>Регион</dt><dd>{{ selected_city }}</dd>
+    <dt>Период</dt><dd>{% if selected_months %}{{ selected_months|format_month_list }}{% else %}Все месяцы{% endif %}</dd>
+    {% if selected_sale_type %}
+    <dt>Тип точки</dt><dd>{{ selected_sale_type }}</dd>
+    {% endif %}
+    <dt>Выбрано SKU</dt><dd>{{ selected_skus|length }}: {{ selected_skus|join(", ") }}</dd>
+    {% if selected_count_from is not none or selected_count_to is not none %}
+    <dt>Заказано SKU из выбранных</dt>
+    <dd>{% if selected_count_from is not none and selected_count_to is not none %}от {{ selected_count_from }} до {{ selected_count_to }}{% elif selected_count_from is not none %}от {{ selected_count_from }}{% else %}до {{ selected_count_to }}{% endif %}</dd>
+    {% endif %}
+{% endblock %}
+{% block content %}
+{% include "includes/sku_presence_results.html" %}
+{% endblock %}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{% endblock %} — Пульс</title>
+<style>
+{{ inline_static('css/base.css', 'css/tables.css', 'css/ambassadors.css', 'css/client_analysis.css') }}
+
+/* Только для автономной выгрузки: у страницы приложения нет ни сайдбара, ни
+   layout.css, поэтому контейнер и шапка отчёта заданы здесь. */
+.export-container { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; }
+.export-header { margin-bottom: 20px; }
+.export-brand { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--primary); margin-bottom: 6px; }
+.export-meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 13px; }
+.export-meta dt { color: var(--text-muted); }
+.export-meta dd { margin: 0; color: var(--text-strong); font-weight: 500; }
+.export-generated { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+.export-container a.sp-row:hover, .export-container .sp-row:hover { transform: none; box-shadow: none; }
+@media print {
+    body { background: #fff; }
+    .export-container { max-width: none; padding: 0; }
+    .amb-card, .sp-row { break-inside: avoid; }
+}
+</style>
+</head>
+<body class="export-page">
+<div class="export-container">
+    <header class="export-header">
+        <div class="export-brand">Пульс</div>
+        <h1>{% block heading %}{% endblock %}</h1>
+        <dl class="export-meta">
+            {% block meta %}{% endblock %}
+        </dl>
+        <div class="export-generated">Сформирован {{ generated_at }}</div>
+    </header>
+    {% block content %}{% endblock %}
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

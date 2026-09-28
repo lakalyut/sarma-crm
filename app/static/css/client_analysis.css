@@ -296,3 +296,13 @@
 .sp-sku-full .search-dropdown {
     max-height: 340px;
 }
+
+.report-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 4px 0 10px;
+}
+
+.report-download-btn {
+    margin-left: 12px;
+}

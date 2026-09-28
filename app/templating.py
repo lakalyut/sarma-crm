@@ -1,7 +1,9 @@
 import json
 import os
+import re
 
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 
 from .utils.dates import parse_month
 
@@ -26,6 +28,24 @@ def asset(path: str) -> str:
 
 
 templates.env.globals["asset"] = asset
+
+
+def inline_static(*paths: str) -> Markup:
+    """Содержимое статических файлов для вшивания прямо в HTML — выгрузка
+    отчёта («Скачать HTML») должна открываться без сервера, `<link>` на
+    `/static/...` в скачанном файле не работает. Закрывающий тег
+    `</script>`/`</style>` внутри файла оборвал бы вшитый блок, поэтому
+    экранируется (в JS-строках и CSS-комментариях это безвредно)."""
+    chunks = []
+    for rel in paths:
+        with open(os.path.join(_STATIC_DIR, rel.lstrip("/")), encoding="utf-8") as f:
+            chunks.append(f.read())
+    text = "\n".join(chunks)
+    text = re.sub(r"</(script|style)", r"<\\/\1", text, flags=re.IGNORECASE)
+    return Markup(text)
+
+
+templates.env.globals["inline_static"] = inline_static
 
 MONTHS_RU = {
     1: "Январь",

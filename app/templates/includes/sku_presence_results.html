@@ -1,0 +1,40 @@
+{% set sp_months_qs %}{% for m in selected_months %}&months={{ m }}{% endfor %}{% endset %}
+{% if not selected_city %}
+    <div class="message">Выбери регион, период и SKU — здесь появится список клиентов с продажами за период.</div>
+{% elif not selected_skus %}
+    <div class="message">Выбери один или несколько SKU и нажми «Показать».</div>
+{% elif not sku_presence.rows %}
+    {% if selected_count_from is not none or selected_count_to is not none %}
+        <div class="message">Нет клиентов, у которых число заказанных SKU из выбранных попадает в указанный диапазон.</div>
+    {% else %}
+        <div class="message">За выбранный период у клиентов региона нет продаж.</div>
+    {% endif %}
+{% else %}
+    <div class="filter-summary" style="margin: 4px 0 10px;">
+        Клиентов: {{ sku_presence.rows|length }} · представлены (заказан хотя бы один SKU):
+        <b>{{ sku_presence.present_count }}</b> из {{ sku_presence.rows|length }}
+        {% if not export and download_url %}
+            <a class="btn btn-secondary report-download-btn" href="{{ download_url }}">Скачать HTML</a>
+        {% endif %}
+    </div>
+    <div class="sp-list">
+        {% for r in sku_presence.rows %}
+            <{{ 'div' if export else 'a' }}
+                class="sp-row {% if r.is_present %}sp-row-present{% else %}sp-row-absent{% endif %}"
+                {% if not export %}href="/analytics/client?city={{ selected_city|urlencode }}&client={{ r.client|urlencode }}&sale_type={{ r.sale_type|urlencode }}{{ sp_months_qs }}"{% endif %}
+            >
+                <div class="sp-row-main">
+                    <span class="sp-row-client">{{ r.client }}</span>
+                    <span class="sp-row-type">{{ r.sale_type or "—" }}</span>
+                </div>
+                <div class="sp-row-side">
+                    <span class="sp-row-count">{{ r.ordered_count }} из {{ sku_presence.sku_count }}</span>
+                </div>
+                <div class="sp-row-skus">
+                    {% for sku in r.ordered_skus %}<span class="sp-sku-chip sp-sku-chip-ok">{{ sku }} · {{ r.sku_qty[sku]|format_ru_number }} шт.</span>{% endfor %}
+                    {% for sku in r.missing_skus %}<span class="sp-sku-chip sp-sku-chip-no">{{ sku }}</span>{% endfor %}
+                </div>
+            </{{ 'div' if export else 'a' }}>
+        {% endfor %}
+    </div>
+{% endif %}
