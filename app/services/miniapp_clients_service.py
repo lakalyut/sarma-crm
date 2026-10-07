@@ -121,11 +121,14 @@ def clients_abc(db: Session, city: str, period: dict) -> dict:
         totals[key]["qty"] += float(row.qty or 0)
         totals[key]["weight"] += float(row.weight or 0)
     catalogs = {}
+    # Reuse the selected expression: separate COALESCE bind parameters make
+    # PostgreSQL reject ORDER BY as absent from the SELECT DISTINCT list.
+    point_type = func.coalesce(Sale.type, "").label("point_type")
     pairs = (
-        db.query(Sale.client, func.coalesce(Sale.type, ""))
+        db.query(Sale.client, point_type)
         .filter(Sale.city == city, Sale.client.isnot(None))
         .distinct()
-        .order_by(Sale.client, func.coalesce(Sale.type, ""))
+        .order_by(Sale.client, point_type)
     )
     for client, sale_type in pairs:
         segment = guess_default_segment(segments, sale_type)

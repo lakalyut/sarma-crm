@@ -9,6 +9,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sarma_test
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_DB: sarma_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sarma_test -d sarma_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,3 +62,10 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest -q
+
+      - name: Mini-app ABC tests on PostgreSQL
+        env:
+          DATABASE_URL: "postgresql+psycopg://sarma_test:ci-test-password@localhost:5432/sarma_test"
+          APP_SECRET_KEY: "ci-secret"
+          PYTHONPATH: ${{ github.workspace }}
+        run: pytest -q tests/test_miniapp_clients_abc.py
