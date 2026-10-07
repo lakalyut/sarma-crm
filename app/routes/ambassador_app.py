@@ -26,9 +26,13 @@ from ..services.ambassador_service import (
     get_client_visit_history,
     get_visit_options,
 )
-from ..services.clients_service import get_client_detail_data, get_clients_summary_data
+from ..services.clients_service import get_client_detail_data
 from ..services.leaderboard_service import get_leaderboard
-from ..services.sale_filters import build_sale_filters
+from ..services.miniapp_clients_service import (
+    client_abc_detail,
+    clients_abc,
+    resolve_period,
+)
 from ..services.sales_options_service import get_cities
 from ..telegram_auth import get_current_ambassador
 from ..templating import templates
@@ -96,6 +100,8 @@ def ambassador_app_options(
 @router.get("/ambassador/app/clients")
 def ambassador_app_clients(
     city: str | None = None,
+    month_from: str | None = None,
+    month_to: str | None = None,
     user: User = Depends(get_current_ambassador),
     db: Session = Depends(get_db),
 ):
@@ -108,21 +114,12 @@ def ambassador_app_clients(
     недоступны, `require_client_viewer` их не пустит."""
     target_city = _resolve_city(user, city)
     if not target_city:
-        return {"rows": []}
-
-    filters = build_sale_filters(city=target_city)
-    data = get_clients_summary_data(db=db, filters=filters)
-    rows = [
-        {
-            "client": r.client,
-            "sale_type": r.type,
-            "qty": float(r.qty or 0),
-            "weight": float(r.weight or 0),
-            "sku_count": int(r.sku_count or 0),
-        }
-        for r in data["rows"]
-    ]
-    return {"rows": rows}
+        return {"rows": [], "months": [], "month_from": None, "month_to": None}
+    try:
+        period = resolve_period(db, target_city, month_from, month_to)
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+    return clients_abc(db, target_city, period)
 
 
 @router.get("/ambassador/app/client-detail")
@@ -130,6 +127,8 @@ def ambassador_app_client_detail(
     client: str,
     sale_type: str,
     city: str | None = None,
+    month_from: str | None = None,
+    month_to: str | None = None,
     user: User = Depends(get_current_ambassador),
     db: Session = Depends(get_db),
 ):
@@ -140,10 +139,36 @@ def ambassador_app_client_detail(
     чужие данные."""
     target_city = _resolve_city(user, city)
     if not target_city:
-        return {"summary": None, "rows": []}
+        return {
+            "summary": None,
+            "rows": [],
+            "groups": [],
+            "abc": {},
+            "months": [],
+            "month_from": None,
+            "month_to": None,
+        }
 
+    try:
+        period = resolve_period(db, target_city, month_from, month_to)
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+    if not period["raw_months"]:
+        return {
+            "summary": None,
+            "rows": [],
+            "groups": [],
+            "abc": {},
+            "months": [],
+            "month_from": None,
+            "month_to": None,
+        }
     data = get_client_detail_data(
-        db=db, city=target_city, client=client, sale_type=sale_type
+        db=db,
+        city=target_city,
+        client=client,
+        sale_type=sale_type,
+        months=period["raw_months"],
     )
     rows = [
         {
@@ -154,7 +179,11 @@ def ambassador_app_client_detail(
         }
         for r in data["rows"]
     ]
-    return {"summary": data["summary"], "rows": rows}
+    return {
+        "summary": data["summary"],
+        "rows": rows,
+        **client_abc_detail(db, target_city, client, sale_type, period),
+    }
 
 
 @router.get("/ambassador/app/visit-history")

@@ -1,0 +1,14 @@
+.mini-period { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mini-period .field { min-width: 0; }
+.mini-period select { width: 100%; min-width: 0; }
+.mini-abc-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.mini-abc-count { border-radius: 8px; padding: 6px 8px; font-size: 13px; background: #f0f0f0; }
+.mini-abc-a { background: #e4f5e9; color: #236839; }
+.mini-abc-b { background: #fff3d6; color: #775800; }
+.mini-abc-c { background: #e8efff; color: #345699; }
+.mini-abc-group { margin: 14px 0; border-top: 1px solid #e5e5e5; padding-top: 12px; }
+.mini-abc-group summary { cursor: pointer; font-size: 15px; font-weight: 600; }
+.mini-abc-group .visit-history-item { margin-top: 8px; }
+.mini-ordered { color: #236839; font-weight: 600; }
+.mini-missing { color: #8a4747; }
+.client-summary-row { cursor: pointer; }

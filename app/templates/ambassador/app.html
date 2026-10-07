@@ -6,6 +6,7 @@
 <title>Пульс — амбассадор</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="{{ asset('js/visit_products.js') }}"></script>
+<link rel="stylesheet" href="{{ asset('css/miniapp_clients.css') }}">
 <style>
     body {
         margin: 0;
@@ -268,6 +269,14 @@
         <div class="field is-hidden" id="clients-city-field">
             <label>Город</label>
             <select id="clients-city-select"></select>
+        </div>
+        <div class="is-hidden" id="clients-period-field">
+            <div class="mini-period">
+                <div class="field"><label for="clients-month-from">Период с</label><select id="clients-month-from"></select></div>
+                <div class="field"><label for="clients-month-to">по</label><select id="clients-month-to"></select></div>
+            </div>
+            <button type="button" class="secondary" id="clients-period-apply">Показать</button>
+            <p class="hint">По умолчанию — последний месяц с продажами этого города. A/B/C показывают заказанные SKU, а не наличие на полке.</p>
         </div>
         <input type="text" id="clients-search" placeholder="Поиск клиента" autocomplete="off" style="margin-bottom: 10px;">
         <div id="clients-list-content" class="hint">Загружаю...</div>
@@ -653,104 +662,9 @@ function renderLeaderboard(rows) {
     ).join('');
 }
 
-let clientsLoaded = false;
-let citiesLoaded = false;
-let allClientRows = [];
-
-function loadClientsForCity(city) {
-    const el = document.getElementById('clients-list-content');
-    el.innerHTML = 'Загружаю...';
-    let url = '/ambassador/app/clients';
-    if (city) url += '?city=' + encodeURIComponent(city);
-    fetch(url, { headers: authHeader() })
-        .then(res => res.json())
-        .then(body => {
-            allClientRows = body.rows;
-            renderClientsList(allClientRows);
-        })
-        .catch((err) => {
-            el.innerHTML = '<span class="fail">Сеть/сервер: ' + err + '</span>';
-        });
-}
-
-function renderClientsList(rows) {
-    const el = document.getElementById('clients-list-content');
-    if (!rows.length) {
-        el.innerHTML = 'Ничего не найдено.';
-        return;
-    }
-    el.innerHTML = rows.map(r =>
-        '<div class="lb-row client-summary-row" data-client="' + escHtml(r.client) + '" data-sale-type="' + escHtml(r.sale_type) + '">' +
-            '<div class="lb-top"><span class="lb-name">' + escHtml(r.client) + '</span>' +
-            '<span class="lb-region">' + escHtml(r.sale_type) + '</span></div>' +
-            '<div class="lb-stats">' +
-            '<span>Вес: <b>' + r.weight.toFixed(2) + '</b></span>' +
-            '<span>Кол-во: <b>' + r.qty.toFixed(2) + '</b></span>' +
-            '<span>SKU: <b>' + r.sku_count + '</b></span>' +
-            '</div>' +
-        '</div>'
-    ).join('');
-}
-
-function filterClientsList() {
-    const q = document.getElementById('clients-search').value.trim().toLowerCase();
-    const filtered = q ? allClientRows.filter(r => r.client.toLowerCase().includes(q)) : allClientRows;
-    renderClientsList(filtered);
-}
-
-document.getElementById('clients-search').addEventListener('input', filterClientsList);
-
-document.getElementById('clients-list-content').addEventListener('click', (e) => {
-    const row = e.target.closest('.client-summary-row');
-    if (!row) return;
-    openClientDetail(row.dataset.client, row.dataset.saleType);
-});
-
-function renderClientDetail(client, saleType, data) {
-    document.getElementById('detail-client-name').textContent = client;
-    document.getElementById('detail-client-type').textContent = saleType;
-
-    const s = data.summary;
-    document.getElementById('detail-summary').innerHTML = s ? (
-        '<span>Номенклатур: <b>' + s.nomenclatures + '</b></span>' +
-        '<span>Уникальных SKU: <b>' + s.unique_sku + '</b></span>' +
-        '<span>Кол-во: <b>' + s.total_qty.toFixed(2) + '</b></span>' +
-        '<span>Вес: <b>' + s.total_weight.toFixed(2) + '</b></span>'
-    ) : 'Продаж нет.';
-
-    const skuBox = document.getElementById('detail-sku-list');
-    skuBox.innerHTML = data.rows.map(r =>
-        '<div class="visit-history-item">' +
-            '<div class="visit-history-goal">' + escHtml(r.name || r.sku || '—') + '</div>' +
-            '<div class="visit-history-meta">Кол-во: ' + r.qty.toFixed(2) + ' · Вес: ' + r.weight.toFixed(2) + '</div>' +
-        '</div>'
-    ).join('');
-}
-
-function openClientDetail(client, saleType) {
-    document.getElementById('clients-list-view').classList.add('is-hidden');
-    document.getElementById('clients-detail-view').classList.remove('is-hidden');
-    document.getElementById('detail-summary').innerHTML = 'Загружаю...';
-    document.getElementById('detail-sku-list').innerHTML = '';
-
-    let url = '/ambassador/app/client-detail?client=' + encodeURIComponent(client) + '&sale_type=' + encodeURIComponent(saleType);
-    if (currentRole !== 'ambassador' && selectedClientsCity) url += '&city=' + encodeURIComponent(selectedClientsCity);
-
-    fetch(url, { headers: authHeader() })
-        .then(r => r.json())
-        .then(data => renderClientDetail(client, saleType, data))
-        .catch(() => {
-            document.getElementById('detail-summary').innerHTML = '<span class="fail">Сеть/сервер</span>';
-        });
-
-    loadHistoryInto('detail-history', 'detail-history-list', client, currentRole !== 'ambassador' ? selectedClientsCity : undefined);
-}
-
-document.getElementById('clients-back-btn').addEventListener('click', () => {
-    document.getElementById('clients-detail-view').classList.add('is-hidden');
-    document.getElementById('clients-list-view').classList.remove('is-hidden');
-});
-
+</script>
+<script src="{{ asset('js/miniapp_clients.js') }}"></script>
+<script>
 function showTab(tab) {
     const tabs = {
         visit: document.getElementById('tab-visit'),
@@ -795,24 +709,13 @@ function showTab(tab) {
                         body.cities.map(c => '<option value="' + escHtml(c) + '">' + escHtml(c) + '</option>').join('');
                 })
                 .catch((err) => {
+                    citiesLoaded = false;
                     document.getElementById('clients-list-content').innerHTML =
                         '<span class="fail">Сеть/сервер: ' + err + '</span>';
                 });
         }
     }
 }
-
-document.getElementById('clients-city-select').addEventListener('change', function () {
-    selectedClientsCity = this.value;
-    if (selectedClientsCity) {
-        clientsLoaded = true;
-        loadClientsForCity(selectedClientsCity);
-    } else {
-        clientsLoaded = false;
-        allClientRows = [];
-        document.getElementById('clients-list-content').innerHTML = 'Выберите город выше.';
-    }
-});
 
 document.getElementById('tab-btn-visit').addEventListener('click', () => showTab('visit'));
 document.getElementById('tab-btn-leaderboard').addEventListener('click', () => showTab('leaderboard'));
