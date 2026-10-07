@@ -24,7 +24,11 @@ router = APIRouter(prefix="/ambassador")
 
 
 def _profile_complete(user: User) -> bool:
-    return bool(user.first_name and user.city)
+    return bool(user.first_name and (user.role == "user" or user.city))
+
+
+def _visit_cities(db: Session, user: User) -> list[str]:
+    return get_cities(db) if user.role == "user" else [user.city]
 
 
 @router.get("")
@@ -71,7 +75,7 @@ def ambassador_profile_submit(
             },
         )
 
-    if city not in cities:
+    if user.role != "user" and city not in cities:
         return render(
             request,
             "ambassador/profile.html",
@@ -85,7 +89,8 @@ def ambassador_profile_submit(
 
     user.first_name = first_name
     user.last_name = last_name.strip()
-    user.city = city
+    if user.role != "user":
+        user.city = city
     db.commit()
 
     return RedirectResponse("/ambassador/visit", status_code=HTTP_302_FOUND)
@@ -106,7 +111,7 @@ def ambassador_visit_form(
         "ambassador/visit.html",
         {
             "title": "Визит — Пульс",
-            "options": get_visit_options(db, [user.city]),
+            "options": get_visit_options(db, _visit_cities(db, user)),
             "message": "Визит записан" if recorded else None,
         },
     )
@@ -152,7 +157,7 @@ def ambassador_visit_submit(
             "ambassador/visit.html",
             {
                 "title": "Визит — Пульс",
-                "options": get_visit_options(db, [user.city]),
+                "options": get_visit_options(db, _visit_cities(db, user)),
                 "error": str(exc),
             },
         )
@@ -168,13 +173,17 @@ def ambassador_visit_submit(
 @router.get("/visit-history")
 def ambassador_visit_history(
     client: str = Query(""),
+    city: str = Query(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_ambassador),
 ):
     if not _profile_complete(user) or not client:
         return JSONResponse({"history": []})
 
-    return JSONResponse({"history": get_client_visit_history(db, user.city, client)})
+    target_city = city if user.role == "user" else user.city
+    if not target_city:
+        return JSONResponse({"history": []})
+    return JSONResponse({"history": get_client_visit_history(db, target_city, client)})
 
 
 @router.get("/leaderboard")

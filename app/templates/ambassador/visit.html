@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function loadHistory(client) {
         if (!client) { renderHistory([]); return; }
-        fetch("/ambassador/visit-history?client=" + encodeURIComponent(client))
+        fetch("/ambassador/visit-history?client=" + encodeURIComponent(client) + "&city=" + encodeURIComponent(currentCity()))
             .then(r => r.ok ? r.json() : { history: [] })
             .then(d => renderHistory(d.history))
             .catch(() => renderHistory([]));

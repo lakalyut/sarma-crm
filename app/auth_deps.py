@@ -63,7 +63,7 @@ def require_ambassador(user: User = Depends(require_user)) -> User:
     # cookie-сессия — обычный /auth/login (браузерный путь, горизонт 13.1);
     # Telegram-мини-апп аутентифицируется отдельно, заголовком, см.
     # app/telegram_auth.py::get_current_ambassador.
-    if user.role not in ("admin", "ambassador"):
+    if user.role != "admin" and not user.can_record_visits:
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user
 

@@ -3,7 +3,7 @@
 <div class="card-narrow">
   <h1>Заполните анкету</h1>
   <div class="page-subtitle" style="margin-bottom: 16px;">
-    Имя и город — увидите только своих клиентов и записи визитов по этому городу.
+    {% if user.role == 'user' %}Укажите имя для записи визитов. Город можно выбрать в форме каждого визита.{% else %}Имя и город — увидите только своих клиентов и записи визитов по этому городу.{% endif %}
   </div>
 
   {% include "includes/messages.html" %}
@@ -19,6 +19,7 @@
       <input type="text" name="last_name" value="{{ user.last_name or '' }}">
     </div>
 
+    {% if user.role != 'user' %}
     <div class="field">
       <label>Город</label>
       <select name="city" class="js-custom-select" required>
@@ -28,6 +29,7 @@
         {% endfor %}
       </select>
     </div>
+    {% endif %}
 
     <button type="submit">Продолжить</button>
   </form>

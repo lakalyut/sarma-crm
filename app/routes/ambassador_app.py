@@ -5,9 +5,10 @@
 — аналитику тоже нужен бот, но без привязки к одному городу (в браузере он
 и так видит все города сразу). **Вкладка «Визит» у роли `user` теперь ЕСТЬ
 (полный мини-апп, «для демонстрации функционала», решение пользователя) —
-но визит не пишется в БД (`create_visit(..., dry_run=True)`, «не засорять
-БД»); валидация анкеты при этом та же самая, что у настоящего визита
-амбассадора. Роуты ниже поэтому делятся на две группы:
+по умолчанию визит не пишется в БД (`create_visit(..., dry_run=True)`).
+Отдельное разрешение can_create_visits включает реальные визиты для user
+без смены роли и без ограничения на один город. Валидация анкеты одинакова.
+Роуты ниже делятся на две группы:
 - «Визит»/«Клиенты»/история по точке — общие для обеих ролей, но город
   форсится на `user.city` только для `ambassador`; `user` передаёт `city`
   явно в query/body (мини-апп сам даёт выбрать — `get_visit_options()`
@@ -52,6 +53,7 @@ def ambassador_app_verify(user: User = Depends(get_current_ambassador)):
     return {
         "ok": True,
         "role": user.role,
+        "can_record_visits": user.can_record_visits,
         "first_name": user.first_name,
         "last_name": user.last_name,
         "city": user.city,
@@ -174,10 +176,8 @@ async def ambassador_app_create_visit(
     user: User = Depends(get_current_ambassador),
     db: Session = Depends(get_db),
 ):
-    """`dry_run` — только для роли, отличной от `ambassador` (мини-апп,
-    демо-режим 2026-09-17): анкета валидируется полностью, но в БД ничего
-    не пишется — визиты роли `user` нужны только показать, как работает
-    функционал, не засорять реальные данные."""
+    """Без разрешения реальные визиты user остаются демо-записями.
+    Право определяется сервером; переданный клиентом флаг не используется."""
     body = await request.json()
 
     try:
@@ -194,7 +194,7 @@ async def ambassador_app_create_visit(
             people_count=body.get("people_count"),
             comment=body.get("comment", ""),
             goal=body.get("goal", ""),
-            dry_run=user.role != "ambassador",
+            dry_run=not user.can_record_visits,
         )
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"detail": str(exc)})

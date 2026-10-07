@@ -22,14 +22,18 @@
 
     <div class="field">
       <label>Telegram ID</label>
-      <input type="text" name="telegram_id" placeholder="Опционально, только для роли ambassador">
+      <input type="text" name="telegram_id" placeholder="Опционально, для user и ambassador">
       <div class="field-hint">
-        Опционально для ambassador — нужен только если он будет пользоваться
+        Опционально для user и ambassador — нужен только если пользователь будет пользоваться
         Telegram-ботом (узнать заранее у самого амбассадора, например через
         @userinfobot). Без него амбассадор всё равно получит ссылку установки
-        пароля и сможет работать через обычный браузер. Для остальных ролей
-        поле игнорируется.
+        пароля и сможет работать через обычный браузер. Для admin поле игнорируется.
       </div>
+    </div>
+
+    <div class="field">
+      <label><input type="checkbox" name="can_create_visits" value="true"> Запись реальных визитов для роли user</label>
+      <div class="field-hint">Все города, участие в лидерборде и прежний доступ к аналитике. Для ambassador запись доступна автоматически.</div>
     </div>
 
     <div class="flex-row actions-split">

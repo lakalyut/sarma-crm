@@ -25,6 +25,19 @@ class User(Base):
     password_hash = Column(String, nullable=True)
     role = Column(String, nullable=False, default="user")
     is_active = Column(Boolean, default=True, nullable=False)
+    can_create_visits = Column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+
+    @property
+    def can_record_visits(self) -> bool:
+        return bool(
+            self.is_active
+            and (
+                self.role == "ambassador"
+                or (self.role == "user" and self.can_create_visits)
+            )
+        )
 
     # BigInteger, не Integer — баг поймали 2026-09-12: современные Telegram
     # ID давно перевалили за 2^31-1 (были ~5.5 млрд у реального амбассадора),

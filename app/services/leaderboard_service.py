@@ -11,6 +11,7 @@ ROADMAP.md) — без фильтра по городу, это агрегиро
 всегда один и тот же ISO 'YYYY-MM-01', потому что колонку заполняет только
 код этого проекта, не сторонний импорт."""
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from ..auth_models import User
@@ -43,7 +44,15 @@ def get_leaderboard(
     # — не строка с занулёнными визитами, а полное отсутствие: и сам визит,
     # оставленный до отключения, больше не участвует в статистике.
     ambassadors = (
-        db.query(User).filter(User.role == "ambassador", User.is_active.is_(True)).all()
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            or_(
+                User.role == "ambassador",
+                and_(User.role == "user", User.can_create_visits.is_(True)),
+            ),
+        )
+        .all()
     )
     if not ambassadors:
         return []
@@ -126,7 +135,11 @@ def get_leaderboard(
         rows.append(
             {
                 "ambassador": name or ambassador.email,
-                "city": ambassador.city or "—",
+                "city": (
+                    "Все города"
+                    if ambassador.role == "user"
+                    else ambassador.city or "—"
+                ),
                 "visits": row["visits"],
                 "aromas_total": row["aromas_total"],
                 "aromas_a": row["aromas_a"],

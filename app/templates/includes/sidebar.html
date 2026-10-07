@@ -22,6 +22,12 @@
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
                 <span class="sidebar-nav-text">По регионам</span>
             </a>
+            {% if current_user and current_user.role == 'user' and current_user.can_record_visits %}
+            <a href="/ambassador/visit" class="sidebar-nav-link" title="Записать визит">
+                <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>
+                <span class="sidebar-nav-text">Записать визит</span>
+            </a>
+            {% endif %}
             <a href="/analytics/client-analysis" class="sidebar-nav-link {% if request.url.path == '/analytics/client-analysis' %}active{% endif %}" title="По клиентам">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                 <span class="sidebar-nav-text">По клиентам</span>

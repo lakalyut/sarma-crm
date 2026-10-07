@@ -112,7 +112,11 @@ def get_current_ambassador(
 
     user = (
         db.query(User)
-        .filter(User.telegram_id == telegram_id, User.role.in_(("ambassador", "user")))
+        .filter(
+            User.telegram_id == telegram_id,
+            User.role.in_(("ambassador", "user")),
+            User.is_active.is_(True),
+        )
         .first()
     )
     if not user:

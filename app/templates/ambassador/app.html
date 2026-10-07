@@ -304,7 +304,7 @@ function authHeader() {
 let options = null;
 let selectedClient = '';
 // role=ambassador — весь мини-апп как раньше (город фиксирован).
-// role=user (запрос 2026-09-16) — без вкладки «Визит», город на
+// role=user — реальные визиты с разрешением, иначе демо; город на
 // «Клиентах» выбирает сам через clients-city-select, не зафиксирован.
 let currentRole = null;
 let selectedClientsCity = '';
@@ -837,13 +837,10 @@ if (!tg || !tg.initData) {
                     (body.city ? line('Город', body.city) : '');
                 document.getElementById('tabs').classList.remove('is-hidden');
 
-                // роль user (запрос 2026-09-16/17): «Визит» — полноценная
-                // вкладка (демо-режим, см. submit-btn ниже), город на ней
-                // и на «Клиентах» не зафиксирован — пикер, а не форс своего
                 if (currentRole !== 'ambassador') {
-                    document.getElementById('demo-notice').classList.remove('is-hidden');
                     document.getElementById('clients-city-field').classList.remove('is-hidden');
                 }
+                document.getElementById('demo-notice').classList.toggle('is-hidden', body.can_record_visits === true);
 
                 return fetch('/ambassador/app/options', { headers: authHeader() });
             } else {

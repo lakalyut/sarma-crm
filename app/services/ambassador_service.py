@@ -247,16 +247,22 @@ def create_visit(
     goal: str = "",
     dry_run: bool = False,
 ) -> Visit | None:
-    """`dry_run=True` — демо-визит роли `user` в мини-аппе (запрос
-    2026-09-17, см. докстринг модуля): анкета проходит ТУ ЖЕ валидацию, что
+    """`dry_run=True` — демо-визит в мини-аппе: анкета проходит ту же валидацию, что
     и настоящий визит (реальный клиент/тип точки для выбранного города,
     реальные активные ароматы), но в БД ничего не пишется (`None`) и город
     не обязан совпадать с `ambassador.city` — у роли `user` такого
-    фиксированного города просто нет. **Не завязано на роль напрямую** —
+    фиксированного города просто нет. Разрешённые реальные визиты user также
+    доступны во всех городах. Демо-режим передаётся явно вызывающим роутом —
     браузерный путь (`ambassador_web.py`) `dry_run` не передаёт, там и
     админ (`require_ambassador` пускает `admin`/`ambassador` оба), и
     амбассадор по-прежнему пишут настоящие визиты, поведение не менялось."""
-    if not dry_run and city != ambassador.city:
+    if not dry_run and ambassador.role == "user" and not ambassador.can_record_visits:
+        raise ValueError("Запись реальных визитов не разрешена")
+    if (
+        not dry_run
+        and not (ambassador.role == "user" and ambassador.can_record_visits)
+        and city != ambassador.city
+    ):
         raise ValueError("Вы можете записывать визиты только в своём городе")
 
     fields = _validate_visit_payload(

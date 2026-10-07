@@ -41,6 +41,7 @@ def user_new_submit(
     email: str = Form(...),
     role: str = Form("user"),
     telegram_id: str = Form(""),
+    can_create_visits: bool = Form(False),
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
@@ -64,7 +65,7 @@ def user_new_submit(
         )
 
     telegram_id_int = None
-    if role == "ambassador":
+    if role in ("ambassador", "user"):
         # telegram_id — опционально: доступ у ambassador теперь двумя путями
         # (Telegram-бот с initData, горизонт 13 Этап 2, и обычный пароль +
         # браузер, горизонт 13.1) — можно завести сразу с telegram_id, можно
@@ -97,7 +98,13 @@ def user_new_submit(
                     },
                 )
 
-    user = User(email=email, role=role, is_active=True, telegram_id=telegram_id_int)
+    user = User(
+        email=email,
+        role=role,
+        is_active=True,
+        telegram_id=telegram_id_int,
+        can_create_visits=can_create_visits if role == "user" else False,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -139,6 +146,7 @@ def user_edit_submit(
     city: str = Form(""),
     first_name: str = Form(""),
     last_name: str = Form(""),
+    can_create_visits: bool = Form(False),
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
@@ -167,6 +175,7 @@ def user_edit_submit(
                     "city": city,
                     "first_name": first_name,
                     "last_name": last_name,
+                    "can_create_visits": can_create_visits,
                 },
             },
         )
@@ -196,6 +205,7 @@ def user_edit_submit(
     user.city = city or None
     user.first_name = first_name or None
     user.last_name = last_name or None
+    user.can_create_visits = can_create_visits if user.role == "user" else False
     db.commit()
 
     return RedirectResponse(
@@ -282,6 +292,8 @@ def user_change_role(
         )
 
     user.role = role
+    if role != "user":
+        user.can_create_visits = False
     db.commit()
     return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 

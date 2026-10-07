@@ -28,13 +28,20 @@
 
     <div class="field">
       <label>Telegram ID</label>
-      <input type="text" name="telegram_id" value="{{ (form.telegram_id if form else user.telegram_id) or '' }}" placeholder="Только для роли ambassador">
+      <input type="text" name="telegram_id" value="{{ (form.telegram_id if form else user.telegram_id) or '' }}" placeholder="Для доступа к Telegram-боту">
       <div class="field-hint">
-        Числовой ID из Telegram (например, через @userinfobot). Нужен только
-        амбассадору, который пользуется Telegram-ботом — без него доступен
-        обычный браузерный вход по паролю. Оставить пустым, чтобы отвязать.
+        Числовой ID из Telegram (например, через @userinfobot). Нужен для
+        доступа к боту ролям user и ambassador. Без него доступен браузерный
+        вход по паролю. Оставить пустым, чтобы отвязать.
       </div>
     </div>
+
+    {% if user.role == 'user' %}
+    <div class="field">
+      <label><input type="checkbox" name="can_create_visits" value="true" {% if (form.can_create_visits if form else user.can_create_visits) %}checked{% endif %}> Запись реальных визитов</label>
+      <div class="field-hint">Визиты сохраняются в базу и учитываются в лидерборде. Доступны все города; аналитика остаётся доступной. Без разрешения визиты в Telegram работают в демо-режиме.</div>
+    </div>
+    {% endif %}
 
     <div class="field">
       <label>Город</label>
