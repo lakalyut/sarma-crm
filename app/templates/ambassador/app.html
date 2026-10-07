@@ -614,11 +614,12 @@ document.getElementById('submit-btn').addEventListener('click', () => {
             } else {
                 document.getElementById('submit-result').innerHTML =
                     '<span class="fail">' + (body.detail || res.status) + '</span>';
-                btn.disabled = false;
             }
         })
         .catch((err) => {
             document.getElementById('submit-result').innerHTML = '<span class="fail">Сеть/сервер: ' + err + '</span>';
+        })
+        .finally(() => {
             btn.disabled = false;
         });
 });
