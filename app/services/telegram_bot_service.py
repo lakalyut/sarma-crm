@@ -29,12 +29,15 @@ ASK_NAME_TEXT = (
 ASK_CITY_AGAIN_TEXT = "Пожалуйста, выберите город кнопкой ниже."
 ALREADY_REGISTERED_TEXT = (
     "Вы уже зарегистрированы. Открыть мини-апп можно кнопкой меню рядом с полем ввода."
+    " Уведомления об обновлениях: /updates"
 )
 NAME_SAVED_TEXT = (
     "Отлично, {name}! Открыть мини-апп можно кнопкой меню рядом с полем ввода."
+    " Уведомления об обновлениях: /updates"
 )
 CITY_SAVED_TEXT = (
     "Город сохранён ✅. Открыть мини-апп можно кнопкой меню рядом с полем ввода."
+    " Уведомления об обновлениях: /updates"
 )
 CITY_ALREADY_SET_TEXT = "Уже сохранено."
 
@@ -53,7 +56,11 @@ def _city_keyboard(db: Session) -> dict:
 def _find_bot_user(db: Session, telegram_id: int) -> User | None:
     return (
         db.query(User)
-        .filter(User.telegram_id == telegram_id, User.role.in_(("ambassador", "user")))
+        .filter(
+            User.telegram_id == telegram_id,
+            User.role.in_(("ambassador", "user")),
+            User.is_active.is_(True),
+        )
         .first()
     )
 
@@ -76,6 +83,29 @@ def _handle_message(db: Session, message: dict, base_url: str) -> None:
     user = _find_bot_user(db, telegram_id)
     if not user:
         send_message(chat_id, DENY_TEXT)
+        return
+
+    if chat_id != telegram_id:
+        # Existing registration logic is unchanged, but never store a group as
+        # the destination for personal release announcements.
+        if message.get("chat", {}).get("type") not in (None, "private"):
+            return
+    user.telegram_chat_id = chat_id
+    db.commit()
+    if text.split("@", 1)[0] == "/updates":
+        send_message(
+            chat_id,
+            "Уведомления об обновлениях: "
+            + ("включены" if user.updates_enabled else "отключены"),
+            reply_markup={
+                "inline_keyboard": [
+                    [
+                        {"text": "Включить", "callback_data": "updates:on"},
+                        {"text": "Отключить", "callback_data": "updates:off"},
+                    ]
+                ]
+            },
+        )
         return
 
     if not user.first_name:
@@ -117,6 +147,17 @@ def _handle_callback_query(db: Session, callback_query: dict, base_url: str) -> 
     user = _find_bot_user(db, telegram_id) if telegram_id is not None else None
     if not user:
         answer_callback_query(callback_id, DENY_TEXT, show_alert=True)
+        return
+
+    if data in ("updates:on", "updates:off"):
+        user.updates_enabled = data == "updates:on"
+        db.commit()
+        text = "Уведомления об обновлениях " + (
+            "включены" if user.updates_enabled else "отключены"
+        )
+        answer_callback_query(callback_id, text)
+        if chat_id is not None:
+            send_message(chat_id, text + ". Настройки: /updates")
         return
 
     if user.city:

@@ -33,6 +33,10 @@ class User(Base):
     # (dev/тесты) эта граница вообще не проверяется — тесты с маленькими
     # фиктивными id баг не поймали, только прод на реальных данных.
     telegram_id = Column(BigInteger, unique=True, nullable=True)
+    telegram_chat_id = Column(BigInteger, nullable=True)
+    updates_enabled = Column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
     # Город, не макро-регион — той же природы поле, что Sale.city/Visit.city
     # (нет отдельной сущности "Город" в проекте, простая строка везде).
     city = Column(String, nullable=True)

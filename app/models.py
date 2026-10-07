@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -9,6 +10,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
@@ -180,3 +182,37 @@ class EventLog(Base):
     )
 
     user = relationship("User")
+
+
+class ReleaseUpdate(Base):
+    __tablename__ = "release_updates"
+
+    id = Column(Integer, primary_key=True)
+    release_key = Column(String(120), unique=True, nullable=False)
+    title = Column(String(200), nullable=False)
+    body = Column(Text, nullable=False)
+    audience = Column(String(20), default="all", nullable=False)
+    status = Column(String(20), default="draft", nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    sent_at = Column(DateTime(timezone=True))
+
+
+class UpdateDelivery(Base):
+    __tablename__ = "update_deliveries"
+
+    id = Column(Integer, primary_key=True)
+    update_id = Column(Integer, ForeignKey("release_updates.id"), nullable=False)
+    # Snapshot survives user deletion and changes to their Telegram account.
+    telegram_id = Column(BigInteger, nullable=False)
+    chat_id = Column(BigInteger, nullable=False)
+    recipient = Column(String, nullable=False)
+    status = Column(String(20), default="queued", nullable=False)
+    error = Column(String(300))
+    attempted_at = Column(DateTime(timezone=True))
+    delivered_at = Column(DateTime(timezone=True))
+    __table_args__ = (
+        UniqueConstraint("update_id", "telegram_id", name="uq_update_recipient"),
+        Index("ix_update_deliveries_status", "status"),
+    )

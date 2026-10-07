@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<link rel="stylesheet" href="{{ asset('css/updates.css') }}">
+<a href="/admin/updates">← Все обновления</a>
+<h1>{{ update.title }}</h1>
+<p class="page-subtitle">{{ statuses[update.status] }}</p>
+{% if error %}<div class="message error">{{ error }}</div>{% endif %}
+{% if update.status == 'draft' %}
+<form method="post" action="/admin/updates/{{ update.id }}/edit" class="update-editor">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="field"><label for="update-title">Заголовок</label><input id="update-title" name="title" value="{{ update.title }}" maxlength="200" required></div>
+    <div class="field"><label for="update-body">Текст сообщения</label><textarea id="update-body" name="body" rows="7" maxlength="4096" required>{{ update.body }}</textarea></div>
+    <div class="field"><label for="update-audience">Получатели</label><select id="update-audience" name="audience">{% for key, label in audiences.items() %}<option value="{{ key }}" {% if update.audience == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <button type="submit">Сохранить и посмотреть предпросмотр</button>
+</form>
+{% endif %}
+<h2>Сообщение в Telegram</h2>
+<div class="update-preview" id="update-preview">{{ preview }}</div>
+<p>{{ audiences[update.audience] }} · Получателей с включёнными уведомлениями: {{ recipient_count }}</p>
+{% if update.status == 'draft' %}
+<form method="post" action="/admin/updates/{{ update.id }}/send" id="update-send">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" id="update-send-btn">Отправить сохранённое сообщение</button>
+    <p class="page-subtitle" id="update-unsaved" hidden>Есть несохранённые изменения. Сначала сохраните текст и аудиторию.</p>
+</form>
+<script src="{{ asset('js/updates.js') }}"></script>
+{% else %}
+<h2>Результат рассылки</h2>
+<p>{% for status, label in delivery_statuses.items() %}{{ label }}: {{ counts.get(status, 0) }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+<p class="page-subtitle">Доставка означает, что Telegram принял сообщение. Звук и уведомления зависят от настроек получателя. Обновите страницу, чтобы увидеть текущий результат.</p>
+{% if counts.get('unknown', 0) %}<div class="message">Для части сообщений доставка не подтверждена. Они не отправляются повторно, чтобы избежать дублей.</div>{% endif %}
+{% if update.status == 'finished' and counts.get('failed', 0) %}
+<form method="post" action="/admin/updates/{{ update.id }}/retry"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Повторить только отправки с ошибками</button></form>
+{% endif %}
+<div class="sheet-wrapper"><div class="sheet-scroller"><table class="sheet-table">
+<thead><tr><th>Получатель</th><th>Статус</th><th>Подробности</th></tr></thead>
+<tbody>{% for delivery in deliveries %}<tr><td>{{ delivery.recipient }}</td><td>{{ delivery_statuses[delivery.status] }}</td><td>{{ delivery.error or '—' }}</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<p class="page-subtitle">Показаны первые 200 получателей; счётчики учитывают всех.</p>
+{% endif %}
+{% endblock %}

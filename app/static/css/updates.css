@@ -1,0 +1,3 @@
+.update-editor { display: grid; gap: 16px; max-width: 720px; }
+.update-editor textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 12px; }
+.update-preview { white-space: pre-wrap; overflow-wrap: anywhere; padding: 20px; border: 1px solid var(--border-color, #ddd); border-radius: 12px; max-width: 680px; }

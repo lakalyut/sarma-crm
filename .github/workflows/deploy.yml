@@ -9,7 +9,7 @@ on:
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -43,5 +43,8 @@ jobs:
             sudo docker compose up -d --build --remove-orphans
 
             curl -fsS http://127.0.0.1/health >/dev/null
+
+            sudo docker compose exec -T web python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=10)"
+            sudo docker compose exec -T web python -m app.release_updates
 
             sudo docker image prune -f

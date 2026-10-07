@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Обновления</h1>
+<p class="page-subtitle">После выпуска обновления здесь появляется черновик. Проверьте текст и выберите получателей перед отправкой.</p>
+{% if updates %}
+<div class="sheet-wrapper"><div class="sheet-scroller">
+<table class="sheet-table">
+    <thead><tr><th>Обновление</th><th>Статус</th><th>Создано</th></tr></thead>
+    <tbody>{% for update in updates %}
+    <tr><td><a href="/admin/updates/{{ update.id }}">{{ update.title }}</a></td><td>{{ statuses[update.status] }}</td><td>{{ update.created_at.strftime('%d.%m.%Y') }}</td></tr>
+    {% endfor %}</tbody>
+</table>
+</div></div>
+{% else %}<div class="message">Объявлений пока нет. Они появятся после выпуска обновления с подготовленным текстом.</div>{% endif %}
+{% endblock %}

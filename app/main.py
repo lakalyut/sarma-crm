@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.status import HTTP_302_FOUND
 
+from . import update_sender
 from .auth_deps import get_current_user
 from .auth_routes import router as auth_router
 from .csrf import attach_csrf_cookie, csrf_guard, get_csrf_token
@@ -19,6 +20,7 @@ from .routes.admin_nomenclature import router as admin_nomenclature_router
 from .routes.admin_regions import router as admin_regions_router
 from .routes.admin_type_review import router as admin_type_review_router
 from .routes.admin_unmatched import router as admin_unmatched_router
+from .routes.admin_updates import router as admin_updates_router
 from .routes.admin_users import router as admin_users_router
 from .routes.admin_visits import router as admin_visits_router
 from .routes.ambassador_app import router as ambassador_app_router
@@ -54,10 +56,12 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     start_telegram_poller()
+    update_sender.start()
     try:
         yield
     finally:
         stop_telegram_poller()
+        update_sender.stop()
 
 
 app = FastAPI(title="Пульс", lifespan=lifespan, dependencies=[Depends(csrf_guard)])
@@ -72,6 +76,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(auth_router)
 app.include_router(admin_users_router)
+app.include_router(admin_updates_router)
 app.include_router(admin_visits_router)
 app.include_router(admin_unmatched_router)
 app.include_router(admin_nomenclature_router)

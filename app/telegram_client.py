@@ -36,6 +36,45 @@ import httpx
 _API_TIMEOUT = 10
 
 
+class TelegramSendError(Exception):
+    def __init__(self, code: int, retry_after: int = 0):
+        self.code = code
+        self.retry_after = retry_after
+        super().__init__(f"Telegram error {code}")
+
+
+def send_update_message(chat_id: int, text: str) -> None:
+    """Check Telegram's acknowledgement; never expose token-bearing URLs."""
+    response = httpx.post(
+        _api_url("sendMessage"),
+        json={
+            "chat_id": chat_id,
+            "text": text,
+            "reply_markup": {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "Отключить уведомления об обновлениях",
+                            "callback_data": "updates:off",
+                        }
+                    ]
+                ]
+            },
+        },
+        timeout=_API_TIMEOUT,
+        headers=_relay_headers(),
+    )
+    body = response.json()
+    if body.get("ok") is not True:
+        if body.get("ok") is False:
+            raise TelegramSendError(
+                int(body.get("error_code", response.status_code)),
+                int(body.get("parameters", {}).get("retry_after", 0)),
+            )
+        raise RuntimeError("Telegram acknowledgement missing")
+    response.raise_for_status()
+
+
 def _api_base() -> str:
     return os.getenv("TELEGRAM_API_BASE_URL", "https://api.telegram.org").rstrip("/")
 

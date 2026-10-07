@@ -134,3 +134,42 @@ def test_delete_webhook_calls_correct_method(monkeypatch):
     telegram_client.delete_webhook()
 
     assert calls[0].endswith("/deleteWebhook")
+
+
+def test_update_message_checks_acknowledgement_and_uses_relay(monkeypatch):
+    from app import telegram_client
+
+    monkeypatch.setenv("TELEGRAM_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_API_BASE_URL", "https://relay.test")
+    monkeypatch.setenv("TELEGRAM_RELAY_SECRET", "secret")
+    calls = []
+
+    def post(url, json, timeout, headers):
+        calls.append((url, json, headers))
+        return _FakeResponse({"ok": True, "result": {"message_id": 1}})
+
+    monkeypatch.setattr(telegram_client.httpx, "post", post)
+    telegram_client.send_update_message(5550000001, "Update")
+    assert calls[0][0] == "https://relay.test/bot123:abc/sendMessage"
+    assert calls[0][2] == {"X-Relay-Secret": "secret"}
+    assert (
+        calls[0][1]["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
+        == "updates:off"
+    )
+
+
+def test_update_message_reports_telegram_rate_limit(monkeypatch):
+    import pytest
+
+    from app import telegram_client
+
+    monkeypatch.setenv("TELEGRAM_TOKEN", "123:abc")
+    response = _FakeResponse(
+        {"ok": False, "error_code": 429, "parameters": {"retry_after": 12}}
+    )
+    response.status_code = 429
+    monkeypatch.setattr(telegram_client.httpx, "post", lambda *args, **kwargs: response)
+    with pytest.raises(telegram_client.TelegramSendError) as exc:
+        telegram_client.send_update_message(123, "Update")
+    assert exc.value.code == 429
+    assert exc.value.retry_after == 12
