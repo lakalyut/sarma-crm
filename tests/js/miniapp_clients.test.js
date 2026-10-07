@@ -133,19 +133,36 @@ test('network failure leaves an actionable retry and does not mark clients loade
     assert.equal(ui.run('clientsLoaded'), true);
 });
 
-test('detail groups distinguish ordered and missing SKU and escape names', async () => {
+test('assortment card shows only missing aromas and escapes their names', async () => {
     const ui = fixture(async () => response(body()));
     ui.context.detail = {
         segment: 'HoReCa', abc: row().abc,
         groups: [{ category: 'A', ordered: 1, total: 2, items: [
-            { name: '<b>SKU</b>', qty: 3, ordered: true },
-            { name: 'Missing', qty: 0, ordered: false },
+            { name: 'Purchased aroma', qty: 3, ordered: true },
+            { name: '<b>Missing</b>', qty: 0, ordered: false },
         ] }],
     };
     ui.run('renderClientDetail("Кафе", "HoReCa", detail)');
     const html = ui.element('detail-sku-list').innerHTML;
-    assert.match(html, /Заказан/);
-    assert.match(html, /Не заказан за период/);
-    assert.match(html, /&lt;b&gt;SKU&lt;\/b&gt;/);
-    assert.doesNotMatch(html, /<b>SKU<\/b>/);
+    assert.match(ui.element('detail-summary').innerHTML, /Ассортимент по ABC/);
+    assert.match(html, /Не покупает из категории A \(1\)/);
+    assert.match(html, / open>/);
+    assert.match(html, /&lt;b&gt;Missing&lt;\/b&gt;/);
+    assert.doesNotMatch(html, /Purchased aroma|<b>Missing<\/b>/);
+});
+
+test('assortment card folds B and shows complete categories without missing lists', () => {
+    const ui = fixture(async () => response(body()));
+    ui.context.detail = { segment: 'HoReCa', abc: row().abc, groups: [
+        { category: 'A', total: 1, items: [{ name: 'Bought', ordered: true }] },
+        { category: 'B', total: 1, items: [{ name: 'Missing B', ordered: false }] },
+        { category: 'C', total: 0, items: [] },
+        { category: 'unrated', total: 1, items: [{ name: 'Unrated', ordered: false }] },
+    ] };
+    ui.run('renderClientDetail("Кафе", "HoReCa", detail)');
+    const html = ui.element('detail-sku-list').innerHTML;
+    assert.match(html, /Категория A: клиент покупает весь ассортимент/);
+    assert.match(html, /Не покупает из категории B \(1\)/);
+    assert.match(html, /Категория C: в сегменте нет SKU/);
+    assert.doesNotMatch(html, / open>|Unrated|Bought/);
 });

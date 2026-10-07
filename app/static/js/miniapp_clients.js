@@ -115,17 +115,22 @@ function filterClientsList() {
 function renderClientDetail(client, saleType, data) {
     document.getElementById('detail-client-name').textContent = client;
     document.getElementById('detail-client-type').textContent = saleType;
-    document.getElementById('detail-summary').innerHTML = '<div class="hint">' + escHtml(periodLabel()) + ' · Сегмент: ' + escHtml(data.segment || 'не задан') + '</div>' +
-        (data.groups.length ? abcCounts(data.abc) : 'Нет данных по клиенту.');
-    document.getElementById('detail-sku-list').innerHTML = data.groups.map(group =>
-        '<details class="mini-abc-group" open><summary>' + (group.category === 'unrated' ? 'Без ABC-рейтинга' : 'Категория ' + group.category) +
-        ' · Заказано ' + group.ordered + ' из ' + group.total + '</summary>' +
-        (group.items.length ? group.items.map(item =>
-            '<div class="visit-history-item"><div class="visit-history-goal">' + escHtml(item.name) + '</div>' +
-            '<div class="visit-history-meta ' + (item.ordered ? 'mini-ordered' : 'mini-missing') + '">' +
-            (item.ordered ? 'Заказан · ' + item.qty.toLocaleString('ru-RU') + ' шт.' : 'Не заказан за период') + '</div></div>'
-        ).join('') : '<p class="hint">В этой категории нет SKU.</p>') + '</details>'
-    ).join('');
+    document.getElementById('detail-summary').innerHTML = '<h3 class="mini-assortment-title">Ассортимент по ABC</h3>' +
+        '<div class="hint">' + escHtml(periodLabel()) + ' · Сегмент: ' + escHtml(data.segment || 'не задан') + '</div>' +
+        '<p class="hint">По покупкам за выбранный период.</p>' +
+        (data.groups.length ? '<div class="mini-assortment-counts">' + ['A', 'B', 'C'].map(category => {
+            const count = data.abc[category];
+            return '<div class="mini-assortment-count mini-abc-' + category.toLowerCase() + '">' +
+                '<span>Категория ' + category + ' в ассортименте</span><b>' + count.ordered + ' из ' + count.total + '</b></div>';
+        }).join('') + '</div>' : 'Нет данных по клиенту.');
+    document.getElementById('detail-sku-list').innerHTML = data.groups.filter(group => group.category !== 'unrated').map(group => {
+        const missing = group.items.filter(item => !item.ordered);
+        if (!group.total) return '<p class="hint">Категория ' + group.category + ': в сегменте нет SKU.</p>';
+        if (!missing.length) return '<div class="mini-assortment-complete">Категория ' + group.category + ': клиент покупает весь ассортимент сегмента за выбранный период.</div>';
+        return '<details class="mini-abc-group mini-abc-' + group.category.toLowerCase() + '"' + (group.category === 'A' ? ' open' : '') + '><summary>' +
+            'Не покупает из категории ' + group.category + ' (' + missing.length + ')</summary>' +
+            '<div class="mini-assortment-tags">' + missing.map(item => '<span class="mini-assortment-tag">' + escHtml(item.name) + '</span>').join('') + '</div></details>';
+    }).join('');
 }
 
 async function openClientDetail(client, saleType) {

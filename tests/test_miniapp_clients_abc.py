@@ -121,6 +121,7 @@ def test_distinct_skus_and_missing_catalog_items_in_detail(
     assert items["A1"]["qty"] == 30
     assert items["A1"]["ordered"] is True
     assert items["A2"]["ordered"] is False
+    assert items["A2"]["name"] == "Бренд — A2"
     assert {i["sku"] for i in groups["unrated"]["items"]} == {"U1", "RAW", "OLD"}
     assert data["segment"] == "HoReCa"
 

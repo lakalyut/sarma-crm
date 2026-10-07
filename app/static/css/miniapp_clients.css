@@ -6,9 +6,14 @@
 .mini-abc-a { background: #e4f5e9; color: #236839; }
 .mini-abc-b { background: #fff3d6; color: #775800; }
 .mini-abc-c { background: #e8efff; color: #345699; }
-.mini-abc-group { margin: 14px 0; border-top: 1px solid #e5e5e5; padding-top: 12px; }
+.mini-abc-group { margin: 14px 0; border: 1px solid currentColor; border-radius: 12px; padding: 12px; }
 .mini-abc-group summary { cursor: pointer; font-size: 15px; font-weight: 600; }
-.mini-abc-group .visit-history-item { margin-top: 8px; }
-.mini-ordered { color: #236839; font-weight: 600; }
-.mini-missing { color: #8a4747; }
 .client-summary-row { cursor: pointer; }
+.mini-assortment-title { margin: 0 0 10px; }
+.mini-assortment-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.mini-assortment-count { padding: 12px 8px; border-radius: 12px; min-width: 0; }
+.mini-assortment-count span { display: block; font-size: 12px; }
+.mini-assortment-count b { display: block; margin-top: 8px; font-size: 19px; }
+.mini-assortment-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.mini-assortment-tag { background: #fff; color: #333; border-radius: 8px; padding: 6px 10px; font-size: 14px; overflow-wrap: anywhere; }
+.mini-assortment-complete { background: #e4f5e9; color: #236839; padding: 12px; border-radius: 12px; margin: 14px 0; }

@@ -65,7 +65,7 @@ def _segment_catalog(products, ratings, segment_id):
         category = ratings.get((product.id, segment_id), "unrated")
         catalog[sku] = {
             "sku": sku,
-            "name": sku,
+            "name": f"{product.brand} — {product.flavor}",
             "category": category if category in CATEGORIES else "unrated",
         }
     return catalog
