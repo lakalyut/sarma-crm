@@ -8,7 +8,7 @@ from ..auth_models import User
 from ..database import get_db
 from ..render import render
 from ..services import city_regions_service as svc
-from ..services.cities_service import get_all_cities, rename_city
+from ..services.cities_service import EmptyCityConflict, get_all_cities, rename_city
 from ..services.sales_options_service import get_cities
 
 router = APIRouter(prefix="/admin/regions", tags=["admin-regions"])
@@ -43,11 +43,12 @@ def city_rename(
     request: Request,
     old_name: str = Form(...),
     new_name: str = Form(""),
+    complete_rename: bool = Form(False),
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
     try:
-        rename_city(db, old_name, new_name)
+        rename_city(db, old_name, new_name, complete_rename=complete_rename)
     except ValueError as error:
         response = render(
             request,
@@ -61,6 +62,7 @@ def city_rename(
                 "rename_error": str(error),
                 "rename_old_name": old_name,
                 "rename_new_name": new_name,
+                "can_complete_rename": isinstance(error, EmptyCityConflict),
             },
         )
         response.status_code = 400

@@ -24,6 +24,12 @@
             <label for="rename-city-new">Новое название</label>
             <input id="rename-city-new" name="new_name" value="{{ rename_new_name or '' }}" type="text" maxlength="200" placeholder="Например, Пятигорск" required>
         </div>
+        {% if can_complete_rename %}
+        <label class="field">
+            <span><input type="checkbox" name="complete_rename" value="true"> Завершить переименование в существующий город без продаж и визитов</span>
+            <span class="hint">Продажи и визиты выбранного города будут перенесены в новое название вместе с профилями и журналом импортов.</span>
+        </label>
+        {% endif %}
         <button type="submit" class="btn-secondary">Переименовать</button>
     </form>
     {% else %}<div class="message">Нет городов для переименования.</div>{% endif %}

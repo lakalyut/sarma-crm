@@ -2,12 +2,11 @@ from sqlalchemy.orm import Session
 
 from ..models import Sale
 from ..utils.dates import month_sort_key
+from .cities_service import get_all_cities
 
 
 def get_cities(db: Session) -> list[str]:
-    return [
-        row[0] for row in db.query(Sale.city).distinct().order_by(Sale.city) if row[0]
-    ]
+    return get_all_cities(db)
 
 
 def get_months(db: Session, city: str | None = None, reverse: bool = True) -> list[str]:
