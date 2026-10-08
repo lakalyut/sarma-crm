@@ -11,7 +11,7 @@
 
 {% include "_styles.html" %}   
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 <script>
 (function () {
     try {

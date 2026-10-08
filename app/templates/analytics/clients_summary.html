@@ -1,7 +1,20 @@
 {% extends base_template|default('base.html') %}
 {% from "includes/month_year_picker.html" import month_year_grid %}
+{% block body_class %}clients-page{% endblock %}
 {% block content %}
-<h1>Список клиентов</h1>
+<div class="clients-page-heading">
+    <h1>Клиенты</h1>
+    <div class="clients-page-context">
+        {% if selected_city %}
+            <span id="selected-city-label">{{ selected_city }}</span>
+        {% else %}
+            <span id="selected-city-empty">Все города</span>
+            <span id="selected-city-label" style="display:none;"></span>
+        {% endif %}
+        <span aria-hidden="true">·</span>
+        <span>{{ selected_months|format_month_list if selected_months else 'Все месяцы' }}</span>
+    </div>
+</div>
 {% include "includes/messages.html" %}
 
 <details class="filters-card clients-filter-panel" open>
@@ -119,42 +132,13 @@
             <div class="field filter-field filter-actions-row">
                 <label>&nbsp;</label>
                 <div class="filters-actions">
-                    <button type="submit">Показать</button>
+                    <button type="submit" class="btn btn-secondary">Показать</button>
                     <a href="/analytics/clients" class="btn btn-secondary">Сбросить</a>
                 </div>
             </div>
 
         </div>
     </form>
-    <div class="selected-city-text">
-            {% if selected_city %}
-                Выбранный город:
-                <span class="selected-city-value" id="selected-city-label">{{ selected_city }}</span>
-            {% else %}
-                <span id="selected-city-empty">Город не выбран</span>
-                <span class="selected-city-value" id="selected-city-label" style="display:none;"></span>
-            {% endif %}
-    </div>
-
-    <div class="selected-city-text">
-        {% if selected_months %}
-            Месяцы:
-            <span class="selected-city-value">{{ selected_months|format_month_list }}</span>
-        {% else %}
-            <span>Все месяцы</span>
-        {% endif %}
-    </div>
-
-    <div class="selected-city-text">
-        {% if selected_types %}
-            Типы точек:
-            <span class="selected-city-value">
-                {{ selected_types|join(', ') }}
-            </span>
-        {% else %}
-            <span>Все типы</span>
-        {% endif %}
-    </div>
 
 </details>
 
@@ -162,32 +146,26 @@
 
 {% if summary %}
     <div class="summary-panel">
-        <div class="summary-panel-header">
-            <span class="summary-panel-title">Сводка по выборке</span>
-            <button type="button" class="summary-toggle" aria-controls="summary-panel-body" aria-expanded="true">
-                Свернуть
-            </button>
-        </div>
 
         <div class="summary-panel-body" id="summary-panel-body">
             <div class="summary-cards">
                 <div class="summary-card clients">
-                    <div class="summary-card-title">Уникальных клиентов, шт</div>
+                    <div class="summary-card-title">Клиентов</div>
                     <div class="summary-card-value">{{ summary.unique_clients }}</div>
                 </div>
 
                 <div class="summary-card qty">
-                    <div class="summary-card-title">Суммарное количество, шт</div>
+                    <div class="summary-card-title">Количество, шт</div>
                     <div class="summary-card-value">{{ summary.total_qty|format_ru_number(2) }}</div>
                 </div>
 
                 <div class="summary-card weight">
-                    <div class="summary-card-title">Суммарный вес, кг</div>
+                    <div class="summary-card-title">Вес, кг</div>
                     <div class="summary-card-value">{{ summary.total_weight|format_ru_number(2) }}</div>
                 </div>
 
                 <div class="summary-card sku">
-                    <div class="summary-card-title">Уникальных SKU, шт</div>
+                    <div class="summary-card-title">Уникальных SKU</div>
                     <div class="summary-card-value">{{ summary.unique_sku }}</div>
                 </div>
 
@@ -211,6 +189,13 @@
                 {% endif %}
             </div>
         </div>
+        <div class="summary-panel-header">
+            <span class="summary-panel-title">Сводка по выборке</span>
+            <button type="button" class="summary-toggle" aria-controls="summary-panel-body" aria-expanded="false">
+                Все показатели
+            </button>
+        </div>
+
     </div>
 {% endif %}
 
@@ -220,7 +205,7 @@
             <input
                 id="client-table-search"
                 type="text"
-                placeholder="Начни вводить название клиента..."
+                placeholder="Поиск по названию клиента"
                 autocomplete="off"
             >
         </div>
@@ -230,6 +215,7 @@
                 Сбросить
             </button>
         </div>
+        <span class="clients-list-count" id="clients-list-count" role="status"></span>
     </div>
 
     <div class="field clients-mobile-type">
@@ -277,11 +263,13 @@
                     <table class="sheet-table{% if ambassador_mode %} clients-table-noselect{% endif %}" id="clients-table">
                         <thead>
                         <tr>
-                            <th></th>
+                            <th><span class="clients-visually-hidden">Выбор клиента</span></th>
+                            <th class="client-type-column">Тип точки</th>
                             <th class="filterable-th" id="type-filter-th">
+                                <span>Клиент</span>
                                 <div class="th-filter-trigger" id="type-filter-trigger">
                                     <span>Тип точки</span>
-                                    <span class="sort-icon">☰</span>
+                                    <span class="sort-icon" aria-hidden="true">⌄</span>
                                 </div>
 
                                 <div class="th-filter-dropdown" id="type-filter-dropdown">
@@ -303,22 +291,21 @@
                                     </div>
                                 </div>
                             </th>
-                            <th>Клиент</th>
                             <th data-sort="status_rank" class="sortable">
                                 Статус <span class="sort-icon">↕</span>
                             </th>
                             <th data-sort="qty" class="sortable">
-                                Количество <span class="sort-icon">↕</span>
+                                Количество, шт <span class="sort-icon">↕</span>
                             </th>
                             <th data-sort="weight" class="sortable">
-                                Вес <span class="sort-icon">↕</span>
+                                Вес, кг <span class="sort-icon">↕</span>
                             </th>
                             <th data-sort="sku" class="sortable">
                                 SKU <span class="sort-icon">↕</span>
                             </th>
                             <th>Динамика <span class="metric-label" id="dynamics-metric-label">(Кол-во)</span></th>
                             <th data-sort="delta" class="sortable">
-                                Δ период <span class="metric-label" id="delta-metric-label">(Кол-во)</span> <span class="sort-icon">↕</span>
+                                Δ период <span class="sort-icon">↕</span> <span class="metric-label" id="delta-metric-label">(Кол-во)</span>
                             </th>
                             <th>Подробности</th>
                         </tr>
@@ -340,8 +327,8 @@
                                     data-monthly="{{ client_monthly|tojson }}"
                                 >
                                     <td>{% if not ambassador_mode %}<input type="checkbox" class="ca-row-select" aria-label="Выбрать клиента {{ r.client }}" data-client="{{ r.client }}">{% endif %}</td>
-                                    <td data-label="Тип точки">{{ r.type }}</td>
-                                    <td class="client-name-cell">{{ r.client }}</td>
+                                    <td class="client-type-column">{{ r.type }}</td>
+                                    <td class="client-name-cell"><span class="client-name">{{ r.client }}</span><span class="client-point-type">{{ r.type }}</span></td>
                                     <td data-label="Статус">
                                         {% if health_row %}
                                             <span class="client-status-badge client-status-badge-{{ health_row.status }}" title="{{ health_row.status_reason }}">{{ health_row.status_label }}</span>
@@ -361,7 +348,7 @@
                                             class="icon-btn"
                                             title="Детали" aria-label="Подробности клиента {{ r.client }}"
                                             href="/analytics/client?city={{ selected_city }}&client={{ r.client | urlencode }}&sale_type={{ r.type | urlencode }}{% for month in selected_months %}&months={{ month }}{% endfor %}{% if matched == true %}&matched=1{% elif matched == false %}&matched=0{% endif %}"
-                                        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg><span class="client-details-label">Подробности</span></a>
+                                        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg><span class="client-details-label">Подробности</span></a>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -417,7 +404,7 @@ document.addEventListener("DOMContentLoaded", function () {
         toggle.setAttribute("aria-expanded", String(!collapsed));
         toggle.textContent = collapsed ? "Все показатели" : "Свернуть";
     }
-    if (mobile) body.classList.add("summary-collapsed");
+    body.classList.add("summary-collapsed");
     update();
     toggle.addEventListener("click", function() {
         body.classList.toggle("summary-collapsed"); update();
@@ -530,12 +517,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (svg) {
                 svg.innerHTML = "";
+                svg.setAttribute("role", "img");
+                svg.setAttribute("aria-label", "Динамика: " + METRIC_LABEL[activeMetric] +
+                    (values.length ? "; " + values.join(", ") : "; нет данных"));
                 if (values.length >= 2) {
-                    let color = "var(--text-muted)";
-                    if (delta !== null) {
-                        if (delta > 1) color = "var(--success)";
-                        else if (delta < -1) color = "var(--danger)";
-                    }
+                    const color = "var(--primary-text)";
                     const points = buildSparkPoints(values);
                     svg.innerHTML =
                         '<polyline points="' + points + '" fill="none" stroke="' + color +
@@ -606,6 +592,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         document.getElementById("clients-search-empty").hidden = rows.length > 0;
+        document.getElementById("clients-list-count").textContent = "В списке: " + rows.length + " из " + allRows.length;
         updateHeaderState();
     }
 
