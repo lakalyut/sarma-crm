@@ -6,6 +6,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from .auth_models import SessionModel, User
 from .database import get_db
+from .services.city_access_service import apply_city_scope
 
 
 def _as_utc_aware(dt: datetime) -> datetime:
@@ -38,12 +39,21 @@ def get_current_user(
     if not user or not user.is_active:
         return None
 
+    apply_city_scope(db, user)
     return user
 
 
-def require_user(user: User | None = Depends(get_current_user)) -> User:
+def require_user(
+    request: Request, user: User | None = Depends(get_current_user)
+) -> User:
     if not user:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED)
+    if user.role == "brand_ambassador":
+        requested = request.query_params.getlist("city") + request.query_params.getlist(
+            "cities"
+        )
+        if any(city and city not in user.allowed_cities for city in requested):
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user
 
 
@@ -54,7 +64,7 @@ def require_admin(user: User = Depends(require_user)) -> User:
 
 
 def require_analyst(user: User = Depends(require_user)) -> User:
-    if user.role not in ("admin", "user"):
+    if user.role not in ("admin", "user", "brand_ambassador"):
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user
 
@@ -63,7 +73,11 @@ def require_ambassador(user: User = Depends(require_user)) -> User:
     # cookie-сессия — обычный /auth/login (браузерный путь, горизонт 13.1);
     # Telegram-мини-апп аутентифицируется отдельно, заголовком, см.
     # app/telegram_auth.py::get_current_ambassador.
-    if user.role != "admin" and not user.can_record_visits:
+    if (
+        user.role != "admin"
+        and not user.can_record_visits
+        and not (user.role == "brand_ambassador" and user.allowed_cities)
+    ):
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user
 
@@ -73,6 +87,6 @@ def require_client_viewer(user: User = Depends(require_user)) -> User:
     # амбассадору только по своему городу (роут форсит city=user.city, любой
     # ?city= в запросе игнорируется). Отдельная от require_analyst зависимость,
     # чтобы не расширять блэнкет-доступ на остальную аналитику.
-    if user.role not in ("admin", "user", "ambassador"):
+    if user.role not in ("admin", "user", "ambassador", "brand_ambassador"):
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return user

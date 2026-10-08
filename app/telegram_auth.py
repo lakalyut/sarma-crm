@@ -114,7 +114,7 @@ def get_current_ambassador(
         db.query(User)
         .filter(
             User.telegram_id == telegram_id,
-            User.role.in_(("ambassador", "user")),
+            User.role.in_(("ambassador", "user", "brand_ambassador")),
             User.is_active.is_(True),
         )
         .first()
@@ -126,9 +126,12 @@ def get_current_ambassador(
         raise HTTPException(
             status_code=403, detail="Регистрация в боте ещё не завершена"
         )
-    if user.role == "ambassador" and not user.city:
+    if user.role in ("ambassador", "brand_ambassador") and not user.city:
         raise HTTPException(
             status_code=403, detail="Регистрация в боте ещё не завершена"
         )
 
+    from .services.city_access_service import apply_city_scope
+
+    apply_city_scope(db, user)
     return user

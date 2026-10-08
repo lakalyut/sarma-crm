@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -28,6 +29,15 @@ class User(Base):
     can_create_visits = Column(
         Boolean, default=False, server_default="false", nullable=False
     )
+    city_assignments = relationship(
+        "UserCity", cascade="all, delete-orphan", back_populates="user"
+    )
+
+    @property
+    def allowed_cities(self) -> list[str]:
+        if self.role != "brand_ambassador":
+            return []
+        return sorted(assignment.city for assignment in self.city_assignments)
 
     @property
     def can_record_visits(self) -> bool:
@@ -36,6 +46,9 @@ class User(Base):
             and (
                 self.role == "ambassador"
                 or (self.role == "user" and self.can_create_visits)
+                or (
+                    self.role == "brand_ambassador" and self.city in self.allowed_cities
+                )
             )
         )
 
@@ -61,6 +74,18 @@ class User(Base):
     )
 
     events_last_seen_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class UserCity(Base):
+    __tablename__ = "user_cities"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    city = Column(String, nullable=False)
+    user = relationship("User", back_populates="city_assignments")
+    __table_args__ = (UniqueConstraint("user_id", "city", name="uq_user_city"),)
 
 
 class SessionModel(Base):

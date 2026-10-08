@@ -36,11 +36,12 @@
                 <option value="user" {% if u.role == "user" %}selected{% endif %}>user</option>
                 <option value="admin" {% if u.role == "admin" %}selected{% endif %}>admin</option>
                 <option value="ambassador" {% if u.role == "ambassador" %}selected{% endif %}>ambassador</option>
+                <option value="brand_ambassador" {% if u.role == "brand_ambassador" %}selected{% endif %}>Бренд-амбассадор</option>
               </select>
               <button type="submit" class="btn-secondary btn-small">Сохранить</button>
             </form>
           </td>
-          <td>{{ u.telegram_id or "—" }} / {{ u.city or "—" }}</td>
+          <td>{{ u.telegram_id or "—" }} / {{ u.city or "—" }}{% if u.role == 'brand_ambassador' %}<div class="field-hint">Аналитика: {{ u.allowed_cities|join(', ') or 'города не назначены' }}</div>{% endif %}</td>
           <td>
             {% if u.is_active %}
               <span class="message ok" style="display:inline-block; margin:0; padding:4px 8px;">active</span>

@@ -2,10 +2,10 @@
 
 from sqlalchemy.orm import Session
 
-from ..auth_models import User
+from ..auth_models import User, UserCity
 from ..models import CityRegion, EventLog, Sale, Visit
 
-CITY_MODELS = (Sale, Visit, User, CityRegion, EventLog)
+CITY_MODELS = (Sale, Visit, User, CityRegion, EventLog, UserCity)
 
 
 class EmptyCityConflict(ValueError):
@@ -18,7 +18,7 @@ def _city_key(name: str) -> str:
 
 def get_all_cities(db: Session) -> list[str]:
     # Include cities whose sales were removed and ambassadors awaiting an import.
-    return sorted(
+    result = sorted(
         {
             city
             for model in CITY_MODELS
@@ -26,6 +26,8 @@ def get_all_cities(db: Session) -> list[str]:
             if city and city.strip()
         }
     )
+    scope = db.info.get("brand_cities")
+    return [city for city in result if scope is None or city in scope]
 
 
 def rename_city(
@@ -82,6 +84,14 @@ def rename_city(
         for row in assignments:
             if row is not keeper:
                 db.delete(row)
+        seen_users = set()
+        for assignment in (
+            db.query(UserCity).filter(UserCity.city.in_(names)).order_by(UserCity.id)
+        ):
+            if assignment.user_id in seen_users:
+                db.delete(assignment)
+            else:
+                seen_users.add(assignment.user_id)
         db.flush()
         for model in CITY_MODELS:
             db.query(model).filter(model.city.in_(names)).update(

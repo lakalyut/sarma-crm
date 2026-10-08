@@ -26,7 +26,7 @@ def home_page(
     if not user:
         return RedirectResponse("/auth/login", status_code=HTTP_302_FOUND)
 
-    if user.role not in ("admin", "user"):
+    if user.role not in ("admin", "user", "brand_ambassador"):
         return RedirectResponse("/analytics/clients", status_code=HTTP_302_FOUND)
 
     overview = get_home_overview(db, year)
@@ -37,8 +37,16 @@ def home_page(
         {
             "title": "Главная — Пульс",
             "empty_state": {
-                "title": "Пока нет данных",
-                "hint": "Загрузите первый импорт продаж — здесь появится сводка по всему бизнесу",
+                "title": (
+                    "Пока нет данных по назначенным городам"
+                    if user.role == "brand_ambassador"
+                    else "Пока нет данных"
+                ),
+                "hint": (
+                    "Назначение городов и загрузку продаж выполняет администратор."
+                    if user.role == "brand_ambassador"
+                    else "Загрузите первый импорт продаж — здесь появится сводка по всему бизнесу"
+                ),
             },
             **overview,
         },

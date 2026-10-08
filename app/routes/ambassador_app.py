@@ -15,7 +15,7 @@
   отдаёт СПИСОК городов не-амбассадору, а не один).
 - «Лидерборд»/`verify`/`cities` — общие без изменений."""
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -44,6 +44,10 @@ def _resolve_city(user: User, city: str | None) -> str | None:
     """Амбассадор — всегда свой город, query игнорируется (тот же принцип,
     что был здесь и раньше). `user` — только из query, своего фиксированного
     города у него нет."""
+    if user.role == "brand_ambassador" and city and city not in user.allowed_cities:
+        raise HTTPException(
+            status_code=403, detail="Город не назначен этому пользователю"
+        )
     return user.city if user.role == "ambassador" else city
 
 
@@ -93,7 +97,11 @@ def ambassador_app_options(
     сразу (см. `get_visit_options()`): форма визита сама даёт выбрать,
     `populateCity()` в app.html уже умела показывать `<select>`, если
     городов больше одного, просто раньше не срабатывало."""
-    cities = [user.city] if user.role == "ambassador" else get_cities(db)
+    cities = (
+        ([user.city] if user.city else [])
+        if user.role in ("ambassador", "brand_ambassador")
+        else get_cities(db)
+    )
     return get_visit_options(db, cities)
 
 

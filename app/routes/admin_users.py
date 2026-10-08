@@ -4,11 +4,12 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
 from ..auth_deps import require_admin
-from ..auth_models import PasswordToken, SessionModel, User
+from ..auth_models import PasswordToken, SessionModel, User, UserCity
 from ..database import get_db
 from ..models import EventLog, Visit
 from ..render import render
 from ..services.admin_users_service import issue_password_reset_link
+from ..services.sales_options_service import get_cities
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
@@ -30,9 +31,14 @@ def users_list(
 @router.get("/new")
 def user_new_form(
     request: Request,
+    db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
-    return render(request, "admin/user_new.html", {"title": "Пользователи — Пульс"})
+    return render(
+        request,
+        "admin/user_new.html",
+        {"title": "Пользователи — Пульс", "cities": get_cities(db)},
+    )
 
 
 @router.post("/new")
@@ -42,30 +48,39 @@ def user_new_submit(
     role: str = Form("user"),
     telegram_id: str = Form(""),
     can_create_visits: bool = Form(False),
+    assigned_cities: list[str] = Form([]),
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
     email = email.strip().lower()
-    if role not in ("user", "admin", "ambassador"):
-        return render(
-            request,
-            "admin/user_new.html",
-            {"title": "Пользователи — Пульс", "error": "Некорректная роль"},
-        )
 
-    exists = db.query(User).filter(User.email == email).first()
-    if exists:
+    def _new_error(message):
         return render(
             request,
             "admin/user_new.html",
             {
                 "title": "Пользователи — Пульс",
-                "error": "Пользователь с таким email уже существует",
+                "error": message,
+                "cities": get_cities(db),
+                "form": {
+                    "email": email,
+                    "role": role,
+                    "telegram_id": telegram_id,
+                    "assigned_cities": assigned_cities,
+                    "can_create_visits": can_create_visits,
+                },
             },
         )
 
+    if role not in ("user", "admin", "ambassador", "brand_ambassador"):
+        return _new_error("Некорректная роль")
+
+    exists = db.query(User).filter(User.email == email).first()
+    if exists:
+        return _new_error("Пользователь с таким email уже существует")
+
     telegram_id_int = None
-    if role in ("ambassador", "user"):
+    if role in ("ambassador", "user", "brand_ambassador"):
         # telegram_id — опционально: доступ у ambassador теперь двумя путями
         # (Telegram-бот с initData, горизонт 13 Этап 2, и обычный пароль +
         # браузер, горизонт 13.1) — можно завести сразу с telegram_id, можно
@@ -75,29 +90,19 @@ def user_new_submit(
         telegram_id = telegram_id.strip()
         if telegram_id:
             if not telegram_id.isdigit():
-                return render(
-                    request,
-                    "admin/user_new.html",
-                    {
-                        "title": "Пользователи — Пульс",
-                        "error": "Telegram ID должен быть числом",
-                    },
-                )
+                return _new_error("Telegram ID должен быть числом")
 
             telegram_id_int = int(telegram_id)
             existing_tg = (
                 db.query(User).filter(User.telegram_id == telegram_id_int).first()
             )
             if existing_tg:
-                return render(
-                    request,
-                    "admin/user_new.html",
-                    {
-                        "title": "Пользователи — Пульс",
-                        "error": "Этот Telegram ID уже привязан к другому пользователю",
-                    },
+                return _new_error(
+                    "Этот Telegram ID уже привязан к другому пользователю"
                 )
 
+    if role == "brand_ambassador" and not set(assigned_cities).issubset(get_cities(db)):
+        return _new_error("Выберите назначенные города из списка.")
     user = User(
         email=email,
         role=role,
@@ -105,6 +110,10 @@ def user_new_submit(
         telegram_id=telegram_id_int,
         can_create_visits=can_create_visits if role == "user" else False,
     )
+    if role == "brand_ambassador":
+        user.city_assignments = [
+            UserCity(city=city) for city in sorted(set(assigned_cities))
+        ]
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -133,7 +142,12 @@ def user_edit_form(
     return render(
         request,
         "admin/user_edit.html",
-        {"title": "Пользователи — Пульс", "user": user, "saved": saved},
+        {
+            "title": "Пользователи — Пульс",
+            "user": user,
+            "saved": saved,
+            "cities": get_cities(db),
+        },
     )
 
 
@@ -147,6 +161,7 @@ def user_edit_submit(
     first_name: str = Form(""),
     last_name: str = Form(""),
     can_create_visits: bool = Form(False),
+    assigned_cities: list[str] = Form([]),
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
@@ -168,6 +183,7 @@ def user_edit_submit(
                 "title": "Пользователи — Пульс",
                 "user": user,
                 "error": message,
+                "cities": get_cities(db),
                 # то, что уже набрал админ — чтобы не пришлось вводить заново
                 "form": {
                     "email": email,
@@ -176,6 +192,7 @@ def user_edit_submit(
                     "first_name": first_name,
                     "last_name": last_name,
                     "can_create_visits": can_create_visits,
+                    "assigned_cities": assigned_cities,
                 },
             },
         )
@@ -200,9 +217,27 @@ def user_edit_submit(
         if tg_owner:
             return _error(f"Этот Telegram ID уже привязан к {tg_owner.email}")
 
+    if user.role == "brand_ambassador" and not set(assigned_cities).issubset(
+        get_cities(db)
+    ):
+        return _error("Выберите назначенные города из списка.")
     user.email = email
     user.telegram_id = telegram_id_int
-    user.city = city or None
+    if user.role == "brand_ambassador":
+        selected = set(assigned_cities)
+        user.city_assignments[:] = [
+            assignment
+            for assignment in user.city_assignments
+            if assignment.city in selected
+        ]
+        existing = {assignment.city for assignment in user.city_assignments}
+        user.city_assignments.extend(
+            UserCity(city=value) for value in sorted(selected - existing)
+        )
+        # Revoke real visits if the registered city is no longer assigned.
+        user.city = city if city in selected else None
+    else:
+        user.city = city or None
     user.first_name = first_name or None
     user.last_name = last_name or None
     user.can_create_visits = can_create_visits if user.role == "user" else False
@@ -277,7 +312,7 @@ def user_change_role(
     if not user:
         return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 
-    if role not in ("admin", "user", "ambassador"):
+    if role not in ("admin", "user", "ambassador", "brand_ambassador"):
         return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 
     if user.id == admin.id and role != "admin":
@@ -292,6 +327,8 @@ def user_change_role(
         )
 
     user.role = role
+    if role != "brand_ambassador":
+        user.city_assignments.clear()
     if role != "user":
         user.can_create_visits = False
     db.commit()

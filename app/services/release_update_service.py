@@ -77,7 +77,7 @@ def bot_users(db: Session, audience: str):
     query = db.query(User).filter(
         User.is_active.is_(True),
         User.telegram_id.isnot(None),
-        User.role.in_(("ambassador", "user")),
+        User.role.in_(("ambassador", "user", "brand_ambassador")),
     )
     if audience != "all":
         query = query.filter(User.role == audience)
@@ -186,7 +186,7 @@ def deliver_next(db: Session) -> float:
         not user
         or not user.is_active
         or not user.updates_enabled
-        or user.role not in ("user", "ambassador")
+        or user.role not in ("user", "ambassador", "brand_ambassador")
         or (update.audience != "all" and user.role != update.audience)
         or (user.telegram_chat_id or user.telegram_id) != delivery.chat_id
     ):

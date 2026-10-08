@@ -31,7 +31,7 @@
       <input type="text" name="telegram_id" value="{{ (form.telegram_id if form else user.telegram_id) or '' }}" placeholder="Для доступа к Telegram-боту">
       <div class="field-hint">
         Числовой ID из Telegram (например, через @userinfobot). Нужен для
-        доступа к боту ролям user и ambassador. Без него доступен браузерный
+        доступа к боту ролям user, ambassador и бренд-амбассадор. Без него доступен браузерный
         вход по паролю. Оставить пустым, чтобы отвязать.
       </div>
     </div>
@@ -43,11 +43,23 @@
     </div>
     {% endif %}
 
+    {% if user.role == 'brand_ambassador' %}
+    <div class="field">
+      <label>Города для аналитики</label>
+      {% set assigned = form.assigned_cities if form else user.allowed_cities %}
+      {% for assigned_city in cities %}
+      <label><input type="checkbox" name="assigned_cities" value="{{ assigned_city }}" {% if assigned_city in assigned %}checked{% endif %}> {{ assigned_city }}</label>
+      {% endfor %}
+      <div class="field-hint">Аналитика доступна только в этих городах. Реальные визиты — только в городе регистрации. Снятие его назначения закрывает запись визитов до повторной регистрации. Лидерборд общий.</div>
+    </div>
+    {% endif %}
+
     <div class="field">
       <label>Город</label>
-      <input type="text" name="city" value="{{ (form.city if form else user.city) or '' }}" placeholder="Только для роли ambassador">
+      <input type="text" name="city" value="{{ (form.city if form else user.city) or '' }}" placeholder="Город регистрации амбассадора">
       <div class="field-hint">
         Ограничивает амбассадору доступ к клиентам/визитам своим городом.
+        Для бренд-амбассадора это только город реальных визитов; он должен входить в назначенные города аналитики.
         Обычно амбассадор заполняет сам при первом входе — здесь можно
         поправить вручную (например, если ошибся при регистрации).
       </div>

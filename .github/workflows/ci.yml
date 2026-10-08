@@ -63,9 +63,9 @@ jobs:
         run: |
           pytest -q
 
-      - name: ABC and city rename tests on PostgreSQL
+      - name: Mini-app and city access tests on PostgreSQL
         env:
           DATABASE_URL: "postgresql+psycopg://sarma_test:ci-test-password@localhost:5432/sarma_test"
           APP_SECRET_KEY: "ci-secret"
           PYTHONPATH: ${{ github.workspace }}
-        run: pytest -q tests/test_miniapp_clients_abc.py tests/test_city_rename.py
+        run: pytest -q tests/test_miniapp_clients_abc.py tests/test_city_rename.py tests/test_brand_ambassador.py

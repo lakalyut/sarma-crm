@@ -21,7 +21,7 @@ from .abc_service import guess_default_segment
 
 
 def get_leaderboard_months(db: Session) -> list[str]:
-    rows = db.query(Visit.created_at).all()
+    rows = db.query(Visit.created_at).execution_options(global_leaderboard=True).all()
     months = {row[0].strftime("%Y-%m-01") for row in rows if row[0]}
     return sorted(months, key=month_sort_key, reverse=True)
 
@@ -49,6 +49,7 @@ def get_leaderboard(
             User.is_active.is_(True),
             or_(
                 User.role == "ambassador",
+                User.role == "brand_ambassador",
                 and_(User.role == "user", User.can_create_visits.is_(True)),
             ),
         )
@@ -66,7 +67,12 @@ def get_leaderboard(
             rating.product_id
         ] = rating.category
 
-    visits = db.query(Visit).filter(Visit.ambassador_id.in_(ambassador_ids)).all()
+    visits = (
+        db.query(Visit)
+        .filter(Visit.ambassador_id.in_(ambassador_ids))
+        .execution_options(global_leaderboard=True)
+        .all()
+    )
     if selected_months:
         wanted = {parse_month(m) for m in selected_months}
         wanted.discard(None)

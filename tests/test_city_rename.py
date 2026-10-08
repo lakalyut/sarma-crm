@@ -210,6 +210,11 @@ def test_different_regions_are_not_silently_lost(admin_client, db_session, city_
 
 
 def test_failed_commit_rolls_back_every_table(db_session, city_data, monkeypatch):
+    counts = {
+        model: db_session.query(model).filter(model.city == OLD).count()
+        for model in CITY_MODELS
+    }
+
     def fail_commit():
         raise RuntimeError("commit failure")
 
@@ -217,7 +222,9 @@ def test_failed_commit_rolls_back_every_table(db_session, city_data, monkeypatch
     with pytest.raises(RuntimeError, match="commit failure"):
         rename_city(db_session, OLD, NEW)
     for model in CITY_MODELS:
-        assert db_session.query(model).filter(model.city == OLD).count() == 1
+        assert (
+            db_session.query(model).filter(model.city == OLD).count() == counts[model]
+        )
         assert db_session.query(model).filter(model.city == NEW).count() == 0
 
 

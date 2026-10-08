@@ -28,7 +28,7 @@ def _profile_complete(user: User) -> bool:
 
 
 def _visit_cities(db: Session, user: User) -> list[str]:
-    return get_cities(db) if user.role == "user" else [user.city]
+    return get_cities(db) if user.role == "user" else ([user.city] if user.city else [])
 
 
 @router.get("")
@@ -62,6 +62,17 @@ def ambassador_profile_submit(
 ):
     first_name = first_name.strip()
     cities = get_cities(db)
+    if user.role == "brand_ambassador" and user.city and city != user.city:
+        return render(
+            request,
+            "ambassador/profile.html",
+            {
+                "title": "Анкета — Пульс",
+                "cities": [user.city],
+                "user": user,
+                "error": "Город регистрации меняет администратор.",
+            },
+        )
 
     if not first_name:
         return render(

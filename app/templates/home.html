@@ -45,7 +45,7 @@
 })();
 </script>
 <div class="home-period">
-    Все города · {{ chart.labels|first }} – {{ chart.labels|last }} {{ year }}
+    {% if current_user.role == 'brand_ambassador' %}Назначенные города{% else %}Все города{% endif %} · {{ chart.labels|first }} – {{ chart.labels|last }} {{ year }}
     {% if year == available_years[0] %}(год ещё не завершён, дельты — год к году за те же месяцы){% endif %}
 </div>
 

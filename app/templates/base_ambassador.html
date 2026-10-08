@@ -83,7 +83,7 @@
   <header class="amb-web-header">
     <span class="amb-web-brand">Пульс — амбассадор</span>
     <nav class="amb-web-nav">
-      {% if current_user and current_user.role == 'user' %}<a href="/">Аналитика</a>{% endif %}
+      {% if current_user and current_user.role in ('user', 'brand_ambassador') %}<a href="/">Аналитика</a>{% endif %}
       <a href="/ambassador/visit" class="{% if request.url.path == '/ambassador/visit' %}active{% endif %}">Визит</a>
       <a href="/analytics/clients" class="{% if request.url.path.startswith('/analytics/client') %}active{% endif %}">Клиенты</a>
       <a href="/ambassador/leaderboard" class="{% if request.url.path == '/ambassador/leaderboard' %}active{% endif %}">Лидерборд</a>

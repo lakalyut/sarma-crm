@@ -256,6 +256,12 @@ def create_visit(
     браузерный путь (`ambassador_web.py`) `dry_run` не передаёт, там и
     админ (`require_ambassador` пускает `admin`/`ambassador` оба), и
     амбассадор по-прежнему пишут настоящие визиты, поведение не менялось."""
+    if ambassador.role == "brand_ambassador" and (
+        not ambassador.can_record_visits or city != ambassador.city
+    ):
+        raise ValueError(
+            "Бренд-амбассадор может записывать визиты только в городе регистрации с действующим назначением."
+        )
     if not dry_run and ambassador.role == "user" and not ambassador.can_record_visits:
         raise ValueError("Запись реальных визитов не разрешена")
     if (

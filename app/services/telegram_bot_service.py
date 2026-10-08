@@ -54,15 +54,20 @@ def _city_keyboard(db: Session) -> dict:
 
 
 def _find_bot_user(db: Session, telegram_id: int) -> User | None:
-    return (
+    user = (
         db.query(User)
         .filter(
             User.telegram_id == telegram_id,
-            User.role.in_(("ambassador", "user")),
+            User.role.in_(("ambassador", "user", "brand_ambassador")),
             User.is_active.is_(True),
         )
         .first()
     )
+    if user:
+        from .city_access_service import apply_city_scope
+
+        apply_city_scope(db, user)
+    return user
 
 
 def handle_update(db: Session, update: dict, base_url: str) -> None:
@@ -119,7 +124,7 @@ def _handle_message(db: Session, message: dict, base_url: str) -> None:
         user.first_name = parts[0]
         user.last_name = parts[1] if len(parts) > 1 else ""
         db.commit()
-        if user.role == "ambassador":
+        if user.role in ("ambassador", "brand_ambassador"):
             send_message(chat_id, "Город:", reply_markup=_city_keyboard(db))
         else:
             # role=user — города не спрашиваем, он выбирает его сам в
@@ -128,7 +133,7 @@ def _handle_message(db: Session, message: dict, base_url: str) -> None:
             set_chat_menu_button(chat_id, _ambassador_app_url(base_url))
         return
 
-    if user.role == "ambassador" and not user.city:
+    if user.role in ("ambassador", "brand_ambassador") and not user.city:
         send_message(chat_id, ASK_CITY_AGAIN_TEXT, reply_markup=_city_keyboard(db))
         return
 
