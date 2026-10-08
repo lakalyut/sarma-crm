@@ -1,10 +1,12 @@
 {% extends "base.html" %}
+{% from "includes/user_roles.html" import role_options %}
 {% block content %}
+<link rel="stylesheet" href="{{ asset('css/users.css') }}">
 <h1>Пользователи</h1>
 
 {% include "includes/messages.html" %}
 
-<div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+<div class="flex-row users-page-heading">
   <div class="page-subtitle">
     Управление доступами пользователей CRM
   </div>
@@ -17,11 +19,11 @@
       <thead>
         <tr>
           <th>ID</th>
+          <th>Имя и фамилия</th>
           <th>Email</th>
           <th>Роль</th>
           <th>Telegram ID / Город</th>
           <th>Статус</th>
-          <th>Создан</th>
           <th>Действия</th>
         </tr>
       </thead>
@@ -29,52 +31,51 @@
       {% for u in users %}
         <tr>
           <td>{{ u.id }}</td>
+          <td class="user-full-name">{{ [u.first_name or '', u.last_name or '']|join(' ')|trim or '—' }}</td>
           <td>{{ u.email }}</td>
           <td>
-            <form method="post" action="/admin/users/{{ u.id }}/change-role" style="display:inline-flex; gap:8px; align-items:center;">
-              <select name="role" class="js-custom-select" style="min-width:120px;">
-                <option value="user" {% if u.role == "user" %}selected{% endif %}>user</option>
-                <option value="admin" {% if u.role == "admin" %}selected{% endif %}>admin</option>
-                <option value="ambassador" {% if u.role == "ambassador" %}selected{% endif %}>ambassador</option>
-                <option value="brand_ambassador" {% if u.role == "brand_ambassador" %}selected{% endif %}>Бренд-амбассадор</option>
+            <form method="post" action="/admin/users/{{ u.id }}/change-role" class="users-role-form">
+              <select name="role" class="js-custom-select" aria-label="Роль пользователя {{ u.email }}">
+                {{ role_options(u.role) }}
               </select>
-              <button type="submit" class="btn-secondary btn-small">Сохранить</button>
+              <button type="submit" class="btn btn-secondary btn-small">Сохранить</button>
             </form>
           </td>
           <td>{{ u.telegram_id or "—" }} / {{ u.city or "—" }}{% if u.role == 'brand_ambassador' %}<div class="field-hint">Аналитика: {{ u.allowed_cities|join(', ') or 'города не назначены' }}</div>{% endif %}</td>
           <td>
             {% if u.is_active %}
-              <span class="message ok" style="display:inline-block; margin:0; padding:4px 8px;">active</span>
+              <span class="user-status user-status-active">Активен</span>
             {% else %}
-              <span class="message error" style="display:inline-block; margin:0; padding:4px 8px;">disabled</span>
+              <span class="user-status user-status-disabled">Отключён</span>
             {% endif %}
           </td>
-          <td>{{ u.created_at.strftime("%d.%m.%Y %H:%M") }}</td>
-          <td style="white-space: nowrap;">
-            <a href="/admin/users/{{u.id}}/edit" class="btn-secondary btn-small">Изменить</a>
+          <td>
+            <div class="users-actions">
+              <a href="/admin/users/{{u.id}}/edit" class="btn btn-secondary btn-small">Изменить</a>
 
-            <form method="post" action="/admin/users/{{u.id}}/reset-link" style="display:inline;">
-              <button type="submit" class="btn-secondary btn-small">Новая ссылка</button>
-            </form>
+              <form method="post" action="/admin/users/{{u.id}}/reset-link" class="users-action-form">
+                <button type="submit" class="btn btn-secondary btn-small">Новая ссылка</button>
+              </form>
 
-            <form method="post" action="/admin/users/{{u.id}}/toggle-active" style="display:inline;">
-              {% if u.is_active %}
-                <button type="submit" class="btn-secondary btn-small">Отключить</button>
-              {% else %}
-                <button type="submit" class="btn-small">Включить</button>
+              <form method="post" action="/admin/users/{{u.id}}/toggle-active" class="users-action-form">
+                {% if u.is_active %}
+                  <button type="submit" class="btn btn-secondary btn-small">Отключить</button>
+                {% else %}
+                  <button type="submit" class="btn btn-secondary btn-small">Включить</button>
+                {% endif %}
+              </form>
+
+              {% if not current_user or u.id != current_user.id %}
+              <form
+                method="post"
+                action="/admin/users/{{u.id}}/delete"
+                class="users-action-form"
+                onsubmit="return confirm('Удалить пользователя {{ u.email }}? Это необратимо.');"
+              >
+                <button type="submit" class="btn btn-secondary btn-small btn-danger">Удалить</button>
+              </form>
               {% endif %}
-            </form>
-
-            {% if not current_user or u.id != current_user.id %}
-            <form
-              method="post"
-              action="/admin/users/{{u.id}}/delete"
-              style="display:inline;"
-              onsubmit="return confirm('Удалить пользователя {{ u.email }}? Это необратимо.');"
-            >
-              <button type="submit" class="btn-secondary btn-small btn-danger">Удалить</button>
-            </form>
-            {% endif %}
+            </div>
           </td>
         </tr>
       {% endfor %}

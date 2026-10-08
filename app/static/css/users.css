@@ -1,0 +1,17 @@
+.users-page-heading { justify-content: space-between; margin-bottom: 12px; }
+.users-role-form { display: flex; gap: 8px; align-items: center; }
+.users-role-form .custom-select { width: 180px; }
+.users-role-form select { min-width: 180px; }
+.users-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 220px; max-width: 260px; }
+.users-actions .btn { width: 100%; }
+.users-role-form .custom-select-display { font-size: 13px; }
+.users-action-form { margin: 0; }
+#users-table .user-full-name { min-width: 160px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+#users-table .field-hint { max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+.users-actions .btn, .users-role-form .btn { min-height: var(--control-height); font-size: 13px; }
+.user-status { display: inline-flex; padding: 4px 8px; border: 1px solid; border-radius: var(--radius-xs); font-size: 13px; font-weight: 500; }
+.user-status-active { color: var(--success); background: var(--success-bg); border-color: var(--success-border); }
+.user-status-disabled { color: var(--text-muted); background: var(--bg-page); border-color: var(--border); }
+@media (max-width: 768px) {
+    .users-actions .btn, .users-role-form .btn { min-height: 44px; }
+}

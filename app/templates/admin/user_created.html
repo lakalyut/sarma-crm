@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% from "includes/user_roles.html" import role_label %}
 {% block content %}
 <div class="card-medium">
   <h1>Пользователь создан</h1>
 
   <div class="message ok">
     Email: <b>{{ email }}</b><br>
-    Роль: <b>{{ role }}</b>
+    Роль: <b>{{ role_label(role) }}</b>
   </div>
 
   <div class="field" style="margin-top: 12px;">

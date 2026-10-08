@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "includes/user_roles.html" import role_options %}
 {% block content %}
 <div class="card-narrow">
   <h1>Новый пользователь</h1>
@@ -14,10 +15,7 @@
     <div class="field">
       <label for="field-role">Роль</label>
       <select id="field-role" name="role" class="js-custom-select">
-        <option value="user" {% if not form or form.role == 'user' %}selected{% endif %}>user (клиенты + графики)</option>
-        <option value="admin" {% if form and form.role == 'admin' %}selected{% endif %}>admin (полный доступ)</option>
-        <option value="ambassador" {% if form and form.role == 'ambassador' %}selected{% endif %}>ambassador (визиты — Telegram-бот или браузер)</option>
-        <option value="brand_ambassador" {% if form and form.role == 'brand_ambassador' %}selected{% endif %}>Бренд-амбассадор (аналитика назначенных городов + визиты)</option>
+        {{ role_options(form.role if form else 'user') }}
       </select>
     </div>
 
@@ -33,16 +31,16 @@
       <label for="field-telegram_id">Telegram ID</label>
       <input id="field-telegram_id" type="text" name="telegram_id" value="{{ form.telegram_id if form else '' }}" placeholder="Опционально, для доступа к боту">
       <div class="field-hint">
-        Опционально для user, ambassador и бренд-амбассадора — нужен только если пользователь будет пользоваться
+        Опционально для пользователя, амбассадора и бренд-амбассадора — нужен только если пользователь будет пользоваться
         Telegram-ботом (узнать заранее у самого амбассадора, например через
         @userinfobot). Без него амбассадор всё равно получит ссылку установки
-        пароля и сможет работать через обычный браузер. Для admin поле игнорируется.
+        пароля и сможет работать через обычный браузер. Для администратора поле игнорируется.
       </div>
     </div>
 
     <div class="field">
-      <label><input type="checkbox" name="can_create_visits" value="true" {% if form and form.can_create_visits %}checked{% endif %}> Запись реальных визитов для роли user</label>
-      <div class="field-hint">Все города, участие в лидерборде и прежний доступ к аналитике. Для ambassador запись доступна автоматически.</div>
+      <label><input type="checkbox" name="can_create_visits" value="true" {% if form and form.can_create_visits %}checked{% endif %}> Запись реальных визитов для роли «Пользователь»</label>
+      <div class="field-hint">Все города, участие в лидерборде и прежний доступ к аналитике. Для амбассадора запись доступна автоматически.</div>
     </div>
 
     <div class="flex-row actions-split">

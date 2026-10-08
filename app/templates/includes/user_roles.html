@@ -1,0 +1,16 @@
+{% set role_labels = {
+    'user': 'Пользователь',
+    'admin': 'Администратор',
+    'ambassador': 'Амбассадор',
+    'brand_ambassador': 'Бренд-амбассадор'
+} %}
+
+{% macro role_label(role) -%}
+{{ role_labels.get(role, 'Неизвестная роль') }}
+{%- endmacro %}
+
+{% macro role_options(selected_role) -%}
+{% for role, label in role_labels.items() %}
+<option value="{{ role }}" {% if role == selected_role %}selected{% endif %}>{{ label }}</option>
+{% endfor %}
+{%- endmacro %}

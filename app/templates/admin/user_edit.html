@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "includes/user_roles.html" import role_label %}
 {% block content %}
 <div class="card-narrow">
   <h1>Редактирование пользователя</h1>
@@ -19,8 +20,8 @@
     </div>
 
     <div class="field">
-      <label>Роль</label>
-      <input type="text" value="{{ user.role }}" disabled>
+      <label for="user-role">Роль</label>
+      <input id="user-role" type="text" value="{{ role_label(user.role) }}" disabled>
       <div class="field-hint">
         Роль меняется отдельно, из списка пользователей (выпадающий список + «Сохранить»).
       </div>
@@ -31,7 +32,7 @@
       <input id="field-telegram_id" type="text" name="telegram_id" value="{{ (form.telegram_id if form else user.telegram_id) or '' }}" placeholder="Для доступа к Telegram-боту">
       <div class="field-hint">
         Числовой ID из Telegram (например, через @userinfobot). Нужен для
-        доступа к боту ролям user, ambassador и бренд-амбассадор. Без него доступен браузерный
+        доступа к боту пользователю, амбассадору и бренд-амбассадору. Без него доступен браузерный
         вход по паролю. Оставить пустым, чтобы отвязать.
       </div>
     </div>
