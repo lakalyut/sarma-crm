@@ -1,0 +1,28 @@
+[
+  {
+    "view": "regions",
+    "elements": [
+      {
+        "tag": "BUTTON",
+        "className": "table-view-tab",
+        "text": "По регионам отдельно",
+        "right": 393.140625,
+        "whiteSpace": "normal",
+        "flexWrap": "nowrap"
+      }
+    ]
+  },
+  {
+    "view": "sku-presence",
+    "elements": [
+      {
+        "tag": "BUTTON",
+        "className": "btn btn-secondary",
+        "text": "Применить",
+        "right": 421.09375,
+        "whiteSpace": "normal",
+        "flexWrap": "nowrap"
+      }
+    ]
+  }
+]
