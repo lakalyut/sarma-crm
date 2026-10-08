@@ -1,9 +1,12 @@
-"""Rename a city's string key consistently across all related records."""
+"""Manage a city's string key consistently across all related records."""
 
+import json
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..auth_models import User, UserCity
-from ..models import CityRegion, EventLog, Sale, Visit
+from ..models import CityRegion, EventLog, Region, Sale, Visit
 
 CITY_MODELS = (Sale, Visit, User, CityRegion, EventLog, UserCity)
 
@@ -28,6 +31,90 @@ def get_all_cities(db: Session) -> list[str]:
     )
     scope = db.info.get("brand_cities")
     return [city for city in result if scope is None or city in scope]
+
+
+def get_empty_cities(db: Session) -> list[dict]:
+    """Cities without sales or visits, including those still used by users."""
+    counts = {
+        model: dict(
+            db.query(model.city, func.count(model.id)).group_by(model.city).all()
+        )
+        for model in CITY_MODELS
+    }
+    names = sorted(
+        {name for items in counts.values() for name in items if name and name.strip()}
+    )
+    regions = dict(
+        db.query(CityRegion.city, Region.name)
+        .join(Region, CityRegion.region_id == Region.id)
+        .all()
+    )
+    keys: dict[str, list[str]] = {}
+    for name in names:
+        keys.setdefault(_city_key(name), []).append(name)
+
+    result = []
+    for name in names:
+        if counts[Sale].get(name) or counts[Visit].get(name):
+            continue
+        users = counts[User].get(name, 0)
+        assignments = counts[UserCity].get(name, 0)
+        hints = []
+        if name != name.strip():
+            hints.append("Пробелы в начале или конце названия.")
+        if "  " in name:
+            hints.append("Повторяющиеся пробелы.")
+        if any(char.isspace() and char != " " for char in name):
+            hints.append("Нестандартные пробельные символы.")
+        similar = [
+            json.dumps(other, ensure_ascii=False)
+            for other in keys[_city_key(name)]
+            if other != name
+        ]
+        if similar:
+            hints.append(f"Похожее название: {', '.join(similar)}.")
+        result.append(
+            {
+                "name": name,
+                "display_name": json.dumps(name, ensure_ascii=False),
+                "hints": " ".join(hints),
+                "region": regions.get(name),
+                "events": counts[EventLog].get(name, 0),
+                "users": users,
+                "assignments": assignments,
+                "can_delete": not users and not assignments,
+            }
+        )
+    return result
+
+
+def delete_empty_city(db: Session, city: str) -> None:
+    """Remove only an exact, unused city key and its administrative metadata."""
+    # Do not strip or normalize: a whitespace variant may be the unwanted city.
+    try:
+        for model, reason in (
+            (Sale, "продажи"),
+            (Visit, "визиты"),
+            (User, "профили пользователей"),
+            (UserCity, "назначения бренд-амбассадорам"),
+        ):
+            if db.query(model.id).filter(model.city == city).first():
+                raise ValueError(f"Город не удалён: с ним связаны {reason}.")
+        if not any(
+            db.query(model.id).filter(model.city == city).first()
+            for model in (CityRegion, EventLog)
+        ):
+            raise ValueError(
+                "Город не найден. Обновите страницу и выберите город заново."
+            )
+        for model in (CityRegion, EventLog):
+            db.query(model).filter(model.city == city).delete(
+                synchronize_session="fetch"
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 def rename_city(

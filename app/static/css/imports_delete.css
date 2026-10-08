@@ -1,0 +1,19 @@
+.empty-cities-card { margin-top: 24px; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.empty-cities-card h2 { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+.empty-cities-description { margin: 0 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.empty-cities-table-wrap { overflow-x: auto; margin-bottom: 16px; }
+.empty-cities-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; text-align: left; }
+.empty-cities-table th, .empty-cities-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.empty-cities-table th { color: var(--text-muted); font-size: 12px; font-weight: 500; }
+.empty-cities-table th:first-child { width: 40%; }
+.empty-city-choice { display: flex; align-items: flex-start; gap: 10px; margin: 0; cursor: pointer; }
+.empty-city-choice input, .empty-city-confirm input { flex: 0 0 auto; width: auto; margin: 3px 0 0; accent-color: var(--primary); }
+.empty-city-name { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.empty-city-hint { display: block; margin-top: 5px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.empty-city-available { color: var(--primary); font-weight: 500; }
+.empty-city-confirm { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 16px; font-size: 13px; line-height: 1.5; }
+.empty-cities-card .message { margin-bottom: 16px; }
+@media (max-width: 640px) {
+    .empty-cities-card { padding: 16px; }
+    .empty-city-submit { width: 100%; }
+}

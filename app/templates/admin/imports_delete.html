@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ asset('css/imports_delete.css') }}">
 <h1>Удаление импортированных продаж</h1>
 
 {% include "includes/messages.html" %}
@@ -149,6 +150,66 @@
         </div>
     </div>
 {% endif %}
+
+<section class="empty-cities-card" aria-labelledby="empty-cities-title">
+    <h2 id="empty-cities-title">Удалить пустой город</h2>
+    <p class="empty-cities-description">
+        Здесь города без продаж и визитов за всё время, независимо от фильтров выше.
+        При удалении исчезнут название из списков, привязка к региону и записи журнала импортов этого города.
+    </p>
+    {% if city_delete_message %}<div class="message ok" role="status">{{ city_delete_message }}</div>{% endif %}
+    {% if city_delete_error %}<div class="message error" role="alert">{{ city_delete_error }}</div>{% endif %}
+    {% if empty_cities %}
+    <form method="post" action="/admin/imports/delete/city" id="empty-city-delete-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="empty-cities-table-wrap">
+            <table class="empty-cities-table">
+                <thead><tr>
+                    <th scope="col">Город</th>
+                    <th scope="col">Регион</th>
+                    <th scope="col">Записей импорта</th>
+                    <th scope="col">Возможность удаления</th>
+                </tr></thead>
+                <tbody>
+                {% for item in empty_cities %}
+                <tr>
+                    <td>
+                        <label class="empty-city-choice">
+                            <input type="radio" name="city" value="{{ item.name }}" required {% if not item.can_delete %}disabled{% endif %}>
+                            <span><code class="empty-city-name">{{ item.display_name }}</code>
+                            {% if item.hints %}<span class="empty-city-hint">{{ item.hints }}</span>{% endif %}</span>
+                        </label>
+                    </td>
+                    <td>{{ item.region or 'Не назначен' }}</td>
+                    <td>{{ item.events }}</td>
+                    <td>
+                        {% if item.can_delete %}<span class="empty-city-available">Можно удалить</span>
+                        {% else %}
+                            <span>Используется пользователями</span>
+                            {% if item.users %}<span class="empty-city-hint">Профилей: {{ item.users }}</span>{% endif %}
+                            {% if item.assignments %}<span class="empty-city-hint">Назначений бренд-амбассадорам: {{ item.assignments }}</span>{% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% set deletable_cities = empty_cities|selectattr('can_delete')|list %}
+        {% if deletable_cities %}
+        <label class="empty-city-confirm">
+            <input type="checkbox" name="confirm" value="true" required>
+            <span>Подтверждаю удаление выбранного города, его привязки к региону и записей журнала импортов.</span>
+        </label>
+        <button type="submit" class="empty-city-submit">Удалить выбранный город</button>
+        {% else %}
+        <p class="empty-cities-description">Перед удалением измените город в профилях и назначения городов пользователям.</p>
+        {% endif %}
+    </form>
+    {% else %}
+    <p class="empty-cities-description">Городов без продаж и визитов нет.</p>
+    {% endif %}
+</section>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
