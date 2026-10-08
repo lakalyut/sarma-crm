@@ -143,7 +143,7 @@
                 {% endfor %}
 
                 <div class="flex-row" style="gap:12px;">
-                    <button type="submit">Удалить данные</button>
+                    <button type="submit" class="btn btn-danger">Удалить данные</button>
                     <a href="/admin/imports/delete" class="btn btn-secondary">Сбросить</a>
                 </div>
             </form>
@@ -201,7 +201,7 @@
             <input type="checkbox" name="confirm" value="true" required>
             <span>Подтверждаю удаление выбранного города, его привязки к региону и записей журнала импортов.</span>
         </label>
-        <button type="submit" class="empty-city-submit">Удалить выбранный город</button>
+        <button type="submit" class="empty-city-submit btn btn-danger">Удалить выбранный город</button>
         {% else %}
         <p class="empty-cities-description">Перед удалением измените город в профилях и назначения городов пользователям.</p>
         {% endif %}

@@ -43,9 +43,9 @@
         <input type="hidden" name="tab" value="summary">
         <div class="filters-grid ambassadors-filters-grid">
             <div class="field filter-field filter-field-region-search">
-                <label for="ca-city-search">Регион</label>
+                <label for="ca-city-search">Город</label>
                 <input type="hidden" name="city" id="ca-city-hidden" value="{{ selected_city or '' }}">
-                <input id="ca-city-search" type="text" value="" placeholder="Начни вводить регион..." autocomplete="off">
+                <input id="ca-city-search" type="text" value="" placeholder="Начни вводить город..." autocomplete="off">
 
                 <div id="ca-city-dropdown" class="search-dropdown" style="display:none;">
                     {% for c in cities %}
@@ -113,10 +113,10 @@
 
         <div class="selected-city-text">
             {% if selected_city %}
-                Регион:
+                Город:
                 <span class="selected-city-value" id="ca-selected-city-label">{{ selected_city }}</span>
             {% else %}
-                <span id="ca-selected-city-empty">Регион не выбран</span>
+                <span id="ca-selected-city-empty">Город не выбран</span>
                 <span class="selected-city-value" id="ca-selected-city-label" style="display:none;"></span>
             {% endif %}
         </div>
@@ -373,7 +373,7 @@ document.addEventListener("DOMContentLoaded", function () {
             : (row.level === "client" ? state.expandedClients.has(row.parentType + "|" + row.key) : false);
 
         const toggle = hasChildren
-            ? `<button type="button" class="amb-toggle ca-toggle" data-ca-toggle data-level="${row.level}" data-key="${escHtml(row.key)}"${row.parentType ? ` data-type="${escHtml(row.parentType)}"` : ""} aria-expanded="${isExpanded ? "true" : "false"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>`
+            ? `<button type="button" class="amb-toggle ca-toggle" aria-label="Свернуть или развернуть ${escHtml(row.label || row.key)}" data-ca-toggle data-level="${row.level}" data-key="${escHtml(row.key)}"${row.parentType ? ` data-type="${escHtml(row.parentType)}"` : ""} aria-expanded="${isExpanded ? "true" : "false"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>`
             : `<span class="ca-toggle-placeholder"></span>`;
 
         const segmentHtml = row.level === "type" ? segmentSelectHtml(row.key) : "";

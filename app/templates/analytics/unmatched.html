@@ -44,8 +44,8 @@
                         <td>{{ s.client }}</td>
                         <td>{{ s.raw_name }}</td>
                         <td>{{ s.raw_sku }}</td>
-                        <td>{{ "%.2f"|format(s.qty or 0) }}</td>
-                        <td>{{ "%.2f"|format(s.weight or 0) }}</td>
+                        <td>{{ s.qty or 0|format_ru_number(2) }}</td>
+                        <td>{{ s.weight or 0|format_ru_number(2) }}</td>
                         <td>
                             <form method="post" action="/admin/unmatched/{{ s.id }}/match" class="unmatched-match-form">
                                 <input

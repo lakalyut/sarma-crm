@@ -21,32 +21,32 @@
     </div>
 
     <div class="field">
-      <label>Месяц</label>
-      <input type="text" name="month" value="{{ sale.month or '' }}" placeholder="2026-09-01 или «Сентябрь 2026»" required>
+      <label for="field-month">Месяц</label>
+      <input id="field-month" type="text" name="month" value="{{ sale.month or '' }}" placeholder="2026-09-01 или «Сентябрь 2026»" required>
     </div>
 
     <div class="field">
-      <label>Тип точки</label>
-      <input type="text" name="sale_type" value="{{ sale.type or '' }}" required>
+      <label for="field-sale_type">Тип точки</label>
+      <input id="field-sale_type" type="text" name="sale_type" value="{{ sale.type or '' }}" required>
     </div>
 
     <div class="field">
-      <label>Клиент</label>
-      <input type="text" name="client" value="{{ sale.client or '' }}" required>
+      <label for="field-client">Клиент</label>
+      <input id="field-client" type="text" name="client" value="{{ sale.client or '' }}" required>
     </div>
 
     <div class="field">
-      <label>Количество</label>
-      <input type="number" name="qty" step="0.01" value="{{ sale.qty or 0 }}">
+      <label for="field-qty">Количество</label>
+      <input id="field-qty" type="number" name="qty" step="0.01" value="{{ sale.qty or 0 }}">
     </div>
 
     <div class="field">
-      <label>Вес</label>
-      <input type="number" name="weight" step="0.01" value="{{ sale.weight or 0 }}">
+      <label for="field-weight">Вес</label>
+      <input id="field-weight" type="number" name="weight" step="0.01" value="{{ sale.weight or 0 }}">
     </div>
 
     <div class="field">
-      <label>Товар из справочника</label>
+      <label for="um-product-input">Товар из справочника</label>
       <input
         type="text"
         list="um-products"

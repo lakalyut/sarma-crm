@@ -10,19 +10,19 @@
 
   <form method="post" action="/ambassador/profile">
     <div class="field">
-      <label>Имя</label>
-      <input type="text" name="first_name" required value="{{ user.first_name or '' }}">
+      <label for="field-first_name">Имя</label>
+      <input id="field-first_name" type="text" name="first_name" required value="{{ user.first_name or '' }}">
     </div>
 
     <div class="field">
-      <label>Фамилия</label>
-      <input type="text" name="last_name" value="{{ user.last_name or '' }}">
+      <label for="field-last_name">Фамилия</label>
+      <input id="field-last_name" type="text" name="last_name" value="{{ user.last_name or '' }}">
     </div>
 
     {% if user.role != 'user' %}
     <div class="field">
-      <label>Город</label>
-      <select name="city" class="js-custom-select" required>
+      <label for="field-city">Город</label>
+      <select id="field-city" name="city" class="js-custom-select" required>
         <option value="" disabled selected>Выберите город</option>
         {% for c in cities %}
           <option value="{{ c }}" {% if user.city == c %}selected{% endif %}>{{ c }}</option>

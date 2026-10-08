@@ -1,0 +1,62 @@
+    :root {
+        --bg-page: #f5f5f5;
+        --surface: #ffffff;
+        --surface-alt: #fafafa;
+        --border: #e5e5e5;
+        --text-main: #0a0a0a;
+        --text-strong: #171717;
+        --text-muted: #626262;
+
+        --primary: #6d5ef8;
+        --primary-text: #5141c5;
+        --abc-a-bg: #e4f5e9;
+        --abc-a-text: #236839;
+        --abc-b-bg: #fff3d6;
+        --abc-b-text: #775800;
+        --abc-c-bg: #f1f5f9;
+        --abc-c-text: #526071;
+        --control-height: 42px;
+        --focus-ring: #5141c5;
+        --primary-hover: #5a4dd6;
+
+        --badge-blue-bg: #e8f3ff;
+        --badge-green-bg: #e8ffe8;
+
+        --input-border: #d1d5db;
+        --primary-tint: #eef2ff;
+        --primary-tint-border: #dbeafe;
+
+        --success: #236839;
+        --success-border: #81c995;
+        --success-bg: #e6f4ea;
+        --danger: #e7000b;
+        --danger-border: #f4a8a3;
+        --danger-bg: #fdecea;
+
+        --status-new-row-bg: #f0fdf4;
+        --status-new-row-bg-hover: #dcfce7;
+        --status-new-badge-bg: #dcfce7;
+        --status-new-text: #15803d;
+
+        --status-lost-row-bg: #fff1f2;
+        --status-lost-badge-bg: #ffe4e6;
+        --status-lost-text: #be123c;
+
+        --status-unstable-row-bg: #fefce8;
+        --status-unstable-badge-bg: #fef3c7;
+        --status-unstable-text: #a16207;
+
+        --status-existing-badge-bg: #f1f5f9;
+        --status-existing-text: var(--text-muted);
+
+        --status-assortment-new-badge-bg: #ede9fe;
+        --status-assortment-new-text: #6d28d9;
+
+        --radius-lg: 16px;
+        --radius-md: 10px;
+        --radius-sm: 10px;
+        --radius-xs: 6px;
+        --radius-full: 999px;
+        --shadow-soft: 0 0 0 1px rgba(23, 23, 23, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    }
+

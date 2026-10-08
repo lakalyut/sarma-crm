@@ -277,12 +277,14 @@
 
 .sp-qty-range-inputs {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
 }
 
 .sp-qty-range-inputs input[type="number"] {
-    width: 110px;
+    width: 100px;
+    max-width: 100%;
 }
 
 .sp-qty-range-inputs span {

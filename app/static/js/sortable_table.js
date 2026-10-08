@@ -29,6 +29,7 @@ function initSortableTable(table) {
             const icon = th.querySelector(".sort-icon");
             const active = th.dataset.sortKey === state.key && state.direction;
             th.classList.toggle("sort-active", Boolean(active));
+            th.setAttribute("aria-sort", active ? (state.direction === "asc" ? "ascending" : "descending") : "none");
             if (icon) {
                 icon.textContent = active
                     ? state.direction === "asc" ? "↑" : "↓"
@@ -62,6 +63,15 @@ function initSortableTable(table) {
 
     headers.forEach(th => {
         th.classList.add("sortable");
+        th.tabIndex = 0;
+        if (!th.dataset.keyboardReady) {
+            th.dataset.keyboardReady = "1";
+            th.addEventListener("keydown", e => {
+                if (e.target === th && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault(); th.click();
+                }
+            });
+        }
         th.addEventListener("click", function () {
             const key = th.dataset.sortKey;
             if (state.key !== key) {

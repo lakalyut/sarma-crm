@@ -14,8 +14,8 @@
 
   <form method="post" action="/admin/users/{{ user.id }}/edit">
     <div class="field">
-      <label>Email</label>
-      <input type="email" name="email" required value="{{ (form.email if form else user.email) }}">
+      <label for="field-email">Email</label>
+      <input id="field-email" type="email" name="email" required value="{{ (form.email if form else user.email) }}">
     </div>
 
     <div class="field">
@@ -27,8 +27,8 @@
     </div>
 
     <div class="field">
-      <label>Telegram ID</label>
-      <input type="text" name="telegram_id" value="{{ (form.telegram_id if form else user.telegram_id) or '' }}" placeholder="Для доступа к Telegram-боту">
+      <label for="field-telegram_id">Telegram ID</label>
+      <input id="field-telegram_id" type="text" name="telegram_id" value="{{ (form.telegram_id if form else user.telegram_id) or '' }}" placeholder="Для доступа к Telegram-боту">
       <div class="field-hint">
         Числовой ID из Telegram (например, через @userinfobot). Нужен для
         доступа к боту ролям user, ambassador и бренд-амбассадор. Без него доступен браузерный
@@ -55,8 +55,8 @@
     {% endif %}
 
     <div class="field">
-      <label>Город</label>
-      <input type="text" name="city" value="{{ (form.city if form else user.city) or '' }}" placeholder="Город регистрации амбассадора">
+      <label for="field-city">Город</label>
+      <input id="field-city" type="text" name="city" value="{{ (form.city if form else user.city) or '' }}" placeholder="Город регистрации амбассадора">
       <div class="field-hint">
         Ограничивает амбассадору доступ к клиентам/визитам своим городом.
         Для бренд-амбассадора это только город реальных визитов; он должен входить в назначенные города аналитики.
@@ -66,13 +66,13 @@
     </div>
 
     <div class="field">
-      <label>Имя</label>
-      <input type="text" name="first_name" value="{{ (form.first_name if form else user.first_name) or '' }}">
+      <label for="field-first_name">Имя</label>
+      <input id="field-first_name" type="text" name="first_name" value="{{ (form.first_name if form else user.first_name) or '' }}">
     </div>
 
     <div class="field">
-      <label>Фамилия</label>
-      <input type="text" name="last_name" value="{{ (form.last_name if form else user.last_name) or '' }}">
+      <label for="field-last_name">Фамилия</label>
+      <input id="field-last_name" type="text" name="last_name" value="{{ (form.last_name if form else user.last_name) or '' }}">
     </div>
 
     <div class="flex-row actions-split">

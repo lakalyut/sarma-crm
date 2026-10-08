@@ -40,7 +40,9 @@ function initTagSearch(config) {
             t.classList.toggle("is-hidden", !expanded && i >= maxVisible);
         });
 
-        moreBtn = document.createElement("span");
+        moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.setAttribute("aria-expanded", String(expanded));
         moreBtn.className = "filter-tag-more";
         moreBtn.textContent = expanded ? "Свернуть" : `+${tagEls.length - maxVisible} ещё`;
         moreBtn.addEventListener("click", function () {

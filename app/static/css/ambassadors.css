@@ -143,7 +143,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 14px 16px 16px;
-    box-shadow: var(--shadow-soft);
+    box-shadow: none;
 }
 
 .amb-card-header {
@@ -206,7 +206,7 @@
     border: none;
     border-radius: var(--radius-xs);
     background: var(--primary-tint);
-    color: var(--primary);
+    color: var(--primary-text);
     box-shadow: none;
     cursor: pointer;
 }
@@ -505,7 +505,7 @@
 .visit-collapse-head:hover { background: var(--bg-page); }
 
 .visit-collapse-count {
-    color: var(--primary);
+    color: var(--primary-text);
     font-weight: 600;
     font-size: 12px;
 }
@@ -573,7 +573,7 @@
 
 .visit-goal-chip:hover {
     background: var(--primary-tint);
-    color: var(--primary);
+    color: var(--primary-text);
     border-color: var(--primary-tint-border, var(--primary-tint));
 }
 

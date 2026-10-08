@@ -203,4 +203,23 @@
     .metrics-cards {
         grid-template-columns: 1fr;
     }
-}    
+}
+/* Основные действия и поля на телефоне удобны для касания и не вызывают
+   автоматический zoom Safari при вводе. Таблицы сохраняют плотную типографику. */
+@media (max-width: 768px) {
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea, select,
+    .custom-select-display { font-size: 16px; min-height: 44px; }
+    button, a.btn, label.btn, .multiselect-display { min-height: 44px; }
+    .table-view-tabs { flex-wrap: wrap; }
+    .table-view-tab { white-space: normal; }
+    .app-shell, .card, .filters-card { min-width: 0; }
+    .filters-actions { max-width: 100%; }
+}
+
+@media (max-width: 520px) {
+    #home-metrics-cards.metrics-cards { grid-template-columns: 1fr; }
+    #home-metrics-cards .metric-card { min-height: 80px; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    #home-metrics-cards .metric-delta-wrap { grid-column: 1 / -1; margin-top: 0; }
+    .metric-card { min-width: 0; }
+    .metric-delta { white-space: normal; overflow-wrap: anywhere; }
+}

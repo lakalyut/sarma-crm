@@ -13,12 +13,12 @@
   <div id="visit-options" data-options="{{ options|tojson }}"></div>
 
   <div class="field is-hidden" id="city-field">
-    <label>Город</label>
+    <label for="city-select">Город</label>
     <select name="city" id="city-select" class="js-custom-select"></select>
   </div>
 
   <div class="field filter-field filter-field-region-search">
-    <label>Клиент</label>
+    <label for="client-input">Клиент</label>
     <input type="text" id="client-input" placeholder="Начните вводить название" autocomplete="off">
     <input type="hidden" name="client" id="client-hidden">
     <div class="search-dropdown" id="client-dropdown" style="display:none;"></div>
@@ -31,7 +31,7 @@
   </div>
 
   <div class="field">
-    <label>Тип точки</label>
+    <label for="type-select">Тип точки</label>
     <select name="sale_type" id="type-select" class="js-custom-select"></select>
   </div>
 
@@ -67,8 +67,8 @@
   </div>
 
   <div class="field">
-    <label>Кол-во человек на мероприятии</label>
-    <input type="number" name="people_count" min="0" step="1" inputmode="numeric">
+    <label for="field-people_count">Кол-во человек на мероприятии</label>
+    <input id="field-people_count" type="number" name="people_count" min="0" step="1" inputmode="numeric">
   </div>
 
   <div class="field">
@@ -78,11 +78,11 @@
   </div>
 
   <div class="field">
-    <label>Комментарий</label>
+    <label for="comment-input">Комментарий</label>
     <textarea name="comment" id="comment-input" rows="3" placeholder="Заметки по точке — увидят на следующем визите"></textarea>
   </div>
 
-  <div class="message error" id="visit-invalid-note" hidden>Заполните выделенные поля — все поля визита обязательны.</div>
+  <div class="message error" id="visit-invalid-note" role="alert" hidden>Заполните выделенные поля — все поля визита обязательны.</div>
   <button type="submit" id="submit-btn">Записать визит</button>
 </form>
 
@@ -221,6 +221,7 @@ document.addEventListener("DOMContentLoaded", function () {
         let aromasBad = false;
         requiredChecks().forEach(c => {
             if (c.el) c.el.classList.toggle("is-invalid", !c.ok);
+            setVisitFieldValidity(c.el, c.ok, "visit-invalid-note");
             if (!c.ok && !firstBad) firstBad = c.el;
             if (!c.ok && c.aromas) aromasBad = true;
         });

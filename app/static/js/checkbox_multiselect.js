@@ -10,6 +10,33 @@ function initCheckboxMultiselect(config) {
 
     if (!display || !dropdown || !textSpan || !list || !selectAll) return;
 
+    display.tabIndex = 0;
+    display.setAttribute("role", "button");
+    display.setAttribute("aria-expanded", "false");
+    dropdown.id = dropdown.id || config.id + "-options";
+    display.setAttribute("aria-controls", dropdown.id);
+    textSpan.id = textSpan.id || config.id + "-selection";
+    display.setAttribute("aria-describedby", textSpan.id);
+    const fieldLabel = ms.parentElement.querySelector("label");
+    if (fieldLabel) display.setAttribute("aria-label", fieldLabel.textContent.trim());
+    function setOpen(open) {
+        ms.classList.toggle("open", open);
+        display.setAttribute("aria-expanded", String(open));
+    }
+    display.addEventListener("keydown", function(e) {
+        if (["Enter", " ", "ArrowDown"].includes(e.key)) {
+            e.preventDefault();
+            setOpen(e.key === "ArrowDown" || !ms.classList.contains("open"));
+            if (e.key === "ArrowDown") selectAll.focus();
+        }
+    });
+    ms.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") { setOpen(false); display.focus(); }
+    });
+    ms.addEventListener("focusout", function(e) {
+        if (!ms.contains(e.relatedTarget)) setOpen(false);
+    });
+
     function getCheckboxes() {
         return Array.from(
             list.querySelectorAll(`input[type="checkbox"][name="${config.inputName}"]`)
@@ -78,7 +105,7 @@ function initCheckboxMultiselect(config) {
     display.addEventListener("click", function(e) {
         e.preventDefault();
         e.stopPropagation();
-        ms.classList.toggle("open");
+        setOpen(!ms.classList.contains("open"));
     });
 
     dropdown.addEventListener("click", function(e) {
@@ -104,7 +131,7 @@ function initCheckboxMultiselect(config) {
     });
 
     document.addEventListener("click", function() {
-        ms.classList.remove("open");
+        setOpen(false);
     });
 
     const pager = list.querySelector(".mp-pager");

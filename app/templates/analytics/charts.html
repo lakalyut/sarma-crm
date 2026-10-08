@@ -9,7 +9,7 @@
         <div class="filters-grid charts-filters-grid">
 
             <div class="field filter-field filter-field-region-search">
-                <label for="charts-city-search">Поиск региона</label>
+                <label for="charts-city-search">Поиск города</label>
 
                 <input type="hidden" name="city" id="charts-city-hidden" value="{{ selected_city or '' }}">
 
@@ -17,7 +17,7 @@
                     id="charts-city-search"
                     type="text"
                     value=""
-                    placeholder="Начни вводить регион..."
+                    placeholder="Начни вводить город..."
                     autocomplete="off"
                 >
 
@@ -98,8 +98,8 @@
 
             {% if current_user and current_user.role == "admin" %}
             <div class="field filter-field">
-                <label>Только сопоставленные</label>
-                <select name="matched" class="js-custom-select">
+                <label for="field-matched">Только сопоставленные</label>
+                <select id="field-matched" name="matched" class="js-custom-select">
                     <option value="" {% if matched is none %}selected{% endif %}>Все</option>
                     <option value="1" {% if matched is sameas true %}selected{% endif %}>Да</option>
                     <option value="0" {% if matched is sameas false %}selected{% endif %}>Нет</option>
@@ -120,10 +120,10 @@
 
     <div class="selected-city-text">
         {% if selected_city %}
-            Выбранный регион:
+            Выбранный город:
             <span class="selected-city-value" id="charts-selected-city-label">{{ selected_city }}</span>
         {% else %}
-            <span id="charts-selected-city-empty">Регион не выбран</span>
+            <span id="charts-selected-city-empty">Город не выбран</span>
             <span class="selected-city-value" id="charts-selected-city-label" style="display:none;"></span>
         {% endif %}
     </div>

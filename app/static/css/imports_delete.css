@@ -10,7 +10,7 @@
 .empty-city-choice input, .empty-city-confirm input { flex: 0 0 auto; width: auto; margin: 3px 0 0; accent-color: var(--primary); }
 .empty-city-name { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .empty-city-hint { display: block; margin-top: 5px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
-.empty-city-available { color: var(--primary); font-weight: 500; }
+.empty-city-available { color: var(--primary-text); font-weight: 500; }
 .empty-city-confirm { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 16px; font-size: 13px; line-height: 1.5; }
 .empty-cities-card .message { margin-bottom: 16px; }
 @media (max-width: 640px) {

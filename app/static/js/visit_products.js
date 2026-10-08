@@ -36,3 +36,15 @@ function filterClientList(clients, filterText) {
     const matches = q ? clients.filter(c => c.toLowerCase().includes(q)) : clients;
     return matches.slice(0, 30);
 }
+
+// Ошибка визита видна визуально и связана с общим объяснением для скринридера.
+function setVisitFieldValidity(element, valid, noteId) {
+    if (!element) return;
+    const controls = element.matches('input, select, textarea') ? [element] :
+        element.querySelectorAll('input:not([type="hidden"]), select, textarea, .visit-collapse-head');
+    controls.forEach(control => {
+        control.setAttribute('aria-invalid', String(!valid));
+        if (!valid) control.setAttribute('aria-describedby', noteId);
+        else if (control.getAttribute('aria-describedby') === noteId) control.removeAttribute('aria-describedby');
+    });
+}

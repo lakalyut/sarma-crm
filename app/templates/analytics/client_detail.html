@@ -28,7 +28,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-monthly" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                    <button type="button" class="amb-toggle" data-target="cd-monthly" aria-expanded="true" aria-label="Свернуть или развернуть раздел"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">Динамика по месяцам</h2>
                 </div>
             </div>
@@ -49,8 +49,8 @@
                                 {% for m in monthly %}
                                     <tr>
                                         <td>{{ m.month|format_month }}</td>
-                                        <td>{{ "%.2f"|format(m.qty) }}</td>
-                                        <td>{{ "%.2f"|format(m.weight) }}</td>
+                                        <td>{{ m.qty|format_ru_number(2) }}</td>
+                                        <td>{{ m.weight|format_ru_number(2) }}</td>
                                         <td>{{ m.sku_count }}</td>
                                     </tr>
                                 {% endfor %}
@@ -66,14 +66,14 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-sku-status" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                    <button type="button" class="amb-toggle" data-target="cd-sku-status" aria-expanded="true" aria-label="Свернуть или развернуть раздел"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">SKU-статусы</h2>
                 </div>
 
                 <div class="amb-card-badges">
                     <span class="amb-badge amb-badge-blue">Всего SKU: {{ sku_status.sku_total }}</span>
                     <span class="amb-badge amb-badge-blue">Уникальных SKU: {{ sku_status.unique_sku_total }}</span>
-                    <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(sku_status.weight_total) }} кг</span>
+                    <span class="amb-badge amb-badge-green">Вес всего: {{ sku_status.weight_total|format_ru_number(2) }} кг</span>
                 </div>
             </div>
 
@@ -186,9 +186,9 @@
                                             {% endif %}
                                         </td>
                                         {% for value in sku_row.months_data %}
-                                            <td>{{ "%.2f"|format(value) }}</td>
+                                            <td>{{ value|format_ru_number(2) }}</td>
                                         {% endfor %}
-                                        <td>{{ "%.2f"|format(sku_row.total) }}</td>
+                                        <td>{{ sku_row.total|format_ru_number(2) }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -203,7 +203,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-abc" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                    <button type="button" class="amb-toggle" data-target="cd-abc" aria-expanded="true" aria-label="Свернуть или развернуть раздел"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">Ассортимент по ABC</h2>
                 </div>
             </div>
@@ -237,6 +237,7 @@
                     <button type="submit" class="btn-secondary">Показать</button>
                 </form>
 
+                <p class="context-note">Ассортимент по ABC — покупки за всё время. Остальные показатели зависят от выбранного периода.</p>
                 {% if abc_overview %}
                     <div class="summary-cards" style="margin-top: 12px;">
                         <div class="summary-card sku">
@@ -279,7 +280,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-summary" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                    <button type="button" class="amb-toggle" data-target="cd-summary" aria-expanded="true" aria-label="Свернуть или развернуть раздел"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">Показатели</h2>
                 </div>
             </div>
@@ -296,11 +297,11 @@
                     </div>
                     <div class="summary-card">
                         <div class="summary-card-title">Суммарное количество, шт</div>
-                        <div class="summary-card-value">{{ "%.2f"|format(summary.total_qty) }}</div>
+                        <div class="summary-card-value">{{ summary.total_qty|format_ru_number(2) }}</div>
                     </div>
                     <div class="summary-card">
                         <div class="summary-card-title">Суммарный вес, кг</div>
-                        <div class="summary-card-value">{{ "%.2f"|format(summary.total_weight) }}</div>
+                        <div class="summary-card-value">{{ summary.total_weight|format_ru_number(2) }}</div>
                     </div>
                 </div>
             </div>
@@ -311,7 +312,7 @@
         <div class="amb-card" style="margin-top: 16px;">
             <div class="amb-card-header">
                 <div class="amb-card-title-wrap">
-                    <button type="button" class="amb-toggle" data-target="cd-chart" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                    <button type="button" class="amb-toggle" data-target="cd-chart" aria-expanded="true" aria-label="Свернуть или развернуть раздел"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                     <h2 class="amb-card-title">График</h2>
                 </div>
             </div>

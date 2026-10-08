@@ -6,178 +6,10 @@
 <title>Пульс — амбассадор</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="{{ asset('js/visit_products.js') }}"></script>
+<link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
 <link rel="stylesheet" href="{{ asset('css/miniapp_clients.css') }}">
-<style>
-    body {
-        margin: 0;
-        padding: 20px;
-        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-        background: #f5f5f5;
-        color: #0a0a0a;
-    }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    .card {
-        background: #fff;
-        border: 1px solid #e5e5e5;
-        border-radius: 14px;
-        padding: 14px 16px;
-        margin-bottom: 12px;
-    }
-    .row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0; }
-    .row span:first-child { color: #737373; }
-    .hint { font-size: 13px; color: #737373; }
-    .fail { color: #e7000b; font-weight: 600; }
-    .ok { color: #16a34a; font-weight: 600; }
-    .field { margin-bottom: 14px; }
-    .field label { display: block; font-size: 12px; color: #737373; margin-bottom: 6px; }
-    select, input[type="text"], input[type="number"], textarea {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 10px 12px;
-        border: 1px solid #d4d4d4;
-        border-radius: 10px;
-        font-size: 15px;
-        background: #fff;
-        color: #0a0a0a;
-        font-family: inherit;
-    }
-    textarea { resize: vertical; }
-    .visit-sku-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .visit-sku-item { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #737373; }
-    .visit-collapse { border: 1px solid #d4d4d4; border-radius: 10px; background: #fff; overflow: hidden; }
-    .visit-collapse-head {
-        width: 100%; display: flex; align-items: center; justify-content: space-between;
-        gap: 8px; padding: 9px 12px; background: none; border: none;
-        color: #0a0a0a; font-weight: 500; font-size: 14px; cursor: pointer;
-    }
-    .visit-collapse-count { color: #6d5ef8; font-weight: 600; font-size: 12px; }
-    .visit-collapse-count.visit-collapse-count-empty { color: #737373; font-weight: 400; }
-    .visit-collapse-chevron { color: #737373; font-size: 13px; transition: transform 0.15s ease; }
-    .visit-collapse-head[aria-expanded="true"] .visit-collapse-chevron { transform: rotate(180deg); }
-    .visit-collapse-body { padding: 0 12px 12px; max-height: 320px; overflow-y: auto; }
-    .visit-goal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-    .visit-goal-chip {
-        border: 1px solid #d4d4d4; background: #fff; color: #0a0a0a; border-radius: 10px;
-        padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; width: auto;
-    }
-    .visit-history {
-        border: 1px solid #e5e5e5; border-radius: 12px; background: #fafafa;
-        padding: 10px 12px; margin-bottom: 14px;
-    }
-    .visit-history-title {
-        font-size: 11px; font-weight: 700; color: #737373;
-        text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px;
-    }
-    .visit-history-item { padding: 6px 0; border-top: 1px solid #eee; font-size: 13px; }
-    .visit-history-item:first-child { border-top: none; }
-    .visit-history-meta { color: #737373; font-size: 12px; }
-    .visit-history-goal { font-weight: 600; margin-top: 2px; }
-    .visit-history-comment { margin-top: 2px; white-space: pre-wrap; }
-    .client-list {
-        border: 1px solid #e5e5e5;
-        border-radius: 10px;
-        margin-top: 6px;
-        max-height: 180px;
-        overflow-y: auto;
-    }
-    .client-list-item {
-        padding: 9px 12px;
-        font-size: 14px;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-    }
-    .client-list-item:last-child { border-bottom: none; }
-    .client-list-item:active, .client-list-item.selected { background: #f0eeff; }
-    .selected-client {
-        margin-top: 6px;
-        font-size: 13px;
-        color: #16a34a;
-        font-weight: 600;
-    }
-    .category-group { margin-bottom: 10px; }
-    .category-title { font-size: 12px; color: #737373; margin: 10px 0 4px; text-transform: uppercase; }
-    .product-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 0;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 14px;
-    }
-    .product-row:last-child { border-bottom: none; }
-    .product-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #6d5ef8; flex-shrink: 0; }
-    .product-flavor { flex: 1; }
-    .abc-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 20px;
-        height: 20px;
-        padding: 0 6px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 700;
-        flex-shrink: 0;
-    }
-    .abc-badge-a { background: #dcfce7; color: #16a34a; }
-    .abc-badge-b { background: #e5e1ff; color: #6d5ef8; }
-    .abc-badge-c { background: #f1f5f9; color: #737373; }
-    .abc-badge-new { background: #ede9fe; color: #6d28d9; padding: 0 8px; }
-    button.primary {
-        width: 100%;
-        padding: 13px;
-        border: none;
-        border-radius: 10px;
-        background: #6d5ef8;
-        color: #fff;
-        font-size: 15px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-    button.primary:disabled { background: #c4bfff; cursor: default; }
-    .field.is-invalid > label { color: #e7000b; }
-    .is-invalid, .visit-collapse.is-invalid { border-color: #e7000b; background: #fdecea; }
-    .invalid-note {
-        margin: 8px 0 0; padding: 8px 10px; border-radius: 8px;
-        background: #fdecea; color: #e7000b; font-size: 13px; font-weight: 600;
-    }
-    button.secondary {
-        width: 100%;
-        padding: 13px;
-        border: 1px solid #d4d4d4;
-        border-radius: 10px;
-        background: #fff;
-        color: #0a0a0a;
-        font-size: 15px;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 8px;
-    }
-    .is-hidden { display: none; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-    .tab-btn {
-        flex: 1;
-        padding: 10px;
-        border: 1px solid #d4d4d4;
-        border-radius: 10px;
-        background: #fff;
-        color: #737373;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-    .tab-btn.active { background: #6d5ef8; border-color: #6d5ef8; color: #fff; }
-    .lb-row {
-        border-bottom: 1px solid #f0f0f0;
-        padding: 10px 0;
-    }
-    .lb-row:last-child { border-bottom: none; }
-    .lb-top { display: flex; justify-content: space-between; align-items: baseline; }
-    .lb-name { font-weight: 600; font-size: 14px; }
-    .lb-region { font-size: 12px; color: #737373; }
-    .lb-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; font-size: 13px; color: #737373; }
-    .lb-stats b { color: #0a0a0a; }
-</style>
+<link rel="stylesheet" href="{{ asset('css/miniapp.css') }}">
+
 </head>
 <body>
 <h1>Пульс — амбассадор</h1>
@@ -196,12 +28,12 @@
             Демо-режим: форма и проверка полей настоящие, но визит в базу не сохраняется.
         </div>
         <div class="field is-hidden" id="city-field">
-            <label>Город</label>
+            <label for="city-select">Город</label>
             <select id="city-select"></select>
         </div>
 
         <div class="field is-hidden" id="client-field">
-            <label>Клиент</label>
+            <label for="client-input">Клиент</label>
             <input type="text" id="client-input" placeholder="Начните вводить название" autocomplete="off">
             <div class="client-list is-hidden" id="client-list"></div>
             <div class="selected-client is-hidden" id="selected-client"></div>
@@ -213,7 +45,7 @@
         </div>
 
         <div class="field is-hidden" id="type-field">
-            <label>Тип точки</label>
+            <label for="type-select">Тип точки</label>
             <select id="type-select"></select>
         </div>
 
@@ -238,18 +70,18 @@
                 <label class="visit-sku-item"><span>Лёгкая</span><input type="number" id="sku-light" min="0" step="1" inputmode="numeric"></label>
             </div>
 
-            <label style="margin-top: 12px;">Кол-во человек на мероприятии</label>
+            <label for="people-count" style="margin-top: 12px;">Кол-во человек на мероприятии</label>
             <input type="number" id="people-count" min="0" step="1" inputmode="numeric">
 
             <label style="margin-top: 12px;">Цель визита</label>
             <div id="goal-chips" class="visit-goal-chips"></div>
             <input type="text" id="goal-input" placeholder="Или впишите свою цель" autocomplete="off">
 
-            <label style="margin-top: 12px;">Комментарий</label>
+            <label for="comment-input" style="margin-top: 12px;">Комментарий</label>
             <textarea id="comment-input" rows="3" placeholder="Заметки по точке — увидят на следующем визите"></textarea>
         </div>
 
-        <div class="invalid-note is-hidden" id="invalid-note">Заполните выделенные поля — все поля визита обязательны.</div>
+        <div class="invalid-note is-hidden" id="invalid-note" role="alert">Заполните выделенные поля — все поля визита обязательны.</div>
         <button class="primary" id="submit-btn">Записать визит</button>
         <div id="submit-result" class="hint" style="margin-top: 10px;"></div>
     </div>
@@ -267,7 +99,7 @@
 <div class="card is-hidden" id="tab-clients">
     <div id="clients-list-view">
         <div class="field is-hidden" id="clients-city-field">
-            <label>Город</label>
+            <label for="clients-city-select">Город</label>
             <select id="clients-city-select"></select>
         </div>
         <div class="is-hidden" id="clients-period-field">
@@ -517,6 +349,7 @@ function paintValidity() {
     let aromasBad = false;
     requiredChecks().forEach(c => {
         if (c.el) c.el.classList.toggle('is-invalid', !c.ok);
+        setVisitFieldValidity(c.el, c.ok, 'invalid-note');
         if (!c.ok && !firstBad) firstBad = c.el;
         if (!c.ok && c.aromas) aromasBad = true;
     });
@@ -530,7 +363,9 @@ function updateSubmitEnabled() {
 
 function clearValidity() {
     validationShown = false;
-    document.querySelectorAll('#visit-card .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    document.querySelectorAll('#visit-card .is-invalid').forEach(el => {
+        el.classList.remove('is-invalid'); setVisitFieldValidity(el, true, 'invalid-note');
+    });
     document.getElementById('invalid-note').classList.add('is-hidden');
 }
 
@@ -762,5 +597,6 @@ if (!tg || !tg.initData) {
         });
 }
 </script>
+<script src="{{ asset('js/ui_accessibility.js') }}"></script>
 </body>
 </html>

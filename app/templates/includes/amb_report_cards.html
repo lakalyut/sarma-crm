@@ -15,7 +15,7 @@
                             class="amb-toggle"
                             data-target="amb-sku-{{ loop.index }}"
                             aria-expanded="{% if client.expanded %}true{% else %}false{% endif %}"
-                        >
+                         aria-label="Свернуть или развернуть раздел">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                         {% endif %}
@@ -43,7 +43,7 @@
                     <div class="amb-card-badges">
                         <span class="amb-badge amb-badge-blue">Всего SKU: {{ client.sku_total }}</span>
                         <span class="amb-badge amb-badge-blue">Уникальных SKU: {{ client.unique_sku_total }}</span>
-                        <span class="amb-badge amb-badge-green">Вес всего: {{ "%.2f"|format(client.weight_total) }} кг</span>
+                        <span class="amb-badge amb-badge-green">Вес всего: {{ client.weight_total|format_ru_number(2) }} кг</span>
                     </div>
                 </div>
 
@@ -68,7 +68,7 @@
                                 <tr>
                                     <td><strong>Вес, кг</strong></td>
                                     {% for value in client.summary.weight %}
-                                        <td>{{ "%.2f"|format(value) }}</td>
+                                        <td>{{ value|format_ru_number(2) }}</td>
                                     {% endfor %}
                                 </tr>
                             </tbody>
@@ -159,9 +159,9 @@
                                             </td>
 
                                             {% for value in sku_row.months_data %}
-                                                <td>{{ "%.2f"|format(value) }}</td>
+                                                <td>{{ value|format_ru_number(2) }}</td>
                                             {% endfor %}
-                                            <td>{{ "%.2f"|format(sku_row.total) }}</td>
+                                            <td>{{ sku_row.total|format_ru_number(2) }}</td>
                                         </tr>
                                     {% endfor %}
 
@@ -170,9 +170,9 @@
                                         <td></td>
                                         <td></td>
                                         {% for value in client.summary.weight %}
-                                            <td><strong>{{ "%.2f"|format(value) }}</strong></td>
+                                            <td><strong>{{ value|format_ru_number(2) }}</strong></td>
                                         {% endfor %}
-                                        <td><strong>{{ "%.2f"|format(client.weight_total) }}</strong></td>
+                                        <td><strong>{{ client.weight_total|format_ru_number(2) }}</strong></td>
                                     </tr>
                                 </tbody>
                             </table>

@@ -7,13 +7,13 @@
 
   <form method="post" action="/admin/users/new">
     <div class="field">
-      <label>Email</label>
-      <input type="email" name="email" value="{{ form.email if form else '' }}" required placeholder="user@example.com">
+      <label for="field-email">Email</label>
+      <input id="field-email" type="email" name="email" value="{{ form.email if form else '' }}" required placeholder="user@example.com">
     </div>
 
     <div class="field">
-      <label>Роль</label>
-      <select name="role" class="js-custom-select">
+      <label for="field-role">Роль</label>
+      <select id="field-role" name="role" class="js-custom-select">
         <option value="user" {% if not form or form.role == 'user' %}selected{% endif %}>user (клиенты + графики)</option>
         <option value="admin" {% if form and form.role == 'admin' %}selected{% endif %}>admin (полный доступ)</option>
         <option value="ambassador" {% if form and form.role == 'ambassador' %}selected{% endif %}>ambassador (визиты — Telegram-бот или браузер)</option>
@@ -30,8 +30,8 @@
     </div>
 
     <div class="field">
-      <label>Telegram ID</label>
-      <input type="text" name="telegram_id" value="{{ form.telegram_id if form else '' }}" placeholder="Опционально, для доступа к боту">
+      <label for="field-telegram_id">Telegram ID</label>
+      <input id="field-telegram_id" type="text" name="telegram_id" value="{{ form.telegram_id if form else '' }}" placeholder="Опционально, для доступа к боту">
       <div class="field-hint">
         Опционально для user, ambassador и бренд-амбассадора — нужен только если пользователь будет пользоваться
         Telegram-ботом (узнать заранее у самого амбассадора, например через

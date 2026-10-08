@@ -50,7 +50,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 12px 14px;
-    box-shadow: var(--shadow-soft);
+    box-shadow: none;
 }
 
 .metric-label {
@@ -68,7 +68,7 @@
 .metric-delta-wrap {
     margin-top: 8px;
     display: grid;
-    grid-template-columns: max-content 1fr;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
     align-items: baseline;
     row-gap: 3px;
     column-gap: 6px;
@@ -85,6 +85,8 @@
 }
 
 .metric-delta-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--text-muted);
 }
 
@@ -255,3 +257,6 @@
     text-align: left !important;
 }
 
+
+/* Контейнер ограничивает canvas даже до загрузки/инициализации Chart.js. */
+.chart-wrap canvas, .home-chart-wrap canvas { max-width: 100%; }

@@ -47,7 +47,7 @@
     }
 
 .sidebar-brand-link:hover .sidebar-brand-title {
-        color: var(--primary);
+        color: var(--primary-text);
     }
 
 .sidebar-logo {
@@ -89,7 +89,7 @@
 
 .sidebar-collapse-toggle:hover {
         background: var(--border);
-        color: var(--primary);
+        color: var(--primary-text);
     }
 
 .sidebar-collapse-toggle svg {
@@ -168,7 +168,7 @@
 
 .sidebar-nav-link.active .sidebar-nav-badge {
         background: #ffffff;
-        color: var(--primary);
+        color: var(--primary-text);
     }
 
 html.sidebar-collapsed .sidebar-nav-badge {
@@ -211,7 +211,7 @@ html.sidebar-collapsed .sidebar-nav-badge {
 
 .sidebar-logout:hover {
         background: var(--border);
-        color: var(--primary);
+        color: var(--primary-text);
     }
 
 .sidebar-overlay {

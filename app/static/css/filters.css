@@ -2,7 +2,7 @@
         background: var(--surface);
         border-radius: 16px;
         padding: 18px;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+        box-shadow: none;
         margin-bottom: 16px;
         border: 1px solid var(--border);
     }
@@ -193,7 +193,7 @@
 
 .month-checkbox input:checked + span {
     font-weight: 600;
-    color: var(--primary);
+    color: var(--primary-text);
 }
 
 .month-checkbox-all {
@@ -235,7 +235,7 @@
 
 .mp-arrow:hover {
     border-color: var(--primary);
-    color: var(--primary);
+    color: var(--primary-text);
 }
 
 .mp-arrow.has-dot::after {
@@ -355,11 +355,13 @@
         min-height: 18px;
         display: flex;
         align-items: center;
-        white-space: nowrap;
+        flex-wrap: wrap;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
 .selected-city-value {
-        color: var(--primary);
+        color: var(--primary-text);
         font-weight: 600;
         margin-left: 4px;
     }
@@ -379,11 +381,13 @@
     }
 
 .filter-tag-more {
+        background: transparent;
+        border: 0;
         display: inline-flex;
         align-items: center;
         font-size: 12px;
         font-weight: 500;
-        color: var(--primary);
+        color: var(--primary-text);
         cursor: pointer;
         padding: 4px 2px;
     }
@@ -430,3 +434,4 @@
 .selected-city-text + .selected-city-text {
     margin-top: 4px;
 }
+.search-dropdown-item.keyboard-active, .client-list-item.keyboard-active { background: var(--primary-tint); color: var(--primary-text); }

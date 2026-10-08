@@ -42,11 +42,13 @@ function initSortableSkuTable(table) {
     function updateHeaderState() {
         sortableHeaders.forEach(th => {
             th.classList.remove("sort-active");
+            th.setAttribute("aria-sort", "none");
             const icon = th.querySelector(".sort-icon");
             if (icon) icon.textContent = "↕";
 
             if (th.dataset.sortKey === sortState.key && sortState.direction) {
                 th.classList.add("sort-active");
+                th.setAttribute("aria-sort", sortState.direction === "asc" ? "ascending" : "descending");
                 if (icon) {
                     icon.textContent = sortState.direction === "asc" ? "↑" : "↓";
                 }
@@ -88,6 +90,15 @@ function initSortableSkuTable(table) {
     }
 
     sortableHeaders.forEach(th => {
+        th.tabIndex = 0;
+        if (!th.dataset.keyboardReady) {
+            th.dataset.keyboardReady = "1";
+            th.addEventListener("keydown", e => {
+                if (e.target === th && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault(); th.click();
+                }
+            });
+        }
         th.addEventListener("click", function () {
             const key = th.dataset.sortKey;
 

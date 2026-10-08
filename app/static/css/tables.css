@@ -72,11 +72,11 @@ table.sheet-table tbody tr:hover td {
     }
 
 .sheet-table th.sort-active {
-        color: var(--primary);
+        color: var(--primary-text);
     }
 
 .sheet-table th.filter-active .th-filter-trigger {
-        color: var(--primary);
+        color: var(--primary-text);
         font-weight: 600;
     }
 
@@ -95,7 +95,7 @@ table.sheet-table tbody tr:hover td {
     }
 
 .th-filter-trigger:hover {
-        color: var(--primary);
+        color: var(--primary-text);
     }
 
 .th-filter-dropdown {
@@ -314,7 +314,7 @@ table.sheet-table tbody tr:hover td {
         height: 24px;
         border-radius: var(--radius-xs);
         background: #ece9fe;
-        color: var(--primary);
+        color: var(--primary-text);
     }
 
 .icon-btn:hover {
@@ -328,7 +328,7 @@ table.sheet-table tbody tr:hover td {
 
 .metric-label {
         font-weight: 400;
-        color: var(--primary);
+        color: var(--primary-text);
         text-transform: none;
     }
 
@@ -384,7 +384,7 @@ table.sheet-table tbody tr:hover td {
         min-width: 22px;
         height: 22px;
         padding: 0 6px;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-xs);
         font-size: 12px;
         font-weight: 700;
     }
@@ -398,18 +398,18 @@ table.sheet-table tbody tr:hover td {
     }
 
 .abc-badge-a {
-        background: var(--badge-green-bg);
-        color: var(--success);
+        background: var(--abc-a-bg);
+        color: var(--abc-a-text);
     }
 
 .abc-badge-b {
-        background: var(--badge-blue-bg);
-        color: var(--primary);
+        background: var(--abc-b-bg);
+        color: var(--abc-b-text);
     }
 
 .abc-badge-c {
-        background: #f1f5f9;
-        color: var(--text-muted);
+        background: var(--abc-c-bg);
+        color: var(--abc-c-text);
     }
 
 .abc-badge-new {
