@@ -50,7 +50,9 @@ def page(browser, admin_client, db_session):
                     )
                 )
     db_session.commit()
-    context = browser.new_context(viewport={"width": 390, "height": 844})
+    context = browser.new_context(
+        viewport={"width": 390, "height": 844}, has_touch=True
+    )
 
     def handle(route):
         request = route.request
@@ -217,7 +219,8 @@ def test_clients_layout_search_sort_and_report_selection(page, width):
     assert query["months"] == ["2026-07-01", "2026-08-01", "2026-09-01"]
 
 
-def test_city_suggestions_mouse_and_keyboard(page):
+@pytest.mark.parametrize("touch", [False, True], ids=["mouse", "touch"])
+def test_city_suggestions_mouse_and_keyboard(page, touch):
     page.locator(".clients-filter-panel > summary").click()
     search = page.locator("#city-search")
     search.fill("Моск")
@@ -231,7 +234,11 @@ def test_city_suggestions_mouse_and_keyboard(page):
     assert parse_qs(urlsplit(page.url).query)["city"] == ["Москва"]
     page.locator(".clients-filter-panel > summary").click()
     page.locator("#city-search").fill("Пят")
-    page.locator("#city-dropdown .search-dropdown-item:visible").click()
+    option = page.locator("#city-dropdown .search-dropdown-item:visible")
+    if touch:
+        option.tap()
+    else:
+        option.click()
     page.wait_for_url(
         lambda url: parse_qs(urlsplit(url).query).get("city") == ["Пятигорск"],
         wait_until="networkidle",
@@ -257,3 +264,54 @@ def test_narrow_analytics_do_not_overflow_page(page, path):
     ), page.evaluate(
         "()=>[...document.querySelectorAll('.app-main *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1&&!e.closest('.sheet-scroller')).map(e=>({tag:e.tagName,class:e.className,text:e.textContent.slice(0,80)}))"
     )
+
+
+@pytest.mark.parametrize("touch", [False, True], ids=["mouse", "touch"])
+def test_custom_select_pointer_commits_on_first_attempt(page, touch):
+    page.locator(".clients-filter-panel > summary").click()
+    select = page.locator("#field-matched")
+    display = page.locator("#field-matched + .custom-select-display")
+    page.evaluate(
+        "window.selectChanges=0;document.querySelector('#field-matched').addEventListener('change',()=>window.selectChanges++)"
+    )
+    for count, value in enumerate(["1", "0", ""], start=1):
+        if touch:
+            display.tap()
+        else:
+            display.click()
+        option = page.locator(
+            f'#field-matched ~ .custom-select-dropdown [data-value="{value}"]'
+        )
+        if touch:
+            option.tap()
+        else:
+            option.click()
+        assert select.input_value() == value
+        assert page.evaluate("window.selectChanges") == count
+        assert display.get_attribute("aria-expanded") == "false"
+    display.click()
+    page.locator("h1").click()
+    assert display.get_attribute("aria-expanded") == "false"
+
+
+@pytest.mark.parametrize("touch", [False, True], ids=["mouse", "touch"])
+def test_multiselect_label_pointer_preserves_selection_and_popup(page, touch):
+    page.locator(".clients-filter-panel > summary").click()
+    display = page.locator("#months-multiselect .multiselect-display")
+    if touch:
+        display.tap()
+    else:
+        display.click()
+    checkbox = page.locator('#months-multiselect input[name="months"]').first
+    label = page.locator("#months-multiselect .mp-month-chip").first
+    for checked in [False, True]:
+        # Край метки не перекрыт прозрачным input: это реальный клик
+        # по label, а не прямое переключение самого чекбокса.
+        if touch:
+            label.tap(position={"x": 4, "y": 4})
+        else:
+            label.click(position={"x": 4, "y": 4})
+        assert checkbox.is_checked() == checked
+        assert display.get_attribute("aria-expanded") == "true"
+    page.locator("h1").click()
+    assert display.get_attribute("aria-expanded") == "false"

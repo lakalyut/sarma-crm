@@ -134,6 +134,12 @@ function initCustomSelect(select) {
         }
     });
     wrapper.addEventListener("focusout", e => { if (!wrapper.contains(e.relatedTarget)) close(); });
+    // Пункт — нефокусируемый div. Его mousedown иначе переводит фокус
+    // на body, focusout закрывает меню раньше click и выбор теряется.
+    // Не перехватываем pointerdown/touchstart: прокрутка касанием остаётся нативной.
+    dropdown.addEventListener("mousedown", e => {
+        if (e.target.closest(".custom-select-option")) e.preventDefault();
+    });
     dropdown.addEventListener("click", e => e.stopPropagation());
     select.addEventListener("change", syncDisplay);
     select.addEventListener("display-sync", syncDisplay);

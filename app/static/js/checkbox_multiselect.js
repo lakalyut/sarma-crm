@@ -108,6 +108,14 @@ function initCheckboxMultiselect(config) {
         setOpen(!ms.classList.contains("open"));
     });
 
+    // Нажатие текста/свободного места в меню не должно увести фокус
+    // на body и закрыть список до click. Нативным чекбоксам, кнопкам
+    // и ссылкам разрешаем получить фокус; click по label всё ещё меняет checkbox.
+    dropdown.addEventListener("mousedown", function(e) {
+        const control = e.target.closest('input, button, a[href], [tabindex]');
+        if (!control || !dropdown.contains(control)) e.preventDefault();
+    });
+
     dropdown.addEventListener("click", function(e) {
         e.stopPropagation();
     });
