@@ -1,0 +1,30 @@
+.regions-page .regions-subtitle { margin: 0 0 20px; }
+.regions-actions { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; margin-bottom: 24px; }
+.regions-action-card { display: flex; flex-direction: column; min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.regions-page h2 { margin: 0 0 8px; font-size: 16px; line-height: 1.4; font-weight: 600; }
+.regions-description { margin: 0 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+.regions-form { display: grid; gap: 12px; align-items: end; margin-top: auto; }
+.regions-rename-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+.regions-new-form { grid-template-columns: minmax(0, 1fr) auto; }
+.regions-page .regions-form .field { min-width: 0; margin: 0; }
+.regions-form .custom-select-display, .regions-form input[type="text"], .regions-form .regions-submit { min-height: 40px; height: 40px; }
+.regions-form .regions-submit { grid-column: -2 / -1; grid-row: 1; margin: 0; white-space: nowrap; }
+.regions-form .custom-select-dropdown { min-width: 100%; max-width: 100%; }
+.regions-form .custom-select-option { white-space: normal; overflow-wrap: anywhere; }
+.regions-completion { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 10px; padding: 12px; margin: 0; background: var(--bg-page); border-radius: 10px; }
+.regions-completion input { flex: 0 0 auto; margin: 3px 0 0; }
+.regions-completion strong { font-weight: 500; color: var(--text-main); }
+.regions-completion .regions-description { display: block; margin: 6px 0 0; }
+.regions-action-card .message { margin: 0 0 16px; }
+.regions-save { display: flex; justify-content: flex-end; margin-top: 14px; }
+@media (max-width: 1250px) {
+    .regions-actions { grid-template-columns: minmax(0, 1fr); }
+    .regions-new-form { max-width: 560px; }
+}
+@media (max-width: 640px) {
+    .regions-actions { gap: 12px; }
+    .regions-action-card { padding: 16px; }
+    .regions-form { grid-template-columns: minmax(0, 1fr); }
+    .regions-form .regions-submit { grid-column: 1; grid-row: auto; width: 100%; }
+    .regions-save button { width: 100%; }
+}

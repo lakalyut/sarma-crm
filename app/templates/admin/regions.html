@@ -1,18 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
+<link rel="stylesheet" href="{{ asset('css/regions.css') }}">
+<div class="regions-page">
 <h1>Регионы</h1>
-<p class="page-subtitle" style="margin-top: -8px;">
+<p class="page-subtitle regions-subtitle">
     Город входит только в один регион — привязка используется как фильтр на «Аналитике по регионам».
 </p>
 
-<div class="filters-card filters-card-compact">
-    <h2>Переименовать город</h2>
-    <p class="hint">Новое название сохранится в продажах, визитах, профилях пользователей, привязке к региону и журнале импортов.</p>
-    {% if renamed %}<div class="message">Город переименован. Переоткройте мини-апп, чтобы обновить название.</div>{% endif %}
-    {% if rename_error %}<div class="message" role="alert">{{ rename_error }}</div>{% endif %}
+<div class="regions-actions">
+<section class="regions-action-card" aria-labelledby="rename-city-title">
+    <h2 id="rename-city-title">Переименовать город</h2>
+    <p class="regions-description">Название обновится в продажах, визитах, профилях, привязке к региону и журнале импортов.</p>
+    {% if renamed %}<div class="message ok" role="status">Город переименован. Переоткройте мини-апп, чтобы обновить название.</div>{% endif %}
+    {% if rename_error %}<div class="message error" role="alert">{{ rename_error }}</div>{% endif %}
     {% if rename_cities %}
-    <form method="post" action="/admin/regions/rename-city" class="flex-row filter-row-inline">
-        <div class="field field-tight">
+    <form method="post" action="/admin/regions/rename-city" class="regions-form regions-rename-form">
+        <div class="field">
             <label for="rename-city-old">Город</label>
             <select id="rename-city-old" name="old_name" class="js-custom-select" required>
                 {% for city in rename_cities %}
@@ -20,38 +23,45 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="field field-tight">
+        <div class="field">
             <label for="rename-city-new">Новое название</label>
             <input id="rename-city-new" name="new_name" value="{{ rename_new_name or '' }}" type="text" maxlength="200" placeholder="Например, Пятигорск" required>
         </div>
         {% if can_complete_rename %}
-        <label class="field">
-            <span><input type="checkbox" name="complete_rename" value="true"> Завершить переименование в существующий город без продаж и визитов</span>
-            <span class="hint">Продажи и визиты выбранного города будут перенесены в новое название вместе с профилями и журналом импортов.</span>
+        <label class="regions-completion">
+            <input type="checkbox" name="complete_rename" value="true">
+            <span><strong>Завершить переименование в существующий город без продаж и визитов</strong>
+            <span class="regions-description">Продажи и визиты выбранного города будут перенесены в новое название вместе с профилями и журналом импортов.</span></span>
         </label>
         {% endif %}
-        <button type="submit" class="btn-secondary">Переименовать</button>
+        <button type="submit" class="btn-secondary regions-submit">Переименовать</button>
     </form>
     {% else %}<div class="message">Нет городов для переименования.</div>{% endif %}
-</div>
+</section>
 
-<div class="filters-card filters-card-compact">
-    <form method="post" action="/admin/regions/new" class="flex-row filter-row-inline">
-        <div class="field field-tight" style="min-width: 240px;">
-            <label for="region-name">Добавить регион</label>
+<section class="regions-action-card" aria-labelledby="region-new-title">
+    <h2 id="region-new-title">Добавить регион</h2>
+    <p class="regions-description">Создайте регион, чтобы объединить города в аналитике.</p>
+    <form method="post" action="/admin/regions/new" class="regions-form regions-new-form">
+        <div class="field">
+            <label for="region-name">Название региона</label>
             <input id="region-name" name="name" type="text" placeholder="Например, Урал" required>
         </div>
-        <button type="submit" class="btn-secondary">Добавить</button>
+        <button type="submit" class="btn-secondary regions-submit">Добавить</button>
     </form>
+</section>
 </div>
 
 {% if not regions %}
     <div class="message">Сначала добавьте хотя бы один регион.</div>
 {% elif not cities %}
-    <div class="message">Нет городов — сначала загрузите продажи.</div>
+    <div class="message">Нет городов для привязки к регионам.</div>
 {% else %}
+    <section class="regions-assignments" aria-labelledby="regions-assignments-title">
+    <h2 id="regions-assignments-title">Города и регионы</h2>
+    <p class="regions-description">Выберите регион для каждого города и сохраните изменения.</p>
     <form method="post" action="/admin/regions">
-        <div class="sheet-wrapper" style="margin-top: 12px;">
+        <div class="sheet-wrapper">
             <div class="sheet-scroller">
                 <table class="sheet-table">
                     <thead>
@@ -80,9 +90,11 @@
             </div>
         </div>
 
-        <div class="flex-row" style="margin-top: 14px;">
-            <button type="submit">Сохранить</button>
+        <div class="regions-save">
+            <button type="submit">Сохранить привязки</button>
         </div>
     </form>
+    </section>
 {% endif %}
+</div>
 {% endblock %}
