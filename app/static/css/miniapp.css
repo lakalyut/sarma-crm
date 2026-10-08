@@ -126,7 +126,13 @@ body {
     }
     button.primary:disabled { background: #c4bfff; cursor: default; }
     .field.is-invalid > label { color: var(--danger); }
-    .is-invalid, .visit-collapse.is-invalid { border-color: var(--danger); background: var(--danger-bg); }
+    .visit-collapse.is-invalid,
+    .field input.is-invalid, .field textarea.is-invalid,
+    .field.is-invalid input[aria-invalid="true"],
+    .field.is-invalid select[aria-invalid="true"] {
+        border-color: var(--danger); background: var(--danger-bg);
+    }
+    .client-last-visit { display: block; margin-top: 4px; font-size: 12px; color: var(--text-muted); }
     .invalid-note {
         margin: 8px 0 0; padding: 8px 10px; border-radius: 8px;
         background: var(--danger-bg); color: var(--danger); font-size: 13px; font-weight: 600;

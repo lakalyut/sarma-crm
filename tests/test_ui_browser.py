@@ -424,3 +424,99 @@ def test_ajax_filter_options_clear_highlight_after_city_change(page):
         page.locator('#delete-months-multiselect input[name="months"]:checked').count()
         == 0
     )
+
+
+def test_miniapp_required_highlights_and_last_visit_labels(page):
+    page.add_init_script(
+        "window.Telegram={WebApp:{initData:'test',ready(){},expand(){}}};"
+    )
+    page.route("https://telegram.org/**", lambda route: route.fulfill(body=""))
+    page.route(
+        "**/ambassador/app/verify",
+        lambda route: route.fulfill(
+            json={
+                "role": "ambassador",
+                "city": "Иркутск",
+                "can_record_visits": True,
+            }
+        ),
+    )
+    page.route(
+        "**/ambassador/app/options",
+        lambda route: route.fulfill(
+            json={
+                "cities": ["Иркутск"],
+                "clients_by_city": {"Иркутск": ["Клиент <А>", "Новый клиент"]},
+                "last_visits_by_city": {"Иркутск": {"Клиент <А>": "02.10.2026"}},
+                "types_by_city": {"Иркутск": ["Кальянная"]},
+                "guessed_segment_by_type": {},
+                "abc_by_segment": {},
+                "visit_goals": [],
+                "products": [
+                    {"id": 1, "category": "Табак", "brand": "Сарма", "flavor": "Мята"}
+                ],
+            }
+        ),
+    )
+    page.route(
+        "**/ambassador/app/visit-history?**", lambda r: r.fulfill(json={"history": []})
+    )
+    submitted = []
+
+    def save(route):
+        submitted.append(route.request.post_data_json)
+        route.fulfill(json={"ok": True, "demo": False, "last_visit_date": "08.10.2026"})
+
+    page.route("**/ambassador/app/visits", save)
+    page.goto("https://pulse-ui.test/ambassador/app", wait_until="networkidle")
+    page.locator("#submit-btn").click()
+    for selector in [
+        "#client-input",
+        "#sku-classic",
+        "#sku-strong",
+        "#sku-light",
+        "#people-count",
+        "#goal-input",
+        "#comment-input",
+        "#aromas-toggle",
+    ]:
+        assert page.locator(selector).get_attribute("aria-invalid") == "true"
+        target = (
+            "#products-field .visit-collapse"
+            if selector == "#aromas-toggle"
+            else selector
+        )
+        assert page.locator(target).evaluate(
+            "el => getComputedStyle(el).borderTopColor === getComputedStyle(document.querySelector('.invalid-note')).color"
+        )
+    assert not submitted
+    page.locator("#client-input").fill("Клиент")
+    assert (
+        page.locator(".client-list-item").first.inner_text()
+        == "Клиент <А>\nПоследний визит: 02.10.2026"
+    )
+    assert "Визитов пока нет" in page.locator(".client-list-item").nth(1).inner_text()
+    page.locator(".client-last-visit").first.click()
+    assert page.locator("#client-input").input_value() == "Клиент <А>"
+    page.locator('#products-list input[type="checkbox"]').check()
+    for field in ["sku-classic", "sku-strong", "sku-light", "people-count"]:
+        page.locator("#" + field).fill("0")
+    page.locator("#goal-input").fill("Обучение")
+    page.locator("#comment-input").fill("Комментарий")
+    page.locator("#sku-classic").fill("-1")
+    page.locator("#submit-btn").click()
+    assert not submitted
+    assert page.locator("#sku-classic").get_attribute("aria-invalid") == "true"
+    page.locator("#sku-classic").fill("0")
+    assert page.locator('#visit-card [aria-invalid="true"]').count() == 0
+    page.locator("#submit-btn").click()
+    page.locator("#again-btn").wait_for(state="visible")
+    assert submitted[0]["client"] == "Клиент <А>"
+    page.locator("#again-btn").click()
+    assert page.locator("#visit-card .is-invalid").count() == 0
+    page.locator("#client-input").fill("Клиент <А>")
+    assert (
+        "Последний визит: 08.10.2026" in page.locator(".client-list-item").inner_text()
+    )
+    page.locator("#submit-btn").click()
+    assert page.locator("#comment-input").get_attribute("aria-invalid") == "true"

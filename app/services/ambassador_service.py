@@ -17,6 +17,7 @@ app.html, который просто раньше не срабатывал: `c
 демонстрации функционала («не засорять БД»), возвращает `None` вместо
 `Visit`."""
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..auth_models import User
@@ -93,9 +94,20 @@ def get_visit_options(db: Session, cities: list[str]) -> dict:
         .all()
     )
 
+    last_visits_by_city: dict[str, dict[str, str]] = {city: {} for city in cities}
+    for city, client, date in (
+        db.query(Visit.city, Visit.client, func.max(Visit.created_at))
+        .filter(Visit.city.in_(cities))
+        .group_by(Visit.city, Visit.client)
+        .all()
+    ):
+        if date:
+            last_visits_by_city[city][client] = date.strftime("%d.%m.%Y")
+
     return {
         "cities": cities,
         "clients_by_city": clients_by_city,
+        "last_visits_by_city": last_visits_by_city,
         "types_by_city": types_by_city,
         "guessed_segment_by_type": guessed_segment_by_type,
         "abc_by_segment": abc_by_segment,

@@ -73,7 +73,7 @@
             <label for="people-count" style="margin-top: 12px;">Кол-во человек на мероприятии</label>
             <input type="number" id="people-count" min="0" step="1" inputmode="numeric">
 
-            <label style="margin-top: 12px;">Цель визита</label>
+            <label for="goal-input" style="margin-top: 12px;">Цель визита</label>
             <div id="goal-chips" class="visit-goal-chips"></div>
             <input type="text" id="goal-input" placeholder="Или впишите свою цель" autocomplete="off">
 
@@ -268,8 +268,11 @@ function renderClientList(filterText) {
         listEl.innerHTML = '';
         return;
     }
+    const dates = (options.last_visits_by_city || {})[city] || {};
     listEl.innerHTML = matches.map(c =>
-        '<div class="client-list-item" data-client="' + c.replace(/"/g, '&quot;') + '">' + c + '</div>'
+        '<div class="client-list-item" data-client="' + escHtml(c) + '">' + escHtml(c) +
+        '<span class="client-last-visit">' +
+        (dates[c] ? 'Последний визит: ' + escHtml(dates[c]) : 'Визитов пока нет') + '</span></div>'
     ).join('');
     listEl.classList.remove('is-hidden');
 }
@@ -327,7 +330,9 @@ let validationShown = false;
 function requiredChecks() {
     const g = id => document.getElementById(id);
     const filled = id => g(id).value.trim() !== '';
+    const countFilled = id => filled(id) && g(id).validity.valid;
     return [
+        { ok: !!g('city-select').value, el: g('city-field') },
         { ok: !!selectedClient, el: g('client-field') },
         { ok: !!g('type-select').value, el: g('type-field') },
         {
@@ -335,10 +340,10 @@ function requiredChecks() {
             el: document.querySelector('#products-field .visit-collapse'),
             aromas: true,
         },
-        { ok: filled('sku-classic'), el: g('sku-classic') },
-        { ok: filled('sku-strong'), el: g('sku-strong') },
-        { ok: filled('sku-light'), el: g('sku-light') },
-        { ok: filled('people-count'), el: g('people-count') },
+        { ok: countFilled('sku-classic'), el: g('sku-classic') },
+        { ok: countFilled('sku-strong'), el: g('sku-strong') },
+        { ok: countFilled('sku-light'), el: g('sku-light') },
+        { ok: countFilled('people-count'), el: g('people-count') },
         { ok: filled('goal-input'), el: g('goal-input') },
         { ok: filled('comment-input'), el: g('comment-input') },
     ];
@@ -406,7 +411,9 @@ document.getElementById('client-list').addEventListener('click', (e) => {
 document.getElementById('city-select').addEventListener('change', onCityChange);
 document.getElementById('type-select').addEventListener('change', onTypeChange);
 document.getElementById('product-search').addEventListener('input', filterProducts);
-SURVEY_IDS.forEach(id => document.getElementById(id).addEventListener('input', updateSubmitEnabled));
+SURVEY_IDS.forEach(id => {
+    ['input', 'change'].forEach(event => document.getElementById(id).addEventListener(event, updateSubmitEnabled));
+});
 
 document.getElementById('submit-btn').addEventListener('click', () => {
     validationShown = true;
@@ -450,6 +457,11 @@ document.getElementById('submit-btn').addEventListener('click', () => {
         .then(async (res) => {
             const body = await res.json();
             if (res.ok) {
+                if (!body.demo && body.last_visit_date) {
+                    options.last_visits_by_city ||= {};
+                    options.last_visits_by_city[city] ||= {};
+                    options.last_visits_by_city[city][selectedClient] = body.last_visit_date;
+                }
                 visitCard.classList.add('is-hidden');
                 successCard.classList.remove('is-hidden');
                 document.getElementById('success-text').textContent = body.demo

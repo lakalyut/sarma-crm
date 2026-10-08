@@ -236,4 +236,9 @@ async def ambassador_app_create_visit(
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
-    return {"ok": True, "visit_id": visit.id if visit else None, "demo": visit is None}
+    return {
+        "ok": True,
+        "visit_id": visit.id if visit else None,
+        "demo": visit is None,
+        "last_visit_date": visit.created_at.strftime("%d.%m.%Y") if visit else None,
+    }

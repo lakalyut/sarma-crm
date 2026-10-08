@@ -117,6 +117,33 @@ def test_create_visit_happy_path(db_session):
     )
 
 
+def test_last_visit_dates_are_latest_and_scoped_by_city(db_session):
+    from datetime import datetime
+
+    from app.models import Visit
+    from app.services.ambassador_service import get_visit_options
+
+    city = _make_sales(db_session)
+    ambassador = _make_ambassador(db_session, city)
+    for visit_city, day in [(city, 2), (city, 8), ("Другой город", 10)]:
+        db_session.add(
+            Visit(
+                ambassador_id=ambassador.id,
+                city=visit_city,
+                client="Клиент А",
+                sale_type="Кальянная",
+                created_at=datetime(2026, 10, day),
+            )
+        )
+    db_session.commit()
+    assert get_visit_options(db_session, [city])["last_visits_by_city"] == {
+        city: {"Клиент А": "08.10.2026"}
+    }
+    assert get_visit_options(db_session, ["Без визитов"])["last_visits_by_city"] == {
+        "Без визитов": {}
+    }
+
+
 def test_create_visit_requires_survey_fields(db_session):
     from app.services.ambassador_service import create_visit
 

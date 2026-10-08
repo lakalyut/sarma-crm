@@ -303,6 +303,7 @@ def test_user_role_visit_is_demo_not_persisted(db_session, client):
     body = resp.json()
     assert body["demo"] is True
     assert body["visit_id"] is None
+    assert body["last_visit_date"] is None
     assert db_session.query(Visit).count() == 0
 
 
@@ -364,6 +365,8 @@ def test_ambassador_visit_still_persisted(db_session, client):
     body = resp.json()
     assert body["demo"] is False
     assert body["visit_id"] is not None
+    visit = db_session.get(Visit, body["visit_id"])
+    assert body["last_visit_date"] == visit.created_at.strftime("%d.%m.%Y")
     assert db_session.query(Visit).count() == 1
 
 
