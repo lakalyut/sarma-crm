@@ -98,14 +98,14 @@
 
 <div class="card is-hidden" id="tab-clients">
     <div id="clients-list-view">
-        <div class="field is-hidden" id="clients-city-field">
+        <div class="field is-hidden" id="clients-city-field" data-filter-field>
             <label for="clients-city-select">Город</label>
             <select id="clients-city-select"></select>
         </div>
         <div class="is-hidden" id="clients-period-field">
             <div class="mini-period">
-                <div class="field"><label for="clients-month-from">Период с</label><select id="clients-month-from"></select></div>
-                <div class="field"><label for="clients-month-to">по</label><select id="clients-month-to"></select></div>
+                <div class="field" data-filter-field><label for="clients-month-from">Период с</label><select id="clients-month-from"></select></div>
+                <div class="field" data-filter-field><label for="clients-month-to">по</label><select id="clients-month-to"></select></div>
             </div>
             <button type="button" class="secondary" id="clients-period-apply">Показать</button>
             <p class="hint">По умолчанию — последний месяц с продажами этого города. A/B/C показывают заказанные SKU, а не наличие на полке.</p>
@@ -499,6 +499,7 @@ function renderLeaderboard(rows) {
 
 </script>
 <script src="{{ asset('js/miniapp_clients.js') }}"></script>
+<script src="{{ asset('js/filter_state.js') }}"></script>
 <script>
 function showTab(tab) {
     const tabs = {

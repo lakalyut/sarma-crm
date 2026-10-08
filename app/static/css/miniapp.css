@@ -178,3 +178,19 @@ button:disabled { cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 .search-dropdown-item.keyboard-active, .client-list-item.keyboard-active { background: var(--primary-tint); color: var(--primary-text); }
+/* Та же спокойная иерархия, что в браузерном варианте A. */
+body { padding: 24px 18px; }
+h1 { font-size: 27px; letter-spacing: -.025em; margin-bottom: 20px; }
+.card { padding: 16px; margin-bottom: 16px; }
+.tabs { margin-bottom: 20px; }
+.tab-btn.active { background: var(--primary-tint); color: var(--primary-text); border-color: var(--primary-tint-border); }
+.filter-selected > label { color: var(--primary-text); }
+.filter-selected select { background: var(--primary-tint); border-color: var(--primary-text); color: var(--primary-text); }
+.mini-assortment-counts { gap: 0; padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.mini-assortment-count { background: transparent; color: var(--text-main); border-radius: 0; border-right: 1px solid var(--border); padding: 0 12px; }
+.mini-assortment-count:last-child { border-right: 0; }
+.mini-assortment-count.mini-abc-a span { color: var(--abc-a-text); }
+.mini-assortment-count.mini-abc-b span { color: var(--abc-b-text); }
+.mini-assortment-count.mini-abc-c span { color: var(--abc-c-text); }
+.mini-abc-group { background: var(--surface); border-color: var(--border); color: var(--text-main); }
+@media (max-width: 360px) { body { padding: 20px 12px; } }

@@ -156,7 +156,7 @@
     </button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% include "includes/chart_scripts.html" %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     initExpandableList(
@@ -196,7 +196,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!el || !canvas || !window.Chart) return;
     const chart = JSON.parse(el.dataset.chart);
     const styles = getComputedStyle(document.documentElement);
-    const primary = styles.getPropertyValue("--primary").trim();
+    const primary = styles.getPropertyValue("--chart-weight").trim();
     const muted = styles.getPropertyValue("--text-muted").trim();
     const border = styles.getPropertyValue("--border").trim();
 

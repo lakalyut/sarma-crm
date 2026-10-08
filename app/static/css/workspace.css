@@ -1,0 +1,112 @@
+/* Общий визуал варианта A для браузерных страниц. Авторизация остаётся карточкой. */
+.app-main .app-shell { padding: 32px 28px; }
+.app-main .app-shell > .card { background: transparent; border: 0; padding: 0; }
+.app-main h1, .amb-web-content h1 { font-size: 30px; font-weight: 600; margin-bottom: 12px; }
+.app-main .page-subtitle { line-height: 1.6; }
+.app-main .card-narrow, .app-main .card-medium,
+.amb-web-content > .card-narrow {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 24px;
+}
+/* Только фильтры GET: карточки операций, редактирования и удаления сохраняются. */
+.filters-card:has(> form[method="get" i]) {
+    padding: 0; border: 0; background: transparent; margin: 24px 0;
+}
+.filters-card:has(> form[method="get" i]) .filters-grid { gap: 16px; align-items: end; }
+.filters-card:has(> form[method="get" i]) .filter-field-region-search input { margin-bottom: 0; }
+.filters-actions .btn-secondary { background: var(--surface); border: 1px solid var(--border); }
+.filters-actions .btn-secondary:hover { background: var(--surface-alt); }
+.filters-card:has(> form[method="get" i]) button[type="submit"] { background: var(--surface); color: var(--text-main); border: 1px solid var(--border); }
+.filters-card:has(> form[method="get" i]) button[type="submit"]:hover { background: var(--surface-alt); }
+/* Выбранное значение отлично от фокуса: рамка и заливка, без внешней обводки. */
+.filter-selected > label { color: var(--primary-text); }
+.filter-selected input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+.filter-selected select:not(.custom-select-native),
+.filter-selected .multiselect-display,
+.filter-selected .custom-select-display {
+    border-color: var(--primary-text); background: var(--primary-tint); color: var(--primary-text);
+}
+.filter-selected .multiselect-text, .filter-selected .custom-select-arrow,
+.filter-selected .multiselect-arrow { color: var(--primary-text); }
+.month-checkbox:has(input:checked), .th-filter-option:has(input:checked),
+.search-dropdown-checkbox:has(input:checked) { background: var(--primary-tint); }
+.filter-tag { color: var(--primary-text); border-radius: var(--radius-xs); }
+/* Итоги на всех страницах: одна поверхность, разделители вместо разноцветных карточек. */
+.metrics-cards { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 0; gap: 20px 0; margin: 24px 0; }
+.metrics-cards .metric-card { background: transparent; border: 0; border-right: 1px solid var(--border); border-radius: 0; padding: 0 24px; min-height: 80px; min-width: 0; }
+.metrics-cards .metric-card:last-child { border-right: 0; }
+.summary-panel .metrics-cards { border: 0; border-radius: 0; padding: 0; }
+.metric-value { font-size: 26px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.summary-panel { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; margin: 24px 0; }
+.summary-panel-header { margin-bottom: 16px; }
+.summary-cards { gap: 20px 0; }
+.summary-card { background: transparent; border: 0; border-right: 1px solid var(--border); border-radius: 0; padding: 0 20px; min-height: 76px; }
+.summary-card:nth-child(4n), .summary-card:last-child { border-right: 0; }
+.summary-card-title { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.summary-card-value { font-size: 26px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.home-greeting { font-size: 30px; letter-spacing: -.025em; }
+.home-header { margin-bottom: 12px; }
+.home-card { padding: 24px; margin-bottom: 24px; }
+.home-card-title, .amb-card-title { font-size: 16px; }
+.home-row { padding: 14px 0; }
+.amb-card { padding: 20px; }
+/* Вложенные таблицы не нуждаются во второй рамке вокруг белой карточки. */
+.amb-card .sheet-wrapper, .home-card .sheet-wrapper, .summary-panel .sheet-wrapper { border: 0; border-radius: 0; box-shadow: none; }
+.sheet-wrapper { box-shadow: none; }
+table.sheet-table th, table.sheet-table td { border-right: 0; padding: 12px; vertical-align: middle; }
+table.sheet-table th:first-child, table.sheet-table td:first-child { border-left: 0; }
+table.sheet-table th { background: var(--surface-alt); }
+table.sheet-table tbody tr:nth-child(even) td { background: var(--surface); }
+table.sheet-table tbody tr:hover td { background: var(--surface-alt); }
+table.sheet-table tbody tr:last-child td { border-bottom: 0; }
+/* Иерархию и статусы таблиц сохраняем как смысловые состояния. */
+table.sheet-table tbody tr.ca-row-type td, table.sheet-table tbody tr.ca-subtoggle-row td,
+table.sheet-table tbody tr.ca-abc-row td, table.sheet-table tbody tr.regions-total-row td { background: var(--surface-alt); }
+#chart-data-table th, #chart-data-table td { border-right: 0; padding: 12px; }
+table.sheet-table th[data-sort-type="number"], table.sheet-table td.num,
+table.sheet-table td.table-number, table.sheet-table .ca-cell-total { text-align: right; font-variant-numeric: tabular-nums; }
+#leaderboard-table th:nth-child(n+3), #leaderboard-table td:nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
+#regions-table th:nth-child(n+2), #regions-table td:nth-child(n+2),
+table.sheet-table .ca-cell { text-align: right; font-variant-numeric: tabular-nums; }
+.chart-tab, .table-view-tab { border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
+.chart-tab.active, .table-view-tab.active { background: var(--primary-tint); color: var(--primary-text); border-color: var(--primary-tint-border); }
+.chart-tab:hover, .table-view-tab:hover { background: var(--surface-alt); }
+.chart-tab.active:hover, .table-view-tab.active:hover { background: var(--primary-tint); }
+.amb-status-filter-btn.active { background: var(--primary-tint); color: var(--primary-text); border-color: var(--primary-tint-border); }
+.sidebar-nav-link.active { background: var(--primary-tint); color: var(--primary-text); }
+.sidebar-nav-link.active .sidebar-nav-badge { background: var(--surface); color: var(--primary-text); }
+.event-card { border-radius: var(--radius-lg); padding: 16px 20px; }
+.event-list { gap: 12px; margin-top: 24px; }
+@media (max-width: 900px) {
+    .metrics-cards .metric-card { padding: 0 16px; }
+    .metrics-cards .metric-card:nth-child(2n) { border-right: 0; }
+    .summary-card:nth-child(4n) { border-right: 1px solid var(--border); }
+    .summary-card:nth-child(2n), .summary-card:last-child { border-right: 0; }
+}
+@media (max-width: 768px) {
+    .app-main .app-shell { padding: 24px 18px; }
+    .app-main h1, .amb-web-content h1, .home-greeting { font-size: 27px; }
+    .app-main .card-narrow, .app-main .card-medium, .amb-web-content > .card-narrow { padding: 18px; }
+    .filters-card:has(> form[method="get" i]) { margin: 20px 0; }
+    .filters-card:has(> form[method="get" i]) .filters-grid { gap: 14px; }
+    .metrics-cards { gap: 20px 0; margin: 20px 0; padding: 16px 0; }
+    .metrics-cards .metric-card { min-height: 70px; }
+    .metric-value, .summary-card-value { font-size: 22px; }
+    .summary-panel, .home-card, .amb-card { padding: 16px; }
+    .home-card { margin-bottom: 20px; }
+    .summary-card { padding: 0 12px; }
+    .chart-wrap { height: 320px; padding: 8px; }
+    .event-card { flex-wrap: wrap; gap: 12px; padding: 16px; }
+    .event-body { flex: 1 1 calc(100% - 50px); }
+    .event-stat { margin-left: 46px; }
+    .event-time { margin-left: auto; }
+}
+@media (max-width: 520px) {
+    .metrics-cards, #home-metrics-cards.metrics-cards, #ca-metric-cards.metrics-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #home-metrics-cards .metric-card { display: block; }
+    .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .metric-delta-wrap { display: block; }
+    .metric-delta-row { display: block; margin-top: 4px; }
+    .metric-delta, .metric-delta-label { white-space: normal; overflow-wrap: anywhere; }
+    .metrics-cards .metric-card { padding: 0 12px; }
+}

@@ -18,6 +18,12 @@
         --control-height: 42px;
         --focus-ring: #5141c5;
         --primary-hover: #5a4dd6;
+        --chart-weight: var(--primary-text);
+        --chart-qty: #397895;
+        --chart-sku: #99683b;
+        --chart-clients: #48715f;
+        --chart-extra: #836180;
+        --chart-neutral: #667085;
 
         --badge-blue-bg: #e8f3ff;
         --badge-green-bg: #e8ffe8;

@@ -315,3 +315,112 @@ def test_multiselect_label_pointer_preserves_selection_and_popup(page, touch):
         assert display.get_attribute("aria-expanded") == "true"
     page.locator("h1").click()
     assert display.get_attribute("aria-expanded") == "false"
+
+
+def test_selected_filters_share_highlight_and_clear(page):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    city = page.locator(".filter-field:has(#city-hidden)")
+    months = page.locator(".filter-field:has(#months-multiselect)")
+    types = page.locator(".filter-field:has(#types-multiselect)")
+    matched = page.locator(".filter-field:has(#field-matched)")
+    assert city.evaluate("e=>e.classList.contains('filter-selected')")
+    assert months.evaluate("e=>e.classList.contains('filter-selected')")
+    assert not types.evaluate("e=>e.classList.contains('filter-selected')")
+    color = page.locator("#city-search").evaluate(
+        "e=>getComputedStyle(e).backgroundColor"
+    )
+    assert (
+        page.locator("#months-multiselect .multiselect-display").evaluate(
+            "e=>getComputedStyle(e).backgroundColor"
+        )
+        == color
+    )
+
+    page.locator("#types-multiselect .multiselect-display").click()
+    page.locator('#types-multiselect input[name="sale_types"]').first.check()
+    assert types.evaluate("e=>e.classList.contains('filter-selected')")
+    assert (
+        page.locator("#types-multiselect .multiselect-display").evaluate(
+            "e=>getComputedStyle(e).backgroundColor"
+        )
+        == color
+    )
+    all_types = page.locator("#types-multiselect .multiselect-select-all-checkbox")
+    all_types.check()
+    all_types.uncheck()
+    assert not types.evaluate("e=>e.classList.contains('filter-selected')")
+    page.locator("h1").click()
+
+    # «Нет» имеет значение 0: это выбранный фильтр, а не пустое значение.
+    page.select_option("#field-matched", "0", force=True)
+    assert matched.evaluate("e=>e.classList.contains('filter-selected')")
+    page.select_option("#field-matched", "", force=True)
+    assert not matched.evaluate("e=>e.classList.contains('filter-selected')")
+    page.locator("#months-multiselect .multiselect-display").click()
+    page.locator("#months-multiselect .multiselect-select-all-checkbox").uncheck()
+    assert not months.evaluate("e=>e.classList.contains('filter-selected')")
+
+
+def test_tag_filter_highlight_follows_selection_removal_and_reload(page):
+    url = "https://pulse-ui.test/analytics/client-analysis?city=Иркутск&tab=summary"
+    page.goto(url, wait_until="networkidle")
+    field = page.locator(".filter-field:has(#ca-client-search)")
+    assert not field.evaluate("e=>e.classList.contains('filter-selected')")
+    page.locator("#ca-client-search").fill("Северный")
+    page.locator("#ca-client-dropdown .search-dropdown-item:not(.hidden)").click()
+    page.wait_for_function(
+        "document.querySelector('#ca-client-search').closest('.field').classList.contains('filter-selected')"
+    )
+    assert page.locator('#ca-clients-tags input[name="clients"]').count() == 1
+    page.locator("#ca-clients-tags .filter-tag-remove").click()
+    page.wait_for_function(
+        "!document.querySelector('#ca-client-search').closest('.field').classList.contains('filter-selected')"
+    )
+    assert page.locator('#ca-clients-tags input[name="clients"]').count() == 0
+    page.goto(url + "&clients=Магазин%20Маяк", wait_until="networkidle")
+    assert field.evaluate("e=>e.classList.contains('filter-selected')")
+
+
+def test_region_filter_highlight_tracks_tags(page):
+    page.goto("https://pulse-ui.test/analytics/regions", wait_until="networkidle")
+    field = page.locator(".filter-field:has(#regions-city-search)")
+    assert not field.evaluate("e=>e.classList.contains('filter-selected')")
+    page.locator("#regions-city-search").fill("Москва")
+    page.locator(
+        "#regions-city-dropdown .search-dropdown-item:not(.hidden) input"
+    ).check()
+    page.wait_for_function(
+        "document.querySelector('#regions-city-search').closest('.field').classList.contains('filter-selected')"
+    )
+    page.locator("h1").click()
+    page.locator("#regions-cities-tags .filter-tag-remove").click()
+    page.wait_for_function(
+        "!document.querySelector('#regions-city-search').closest('.field').classList.contains('filter-selected')"
+    )
+    assert page.locator('#regions-cities-tags input[name="cities"]').count() == 0
+
+
+def test_ajax_filter_options_clear_highlight_after_city_change(page):
+    page.goto("https://pulse-ui.test/admin/imports/delete", wait_until="networkidle")
+    months = page.locator(".filter-field:has(#delete-months-multiselect)")
+    page.locator("#delete-import-city-search").fill("Иркутск")
+    page.locator('#delete-import-city-dropdown [data-value="Иркутск"]').click()
+    page.wait_for_function(
+        "document.querySelectorAll('#delete-months-multiselect input[name=months]').length > 0"
+    )
+    page.locator("#delete-months-multiselect .multiselect-display").click()
+    page.locator('#delete-months-multiselect input[name="months"]').first.check()
+    assert months.evaluate("e=>e.classList.contains('filter-selected')")
+    page.locator("h1").click()
+    page.locator("#delete-import-city-search").fill("Москва")
+    page.locator('#delete-import-city-dropdown [data-value="Москва"]').click()
+    page.wait_for_function(
+        "document.querySelectorAll('#delete-months-multiselect input[name=months]').length > 0"
+    )
+    page.wait_for_function(
+        "!document.querySelector('#delete-months-multiselect').closest('.field').classList.contains('filter-selected')"
+    )
+    assert (
+        page.locator('#delete-months-multiselect input[name="months"]:checked').count()
+        == 0
+    )

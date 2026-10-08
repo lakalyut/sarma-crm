@@ -393,9 +393,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 (function() {
-    const mobile = window.matchMedia("(max-width: 768px)").matches;
+    const viewport = window.matchMedia("(max-width: 768px)");
+    const mobile = viewport.matches;
     const filters = document.querySelector(".clients-filter-panel");
     if (filters && mobile) filters.open = false;
+    if (filters) viewport.addEventListener("change", function(event) {
+        filters.open = !event.matches;
+    });
     const toggle = document.querySelector(".summary-toggle");
     const body = document.getElementById("summary-panel-body");
     if (!toggle || !body) return;

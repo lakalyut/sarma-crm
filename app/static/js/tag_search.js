@@ -8,6 +8,7 @@ function initTagSearch(config) {
     const tags = document.getElementById(config.tagsId);
 
     if (!input || !dropdown || !tags) return;
+    input.dataset.filterTags = tags.id;
 
     const items = Array.from(dropdown.querySelectorAll(".search-dropdown-item"));
     const maxVisible = config.maxVisible || null;

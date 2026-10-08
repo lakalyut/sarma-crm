@@ -343,7 +343,7 @@
             </div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        {% include "includes/chart_scripts.html" %}
         <script>
         document.addEventListener("DOMContentLoaded", function () {
             const canvas = document.getElementById("client-monthly-chart");
@@ -371,6 +371,7 @@
 
                 const datasets = selected.map(metric => ({
                     label: metricMap[metric].label,
+                    pulseMetric: metric,
                     data: metricMap[metric].data,
                     yAxisID: metricMap[metric].axis,
                     tension: 0.25,
