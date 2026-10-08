@@ -101,23 +101,23 @@ def page(browser, admin_client, db_session):
 
 
 def test_custom_select_keyboard_sync_and_dynamic_options(page):
-    display = page.locator("#client-metric + .custom-select-display")
+    page.locator(".clients-filter-panel > summary").click()
+    display = page.locator("#field-matched + .custom-select-display")
     display.focus()
     page.keyboard.press("Enter")
     page.keyboard.press("ArrowDown")
     page.keyboard.press("Enter")
-    assert page.locator("#client-metric").input_value() == "weight"
+    assert page.locator("#field-matched").input_value() == "1"
     assert display.get_attribute("aria-expanded") == "false"
-    assert "Вес" in display.inner_text()
-    assert "-60%" in page.locator(".delta-value").first.inner_text()
+    assert display.inner_text().strip() == "Да"
     # Смена значения извне отражается в отображаемом поле.
     page.evaluate(
-        "const s=document.querySelector('#client-metric');"
-        "s.value='sku';s.dispatchEvent(new Event('change'));"
+        "const s=document.querySelector('#field-matched');"
+        "s.value='0';s.dispatchEvent(new Event('change'));"
     )
-    assert display.inner_text().strip() == "SKU, шт"
+    assert display.inner_text().strip() == "Нет"
     page.evaluate(
-        "const s=document.querySelector('#client-metric');"
+        "const s=document.querySelector('#field-matched');"
         "s.options[0].disabled=true;s.selectedIndex=1;"
         "s.dispatchEvent(new Event('change'));"
     )
@@ -125,10 +125,10 @@ def test_custom_select_keyboard_sync_and_dynamic_options(page):
     page.keyboard.press("Enter")
     page.keyboard.press("Home")
     page.keyboard.press("Enter")
-    assert page.locator("#client-metric").input_value() == "weight"
-    page.evaluate("document.querySelector('#client-metric').disabled=true")
+    assert page.locator("#field-matched").input_value() == "1"
+    page.evaluate("document.querySelector('#field-matched').disabled=true")
     page.wait_for_function(
-        "document.querySelector('#client-metric + .custom-select-display').getAttribute('aria-disabled') === 'true'"
+        "document.querySelector('#field-matched + .custom-select-display').getAttribute('aria-disabled') === 'true'"
     )
     assert display.get_attribute("tabindex") == "-1"
 
@@ -168,10 +168,28 @@ def test_clients_layout_search_sort_and_report_selection(page, width):
     original = page.locator(".client-row").evaluate_all(
         "rows=>rows.map(r=>r.dataset.client)"
     )
-    # Сортировка не меняет выбранный показатель динамики.
-    page.locator("#client-sort").select_option("weight:desc", force=True)
-    assert page.locator("#client-metric").input_value() == "qty"
-    page.locator("#client-sort").select_option("", force=True)
+    assert page.locator("#client-metric, #client-sort").count() == 0
+    # Заголовок выбирает показатель и циклически переключает сортировку.
+    weight = page.locator('th[data-sort="weight"]')
+    weight.click()
+    assert page.locator("#dynamics-metric-label").inner_text() == "(Вес)"
+    assert page.locator("#delta-metric-label").inner_text() == "(Вес)"
+    assert page.locator(".delta-value").first.inner_text() == "-60%"
+    assert weight.get_attribute("aria-sort") == "descending"
+    weight.focus()
+    page.keyboard.press("Enter")
+    assert weight.get_attribute("aria-sort") == "ascending"
+    page.keyboard.press("Enter")
+    assert weight.get_attribute("aria-sort") == "none"
+    qty = page.locator('th[data-sort="qty"]')
+    qty.click()
+    assert page.locator("#dynamics-metric-label").inner_text() == "(Кол-во)"
+    assert page.locator(".delta-value").first.inner_text() == "+100%"
+    assert (
+        page.locator(".client-row").first.get_attribute("data-client") == "Магазин Маяк"
+    )
+    qty.click()
+    qty.click()
     assert (
         page.locator(".client-row").evaluate_all("rows=>rows.map(r=>r.dataset.client)")
         == original

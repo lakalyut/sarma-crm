@@ -1,8 +1,6 @@
 .clients-filter-panel > summary { display: none; }
 .clients-search-row { justify-content: space-between; margin: 16px 0 12px; gap: 12px; }
 .clients-search-row .field { flex: 1; max-width: 520px; }
-.clients-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 12px; }
-.clients-tools .field { flex: 1; max-width: 240px; }
 .clients-mobile-type, .client-details-label { display: none; }
 .clients-help { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; }
 .clients-help summary { cursor: pointer; color: var(--primary-text); }
@@ -24,14 +22,21 @@
     #analytics-body .summary-toggle { min-height: 44px; }
     .clients-search-row { gap: 8px; }
     #client-table-search { min-width: 0; }
-    .clients-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .clients-tools .field { max-width: none; }
-    .clients-mobile-type { display: block; grid-column: 1 / -1; }
+    .clients-mobile-type { display: block; margin-bottom: 12px; }
     #clients-table-wrapper .sheet-wrapper { border: 0; background: transparent; overflow: visible; box-shadow: none; }
     #clients-table-wrapper .sheet-wrapper::after { display: none; }
     #clients-table-wrapper .sheet-scroller { overflow: visible; max-height: none; }
     #clients-table { display: block; min-width: 0; width: 100%; }
-    #clients-table thead { display: none; }
+    #clients-table thead { display: block; margin-bottom: 12px; }
+    #clients-table thead tr { display: flex; flex-wrap: wrap; gap: 8px; }
+    #clients-table thead th:not([data-sort]) { display: none; }
+    #clients-table thead th[data-sort] {
+        display: inline-flex; align-items: center; flex-wrap: wrap;
+        width: auto; min-width: 0; max-width: 100%; min-height: 44px;
+        position: static; white-space: normal; padding: 8px 10px;
+        border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: none;
+    }
+    #clients-table thead th.sort-active { background: var(--primary-tint); }
     #clients-table tbody { display: grid; gap: 12px; }
     #clients-table .client-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; background: var(--surface); }
     #clients-table .client-row td { width: auto; min-width: 0; max-width: none; height: auto; background: transparent; border: 0; padding: 8px 4px; white-space: normal; font-size: 14px; letter-spacing: 0; text-align: left; }
@@ -54,7 +59,6 @@
     #analytics-body .summary-collapsed .summary-card:nth-child(3) { display: none; }
 }
 @media (max-width: 768px) {
-    .clients-tools .custom-select-text { white-space: normal; }
     #clients-table .client-row td:nth-child(10) { grid-column: 3; grid-row: auto; }
     #clients-table .actions-cell .icon-btn { max-width: 100%; }
 }

@@ -232,36 +232,16 @@
         </div>
     </div>
 
-    <div class="clients-tools">
-        <div class="field">
-            <label for="client-metric">Динамика и Δ период</label>
-            <select id="client-metric" class="js-custom-select">
-                <option value="qty">Количество, шт</option>
-                <option value="weight">Вес, кг</option>
-                <option value="sku">SKU, шт</option>
-            </select>
-        </div>
-        <div class="field">
-            <label for="client-sort">Сортировка</label>
-            <select id="client-sort" class="js-custom-select">
-                <option value="">Без сортировки</option>
-                <option value="qty:desc">Количество ↓</option><option value="qty:asc">Количество ↑</option>
-                <option value="weight:desc">Вес ↓</option><option value="weight:asc">Вес ↑</option>
-                <option value="sku:desc">SKU ↓</option><option value="sku:asc">SKU ↑</option>
-                <option value="delta:desc">Δ период ↓</option><option value="delta:asc">Δ период ↑</option>
-                <option value="status_rank:asc">Статус</option>
-            </select>
-        </div>
-        <div class="field clients-mobile-type">
-            <label for="client-type">Тип точки в списке</label>
-            <select id="client-type"><option value="">Все типы</option>
-                {% for t in all_types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
-            </select>
-        </div>
+    <div class="field clients-mobile-type">
+        <label for="client-type">Тип точки в списке</label>
+        <select id="client-type"><option value="">Все типы</option>
+            {% for t in all_types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+        </select>
     </div>
     <details class="clients-help">
         <summary>Как читать динамику и Δ период</summary>
-        <p>Динамика показывает выбранный показатель по месяцам с данными.
+        <p>Нажмите заголовок «Количество», «Вес» или «SKU», чтобы выбрать показатель динамики и отсортировать список. Повторный клик меняет направление сортировки, третий — сбрасывает её.
+        Динамика показывает выбранный показатель по месяцам с данными.
         Δ период сравнивает последний месяц с данными со средним за предыдущие месяцы в выбранном периоде.
         «Новое» означает рост с нуля; «—» — данных для сравнения недостаточно. Месяцы без данных не считаются нулевыми.</p>
     </details>
@@ -653,9 +633,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        const sortSelect = document.getElementById("client-sort");
-        sortSelect.value = sortState.field ? sortState.field + ":" + sortState.direction : "";
-        sortSelect.dispatchEvent(new Event("display-sync"));
         if (typeFilterTh) {
             typeFilterTh.classList.toggle("filter-active", selectedTypes.length > 0);
         }
@@ -665,6 +642,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (th.dataset.sort) {
             th.addEventListener("click", function () {
                 const field = th.dataset.sort;
+                if (field in METRIC_FIELD && activeMetric !== field) {
+                    activeMetric = field;
+                    renderMetrics();
+                }
 
                 if (sortState.field !== field) {
                     sortState.field = field;
@@ -727,15 +708,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    document.getElementById("client-metric").addEventListener("change", function() {
-        activeMetric = this.value;
-        renderMetrics(); renderRows();
-    });
-    document.getElementById("client-sort").addEventListener("change", function() {
-        const parts = this.value.split(":");
-        sortState = { field: parts[0] || null, direction: parts[1] || null };
-        renderRows();
-    });
     document.getElementById("client-type").addEventListener("change", function() {
         selectedTypes = this.value ? [this.value] : [];
         typeFilterCheckboxes.forEach(cb => { cb.checked = selectedTypes.includes(cb.value); });
