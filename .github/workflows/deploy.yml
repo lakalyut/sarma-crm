@@ -47,9 +47,14 @@ jobs:
 
             sudo docker compose run --rm web alembic upgrade head
 
-            sudo docker compose up -d --build --remove-orphans
+            # nginx is shared with guide_bot; preserve its running configuration.
+            sudo docker compose up -d --no-deps --wait --wait-timeout 120 web
+            sudo docker compose exec -T nginx nginx -t
+            sudo docker compose exec -T nginx nginx -s reload
 
-            curl -fsS http://127.0.0.1/ready >/dev/null
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 2 \
+              --connect-timeout 5 --max-time 10 \
+              --resolve sarma-crm.ru:443:127.0.0.1 https://sarma-crm.ru/ready >/dev/null
 
             sudo docker compose exec -T web python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=10)"
             sudo docker compose exec -T web python -m app.release_updates
