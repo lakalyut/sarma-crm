@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "diag / performance / disk / cache-prune / recover / gitssh / telegram-relay"
+        description: "diag / performance / disk / cache-prune / journal-limit / recover / gitssh / telegram-relay"
         type: choice
         options:
           - diag
           - performance
           - disk
           - cache-prune
+          - journal-limit
           - recover
           - gitssh
           - telegram-relay
@@ -34,6 +35,42 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 15m
           script: |
+            if [ "${{ github.event.inputs.mode }}" = "journal-limit" ]; then
+              set -euo pipefail
+              export LC_ALL=C
+              cd /home/ubuntu/sarma-crm
+              sudo docker compose exec -T web python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status)"
+              printf '\nBefore journal cleanup:\n'
+              df -hT /
+              sudo journalctl --disk-usage
+              available_before=$(df -B1 --output=avail / | tail -n 1)
+              journal_config=/etc/systemd/journald.conf.d/99-sarma-disk-limit.conf
+              if sudo test -e "$journal_config"; then
+                if ! printf '[Journal]\nSystemMaxUse=200M\nRuntimeMaxUse=200M\n' | sudo cmp -s "$journal_config" -; then
+                  printf 'Existing journal limit file differs; leaving it unchanged.\n' >&2
+                  exit 1
+                fi
+              else
+                sudo install -d -m 755 /etc/systemd/journald.conf.d
+                printf '[Journal]\nSystemMaxUse=200M\nRuntimeMaxUse=200M\n' | sudo tee "$journal_config" >/dev/null
+                sudo chmod 644 "$journal_config"
+              fi
+              sudo systemd-analyze cat-config systemd/journald.conf | awk -F= '
+                /^[[:space:]]*SystemMaxUse[[:space:]]*=/ {system_limit=$2; gsub(/[[:space:]]/, "", system_limit)}
+                /^[[:space:]]*RuntimeMaxUse[[:space:]]*=/ {runtime_limit=$2; gsub(/[[:space:]]/, "", runtime_limit)}
+                END {printf "SystemMaxUse=%s RuntimeMaxUse=%s\n", system_limit, runtime_limit; if (system_limit != "200M" || runtime_limit != "200M") exit 1}'
+              sudo systemctl restart systemd-journald
+              sudo systemctl is-active --quiet systemd-journald
+              sudo journalctl --rotate --vacuum-size=200M
+              printf '\nAfter journal cleanup:\n'
+              sudo journalctl --disk-usage
+              df -hT /
+              available_after=$(df -B1 --output=avail / | tail -n 1)
+              printf 'Root filesystem available-space change: %s bytes\n' "$((available_after - available_before))"
+              sudo docker compose ps
+              sudo docker compose exec -T web python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status)"
+              exit 0
+            fi
             if [ "${{ github.event.inputs.mode }}" = "cache-prune" ]; then
               set -euo pipefail
               export LC_ALL=C
