@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "diag / performance / recover / gitssh / telegram-relay"
+        description: "diag / performance / disk / recover / gitssh / telegram-relay"
         type: choice
         options:
           - diag
           - performance
+          - disk
           - recover
           - gitssh
           - telegram-relay
@@ -32,6 +33,35 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 15m
           script: |
+            if [ "${{ github.event.inputs.mode }}" = "disk" ]; then
+              set -euo pipefail
+              export LC_ALL=C
+              df -hT /
+              df -i /
+              sudo docker system df -v
+              sudo journalctl --disk-usage
+              for directory in /var /var/lib /var/log /home /home/ubuntu; do
+                if [ -d "$directory" ]; then
+                  sudo timeout 90s nice -n 10 du -x -h --max-depth=1 "$directory"
+                fi
+              done
+              docker_root=$(sudo docker info --format '{{.DockerRootDir}}')
+              if [ -n "$docker_root" ] && [ -d "$docker_root" ]; then
+                sudo timeout 90s nice -n 10 du -x -h --max-depth=1 "$docker_root"
+              fi
+              if [ -d /home/ubuntu/sarma_backups ]; then
+                sudo du -sh /home/ubuntu/sarma_backups
+                sudo find /home/ubuntu/sarma_backups -maxdepth 1 -type f -name 'backup_*.sql.gz' -printf '%s bytes %f\n' | sort -nr | sed -n '1,20p'
+              fi
+              for container in $(sudo docker ps -aq); do
+                sudo docker inspect --format '{{.Name}} log_driver={{.HostConfig.LogConfig.Type}} log_options={{json .HostConfig.LogConfig.Config}}' "$container"
+                log_path=$(sudo docker inspect --format '{{.LogPath}}' "$container")
+                if [ -n "$log_path" ] && sudo test -f "$log_path"; then
+                  sudo stat -c '%s bytes %n' "$log_path"
+                fi
+              done
+              exit 0
+            fi
             if [ "${{ github.event.inputs.mode }}" = "performance" ]; then
               set -euo pipefail
               cd /home/ubuntu/sarma-crm
