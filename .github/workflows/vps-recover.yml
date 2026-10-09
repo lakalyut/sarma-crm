@@ -8,6 +8,7 @@ on:
         type: choice
         options:
           - diag
+          - routing-diag
           - performance
           - disk
           - cache-prune
@@ -38,6 +39,19 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 15m
           script: |
+            if [ "${{ github.event.inputs.mode }}" = "routing-diag" ]; then
+              set -eu
+              cd /home/ubuntu/sarma-crm
+              sudo docker compose ps
+              sudo docker inspect --format '{{.Name}} mounts={{json .Mounts}} networks={{json .NetworkSettings.Networks}}' sarma-crm-nginx-1 guide_bot-webapi-1
+              sudo docker exec sarma-crm-nginx-1 nginx -T 2>&1 | awk '/^# configuration file/ || /^[[:space:]]*(listen|server_name|proxy_pass|ssl_certificate|include)[[:space:]]/'
+              sudo docker exec sarma-crm-nginx-1 sh -c 'find /etc/letsencrypt/live -maxdepth 2 -name fullchain.pem -print'
+              sudo find /home/ubuntu/guide_bot -maxdepth 4 -type f \( -iname '*nginx*' -o -iname '*caddy*' -o -iname '*compose*yml' -o -iname '*compose*yaml' \) -print
+              curl --max-time 10 -sS -o /dev/null -w 'guide backend HTTP: %{http_code}\n' http://127.0.0.1:8000/ || true
+              curl --max-time 10 -sS -o /dev/null -w 'guide HTTPS: %{http_code}\n' --resolve guide-crm.ru:443:127.0.0.1 https://guide-crm.ru/ || true
+              curl --max-time 10 -sS -o /dev/null -w 'pulse HTTPS: %{http_code}\n' --resolve sarma-crm.ru:443:127.0.0.1 https://sarma-crm.ru/ || true
+              exit 0
+            fi
             if [ "${{ github.event.inputs.mode }}" = "journal-limit" ]; then
               set -euo pipefail
               export LC_ALL=C
