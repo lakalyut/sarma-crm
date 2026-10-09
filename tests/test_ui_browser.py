@@ -577,3 +577,20 @@ def test_import_history_selection_to_filtered_preview(page, db_session):
         ).input_value()
         == "Иркутск"
     )
+
+
+@pytest.mark.parametrize(
+    "font_family", ["Arial, sans-serif", "sans-serif", "monospace"]
+)
+def test_admin_heading_fits_narrow_screen_with_fallback_fonts(page, font_family):
+    page.set_viewport_size({"width": 320, "height": 900})
+    page.goto("https://pulse-ui.test/admin", wait_until="networkidle")
+    # Запас для различий системных шрифтов в CI и увеличенного текста на телефоне.
+    page.locator(".admin-page-heading h1").evaluate(
+        "(el, font) => { el.style.fontFamily = font; el.style.fontSize = '32px'; }",
+        font_family,
+    )
+    assert page.evaluate("document.documentElement.scrollWidth") <= 320
+    assert page.locator(".admin-page-heading h1").evaluate(
+        "el => el.getBoundingClientRect().right <= document.documentElement.clientWidth"
+    )

@@ -14,6 +14,7 @@ html.sidebar-collapsed .admin-nav-group { display: none; }
 .admin-section-nav a:hover { background: var(--surface); color: var(--text-main); }
 .admin-section-nav a.active { background: var(--primary-tint); color: var(--primary-text); font-weight: 600; }
 .admin-page-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.admin-page-heading > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .admin-page-heading h1, .admin-page-heading h2 { margin-bottom: 0; }
 .admin-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .admin-overview-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; min-width: 0; }
