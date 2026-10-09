@@ -14,6 +14,7 @@ from .auth_deps import get_current_user
 from .auth_routes import router as auth_router
 from .csrf import attach_csrf_cookie, csrf_guard, get_csrf_token
 from .database import Base, SessionLocal, engine
+from .observability import RequestMetricsMiddleware
 from .routes.admin_abc import router as admin_abc_router
 from .routes.admin_imports import router as admin_imports_router
 from .routes.admin_nomenclature import router as admin_nomenclature_router
@@ -74,6 +75,7 @@ app = FastAPI(title="Пульс", lifespan=lifespan, dependencies=[Depends(csrf_
 # незначительно, но ощутимо на бою). min_size — не сжимать мелкие ответы (JSON API,
 # небольшие страницы), там оверхед gzip-заголовка не окупается.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(RequestMetricsMiddleware)
 
 app.include_router(auth_router)
 app.include_router(admin_users_router)

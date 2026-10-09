@@ -9,6 +9,7 @@ from ..auth_deps import require_admin
 from ..auth_models import User
 from ..database import get_db
 from ..models import Product, Sale
+from ..observability import import_phase
 from ..product_parser import (
     build_canonical_name,
     extract_weight,
@@ -67,7 +68,8 @@ async def import_xlsx(
     if not file.filename or not file.filename.lower().endswith(".xlsx"):
         return _import_form(request, db, error="Файл должен быть в формате .xlsx")
 
-    content = await file.read()
+    with import_phase("read_upload"):
+        content = await file.read()
     if len(content) > MAX_IMPORT_FILE_SIZE:
         size_mb = len(content) / (1024 * 1024)
         return _import_form(
@@ -75,7 +77,8 @@ async def import_xlsx(
         )
 
     try:
-        df = pd.read_excel(io.BytesIO(content))
+        with import_phase("parse_excel"):
+            df = pd.read_excel(io.BytesIO(content))
     except Exception as e:
         return _import_form(request, db, error=f"Ошибка чтения XLSX: {e}")
 
@@ -84,8 +87,9 @@ async def import_xlsx(
     if missing:
         return _import_form(request, db, error=f'Нет колонок: {", ".join(missing)}')
 
-    df["Количество"] = pd.to_numeric(df["Количество"], errors="coerce").fillna(0)
-    df["Вес"] = pd.to_numeric(df["Вес"], errors="coerce").fillna(0)
+    with import_phase("prepare_columns"):
+        df["Количество"] = pd.to_numeric(df["Количество"], errors="coerce").fillna(0)
+        df["Вес"] = pd.to_numeric(df["Вес"], errors="coerce").fillna(0)
 
     products = db.query(Product).filter(Product.is_active.is_(True)).all()
 
@@ -93,48 +97,51 @@ async def import_xlsx(
     unmatched = 0
     months_seen: set[str] = set()
 
-    for _, row in df.iterrows():
-        raw_name = str(row["Номенклатура"])
-        raw_sku = str(row["SKU"])
-        p, _score = match_product_by_flavor(raw_name, products)
+    with import_phase("match_and_build_rows"):
+        for _, row in df.iterrows():
+            raw_name = str(row["Номенклатура"])
+            raw_sku = str(row["SKU"])
+            p, _score = match_product_by_flavor(raw_name, products)
 
-        month = str(row["Месяц"])
-        months_seen.add(month)
+            month = str(row["Месяц"])
+            months_seen.add(month)
 
-        sale = Sale(
+            sale = Sale(
+                city=city,
+                month=month,
+                type=str(row["Тип"]),
+                client=str(row["Клиент"]),
+                raw_name=raw_name,
+                raw_sku=raw_sku,
+                qty=float(row["Количество"]),
+                weight=float(row["Вес"]),
+            )
+
+            if p:
+                sale.product_id = p.id
+                w = extract_weight(raw_name) or p.default_weight_g
+                sale.sku = p.canonical_sku
+                sale.name = build_canonical_name(p.canonical_sku, w)
+                sale.matched = True
+            else:
+                sale.matched = False
+                unmatched += 1
+
+            db.add(sale)
+            imported += 1
+
+    with import_phase("save_sales"):
+        db.commit()
+
+    with import_phase("save_import_log"):
+        log_import(
+            db,
             city=city,
-            month=month,
-            type=str(row["Тип"]),
-            client=str(row["Клиент"]),
-            raw_name=raw_name,
-            raw_sku=raw_sku,
-            qty=float(row["Количество"]),
-            weight=float(row["Вес"]),
+            months=sorted(months_seen),
+            rows_imported=imported,
+            rows_unmatched=unmatched,
+            user_id=admin.id,
         )
-
-        if p:
-            sale.product_id = p.id
-            w = extract_weight(raw_name) or p.default_weight_g
-            sale.sku = p.canonical_sku
-            sale.name = build_canonical_name(p.canonical_sku, w)
-            sale.matched = True
-        else:
-            sale.matched = False
-            unmatched += 1
-
-        db.add(sale)
-        imported += 1
-
-    db.commit()
-
-    log_import(
-        db,
-        city=city,
-        months=sorted(months_seen),
-        rows_imported=imported,
-        rows_unmatched=unmatched,
-        user_id=admin.id,
-    )
 
     return _import_form(
         request,
