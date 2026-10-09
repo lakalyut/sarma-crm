@@ -462,10 +462,16 @@ def test_miniapp_required_highlights_and_last_visit_labels(page):
         "**/ambassador/app/visit-history?**", lambda r: r.fulfill(json={"history": []})
     )
     submitted = []
+    saves = []
 
     def save(route):
         submitted.append(route.request.post_data_json)
-        route.fulfill(json={"ok": True, "demo": False, "last_visit_date": "08.10.2026"})
+        saves.append(route)
+
+    def complete_save():
+        saves.pop().fulfill(
+            json={"ok": True, "demo": False, "last_visit_date": "08.10.2026"}
+        )
 
     page.route("**/ambassador/app/visits", save)
     page.goto("https://pulse-ui.test/ambassador/app", wait_until="networkidle")
@@ -510,6 +516,11 @@ def test_miniapp_required_highlights_and_last_visit_labels(page):
     page.locator("#sku-classic").fill("0")
     assert page.locator('#visit-card [aria-invalid="true"]').count() == 0
     page.locator("#submit-btn").click()
+    page.locator("#submit-btn .pulse-loader").wait_for(state="visible")
+    assert page.locator("#submit-btn").is_disabled()
+    assert page.locator("#submit-btn").inner_text() == "Записываем визит…"
+    assert len(submitted) == 1
+    complete_save()
     page.locator("#again-btn").wait_for(state="visible")
     assert submitted[0]["client"] == "Клиент <А>"
     page.locator("#again-btn").click()
@@ -594,3 +605,163 @@ def test_admin_heading_fits_narrow_screen_with_fallback_fonts(page, font_family)
     assert page.locator(".admin-page-heading h1").evaluate(
         "el => el.getBoundingClientRect().right <= document.documentElement.clientWidth"
     )
+
+
+def test_loading_delay_cleanup_and_reduced_motion(page):
+    page.evaluate(
+        "window.finishFast = PulseLoading.begin(document.querySelector('.app-shell'), {label:'Быстро'}); finishFast();"
+    )
+    assert page.locator(".pulse-loader").count() == 0
+    page.emulate_media(reduced_motion="reduce")
+    page.evaluate(
+        "window.stopOld = PulseLoading.begin(document.querySelector('.app-shell'), {label:'Первый', mode:'pulse'}); void 0;"
+    )
+    page.locator(".pulse-loader").wait_for(state="visible")
+    assert (
+        page.locator(".pulse-loader img")
+        .get_attribute("src")
+        .startswith("/static/favicon.svg")
+    )
+    assert (
+        page.locator(".pulse-loader-mark").evaluate(
+            "el => getComputedStyle(el).animationName"
+        )
+        == "none"
+    )
+    page.evaluate(
+        "window.stopNew = PulseLoading.begin(document.querySelector('.app-shell'), {label:'Второй'}); stopOld();"
+    )
+    page.locator(".pulse-loader").wait_for(state="visible")
+    assert page.locator(".pulse-loader").inner_text() == "Второй"
+    page.evaluate("stopNew()")
+    assert page.locator(".pulse-loader").count() == 0
+    assert page.locator(".app-shell").get_attribute("aria-busy") is None
+    page.evaluate(
+        "document.querySelector('form[method=get]').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));"
+    )
+    assert page.locator(".app-shell").get_attribute("aria-busy") == "true"
+    assert not page.evaluate(
+        "document.querySelector('form[method=get]').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}))"
+    )
+    page.evaluate(
+        "window.dispatchEvent(new PageTransitionEvent('pageshow', {persisted:true}));"
+    )
+    assert page.locator(".app-shell").get_attribute("aria-busy") is None
+
+
+def test_download_loading_error_retry_and_success(page):
+    page.evaluate(
+        """() => {
+        const link = document.createElement('a');
+        link.href='/analytics/client-analysis?download=1';
+        link.id='test-download'; link.textContent='Скачать отчёт';
+        document.querySelector('.app-shell').prepend(link);
+    }"""
+    )
+    pending = []
+    page.route(
+        "**/analytics/client-analysis?download=1", lambda route: pending.append(route)
+    )
+    page.locator("#test-download").click()
+    page.locator("#test-download .pulse-loader").wait_for(state="visible")
+    assert len(pending) == 1
+    assert page.locator("#test-download").get_attribute("aria-disabled") == "true"
+    pending.pop().fulfill(status=500, body="error")
+    page.locator("#pulse-download-error").wait_for(state="visible")
+    assert page.locator("#test-download").inner_text() == "Скачать отчёт"
+    page.get_by_role("button", name="Повторить", exact=True).click()
+    page.locator("#test-download .pulse-loader").wait_for(state="visible")
+    with page.expect_download() as download:
+        pending.pop().fulfill(
+            status=200,
+            content_type="text/html",
+            headers={"Content-Disposition": 'attachment; filename="pulse-test.html"'},
+            body="<html>Report</html>",
+        )
+    assert download.value.suggested_filename == "pulse-test.html"
+    assert page.locator("#pulse-download-error").count() == 0
+    assert page.locator("#test-download").get_attribute("aria-busy") is None
+
+
+def test_miniapp_boot_loading_and_retry(page):
+    page.add_init_script(
+        "window.Telegram={WebApp:{initData:'test',ready(){},expand(){}}};"
+    )
+    page.route("https://telegram.org/**", lambda route: route.fulfill(body=""))
+    pending = []
+    page.route("**/ambassador/app/verify", lambda route: pending.append(route))
+    page.goto("https://pulse-ui.test/ambassador/app", wait_until="domcontentloaded")
+    page.locator("#content .pulse-loader-pulse").wait_for(state="visible")
+    assert page.locator("#content").get_attribute("aria-busy") == "true"
+    assert page.locator("#tabs").is_hidden()
+    pending.pop().fulfill(status=503, json={"detail": "Не удалось войти"})
+    page.locator("#boot-retry").wait_for(state="visible")
+    assert page.locator("#content .pulse-loader").count() == 0
+    page.locator("#boot-retry").click()
+    page.locator("#content .pulse-loader").wait_for(state="visible")
+    page.route(
+        "**/ambassador/app/options",
+        lambda route: route.fulfill(
+            json={
+                "cities": ["Иркутск"],
+                "clients_by_city": {"Иркутск": []},
+                "types_by_city": {"Иркутск": ["HoReCa"]},
+                "guessed_segment_by_type": {},
+                "abc_by_segment": {},
+                "products": [],
+                "visit_goals": [],
+            }
+        ),
+    )
+    pending.pop().fulfill(
+        json={
+            "role": "ambassador",
+            "city": "Иркутск",
+            "first_name": "Тест",
+            "can_record_visits": True,
+        }
+    )
+    page.locator("#visit-card").wait_for(state="visible")
+    page.wait_for_function(
+        "document.getElementById('content').getAttribute('aria-busy') !== 'true'"
+    )
+    assert page.locator("#content .pulse-loader").count() == 0
+    assert "Тест" in page.locator("#content").inner_text()
+
+    # Initial client load and period refresh share the same feedback and retain old rows.
+    pending_clients = []
+    page.route(
+        "**/ambassador/app/clients?**", lambda route: pending_clients.append(route)
+    )
+    page.locator("#tab-btn-clients").click()
+    page.locator("#clients-list-content .pulse-loader").wait_for(state="visible")
+    assert page.locator(".pulse-skeleton").count() == 3
+    counts = {"ordered": 0, "total": 0}
+    clients_body = {
+        "rows": [
+            {
+                "client": "Кафе Тест",
+                "sale_type": "HoReCa",
+                "segment": "HoReCa",
+                "has_orders": True,
+                "abc": {"A": counts, "B": counts, "C": counts, "unrated": counts},
+            }
+        ],
+        "month_from": "2026-09-01",
+        "month_to": "2026-09-01",
+        "months": [{"value": "2026-09-01", "label": "Сентябрь 2026"}],
+    }
+    pending_clients.pop().fulfill(json=clients_body)
+    page.locator(".client-summary-row").wait_for(state="visible")
+    page.locator("#clients-period-apply").click()
+    page.locator("#clients-list-content .pulse-loader").wait_for(state="visible")
+    assert "Кафе Тест" in page.locator(".client-summary-row").inner_text()
+    assert page.locator("#clients-period-apply").is_disabled()
+    pending_clients.pop().fulfill(status=503, json={"detail": "Временно недоступно"})
+    page.locator("#clients-retry").wait_for(state="visible")
+    assert page.locator("#clients-list-content .pulse-loader").count() == 0
+    assert page.locator("#clients-period-apply").is_enabled()
+    page.locator("#clients-retry").click()
+    page.locator("#clients-list-content .pulse-loader").wait_for(state="visible")
+    pending_clients.pop().fulfill(json=clients_body)
+    page.locator(".client-summary-row").wait_for(state="visible")

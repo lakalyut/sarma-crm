@@ -1,0 +1,22 @@
+.pulse-loader { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; padding: 20px; color: var(--text-muted); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.pulse-loader-mark { display: inline-flex; position: relative; flex-shrink: 0; }
+.pulse-loader img { display: block; border-radius: 25%; }
+.pulse-loader-pulse { min-height: 100px; flex-direction: column; }
+.pulse-loader-pulse .pulse-loader-mark { animation: pulse-logo 1.8s ease-in-out infinite; }
+.pulse-loader-pulse .pulse-loader-mark::after { content: ''; position: absolute; inset: -6px; border: 1px solid var(--primary); border-radius: 30%; animation: pulse-ring 1.8s ease-out infinite; }
+.pulse-loader-track { display: block; flex-basis: 100%; height: 3px; background: var(--primary-tint); border-radius: 3px; overflow: hidden; }
+.pulse-loader-track::after { content: ''; display: block; width: 30%; height: 100%; background: var(--primary); border-radius: inherit; animation: pulse-line 1.4s ease-in-out infinite; }
+.pulse-loader-button { padding: 0; font: inherit; color: inherit; gap: 8px; }
+.pulse-loader-button img { width: 20px; height: 20px; }
+.pulse-loader-button .pulse-loader-mark { animation: pulse-logo 1.8s ease-in-out infinite; }
+.pulse-loading-active[aria-disabled="true"] { pointer-events: none; }
+.app-shell.pulse-loading-active { position: relative; }
+.app-shell > .pulse-loader { position: sticky; top: 16px; margin: 16px auto; max-width: 320px; box-sizing: border-box; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; z-index: 20; }
+.pulse-load-error { margin: 12px 0; padding: 12px; background: var(--danger-bg); color: var(--danger); border-radius: 10px; font-size: 14px; }
+@keyframes pulse-logo { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes pulse-ring { 0% { transform: scale(.9); opacity: .6; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes pulse-line { from { transform: translateX(-110%); } to { transform: translateX(440%); } }
+@media (prefers-reduced-motion: reduce) { .pulse-loader *, .pulse-loader *::after { animation: none !important; } .pulse-loader-pulse .pulse-loader-mark::after { opacity: .3; } }
+
+.pulse-loader { grid-column: 1 / -1; }
+.pulse-skeleton { display: block; flex-basis: 100%; height: 54px; border-radius: 10px; background: var(--bg-page); border: 1px solid var(--border); }

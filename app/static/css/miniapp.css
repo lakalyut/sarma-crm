@@ -200,3 +200,5 @@ h1 { font-size: 27px; letter-spacing: -.025em; margin-bottom: 20px; }
 .mini-assortment-count.mini-abc-c span { color: var(--abc-c-text); }
 .mini-abc-group { background: var(--surface); border-color: var(--border); color: var(--text-main); }
 @media (max-width: 360px) { body { padding: 20px 12px; } }
+
+.tabs.is-hidden { display: none; }

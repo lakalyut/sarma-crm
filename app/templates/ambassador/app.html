@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="{{ asset('css/miniapp_clients.css') }}">
 <link rel="stylesheet" href="{{ asset('css/miniapp.css') }}">
 
+<link rel="stylesheet" href="{{ asset('css/loading.css') }}">
+<script src="{{ asset('js/loading.js') }}" data-logo="{{ asset('favicon.svg') }}"></script>
 </head>
 <body>
 <h1>Пульс — амбассадор</h1>
@@ -133,6 +135,10 @@ const tg = window.Telegram && window.Telegram.WebApp;
 const contentEl = document.getElementById('content');
 const visitCard = document.getElementById('visit-card');
 const successCard = document.getElementById('success-card');
+
+function beginLoading(target, options) {
+    return window.PulseLoading ? window.PulseLoading.begin(target, options) : () => {};
+}
 
 function line(label, value) {
     return '<div class="row"><span>' + label + '</span><span>' + (value ?? '—') + '</span></div>';
@@ -435,8 +441,10 @@ document.getElementById('submit-btn').addEventListener('click', () => {
     ).map(cb => parseInt(cb.value, 10));
 
     const btn = document.getElementById('submit-btn');
+    const stopLoading = beginLoading(btn, { label: 'Записываем визит…', button: true });
     btn.disabled = true;
-    document.getElementById('submit-result').textContent = 'Отправляю...';
+    document.getElementById('submit-result').textContent = '';
+
 
     fetch('/ambassador/app/visits', {
         method: 'POST',
@@ -476,6 +484,7 @@ document.getElementById('submit-btn').addEventListener('click', () => {
             document.getElementById('submit-result').innerHTML = '<span class="fail">Сеть/сервер: ' + err + '</span>';
         })
         .finally(() => {
+            stopLoading();
             btn.disabled = false;
         });
 });
@@ -531,10 +540,13 @@ function showTab(tab) {
 
     if (tab === 'leaderboard' && !leaderboardLoaded) {
         leaderboardLoaded = true;
+        const stopLeaderboard = beginLoading(document.getElementById('leaderboard-content'), { label: 'Загружаем лидерборд…', retain: false });
         fetch('/ambassador/app/leaderboard', { headers: authHeader() })
             .then(res => res.json())
-            .then(body => renderLeaderboard(body.rows))
+            .then(body => { stopLeaderboard(); renderLeaderboard(body.rows); })
             .catch((err) => {
+                stopLeaderboard();
+                leaderboardLoaded = false;
                 document.getElementById('leaderboard-content').innerHTML =
                     '<span class="fail">Сеть/сервер: ' + err + '</span>';
             });
@@ -572,6 +584,12 @@ document.getElementById('tab-btn-clients').addEventListener('click', () => showT
 if (!tg || !tg.initData) {
     contentEl.innerHTML = '<p>Страница открыта не из Telegram. Откройте её кнопкой меню в боте.</p>';
 } else {
+    bootstrapMiniapp();
+}
+
+function bootstrapMiniapp() {
+    const stopBoot = beginLoading(contentEl, { label: 'Загружаем Пульс…', mode: 'pulse', retain: false });
+    let profile = null;
     tg.ready();
     tg.expand();
 
@@ -583,31 +601,34 @@ if (!tg || !tg.initData) {
             const body = await res.json();
             if (res.ok) {
                 currentRole = body.role;
-                contentEl.innerHTML =
-                    line('Имя', (body.first_name || '') + ' ' + (body.last_name || '')) +
-                    (body.city ? line('Город', body.city) : '');
-                document.getElementById('tabs').classList.remove('is-hidden');
-
-                if (currentRole !== 'ambassador') {
-                    document.getElementById('clients-city-field').classList.remove('is-hidden');
-                }
-                document.getElementById('demo-notice').classList.toggle('is-hidden', body.can_record_visits === true);
-
+                profile = body;
                 return fetch('/ambassador/app/options', { headers: authHeader() });
             } else {
-                contentEl.innerHTML = '<div class="fail">Ошибка: ' + (body.detail || res.status) + '</div>';
-                return null;
+                throw new Error(typeof body.detail === 'string' ? body.detail : 'Не удалось войти.');
             }
         })
         .then(async (res) => {
             if (!res) return;
+            if (!res.ok) throw new Error('Не удалось загрузить форму визита.');
             options = await res.json();
+            stopBoot();
+            contentEl.innerHTML =
+                line('Имя', (profile.first_name || '') + ' ' + (profile.last_name || '')) +
+                (profile.city ? line('Город', profile.city) : '');
+            document.getElementById('tabs').classList.remove('is-hidden');
+
+            if (currentRole !== 'ambassador') {
+                document.getElementById('clients-city-field').classList.remove('is-hidden');
+            }
+            document.getElementById('demo-notice').classList.toggle('is-hidden', profile.can_record_visits === true);
+
             visitCard.classList.remove('is-hidden');
             populateCity();
         })
         .catch((err) => {
-            contentEl.innerHTML = '<div class="fail">Сеть/сервер: ' + err + '</div>';
-        });
+            contentEl.innerHTML = '<p class="fail">' + escHtml(err.message || 'Не удалось загрузить Пульс.') + '</p><button type="button" class="secondary" id="boot-retry">Повторить</button>';
+            document.getElementById('boot-retry').addEventListener('click', bootstrapMiniapp);
+        }).finally(stopBoot);
 }
 </script>
 <script src="{{ asset('js/ui_accessibility.js') }}"></script>

@@ -321,9 +321,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function loadData() {
-        const res = await fetch(buildApiUrl());
-        if (!res.ok) throw new Error("API error");
-        return await res.json();
+        const stop = window.PulseLoading.begin(document.getElementById('metrics-cards'), { label: 'Обновляем графики…' });
+        try {
+            const res = await fetch(buildApiUrl());
+            if (!res.ok) throw new Error("API error");
+            return await res.json();
+        } finally { stop(); }
     }
 
     function formatNumber(value, digits = 2) {

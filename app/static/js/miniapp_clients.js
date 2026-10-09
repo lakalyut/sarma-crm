@@ -9,6 +9,8 @@ let clientsRequest = 0;
 let clientsAbort = null;
 let detailRequest = 0;
 let detailAbort = null;
+let clientsStop = () => {};
+let detailStop = () => {};
 
 async function clientsFetch(url, signal) {
     const response = await fetch(url, { headers: authHeader(), signal });
@@ -33,6 +35,9 @@ function periodLabel() {
 }
 
 function resetClientsPeriod() {
+    clientsStop();
+    detailStop();
+    document.getElementById('clients-list-content').textContent = '';
     clientsRequest++;
     detailRequest++;
     if (clientsAbort) clientsAbort.abort();
@@ -67,8 +72,8 @@ async function loadClientsForCity(city, resetPeriod = false) {
     clientsAbort = new AbortController();
     const el = document.getElementById('clients-list-content');
     const apply = document.getElementById('clients-period-apply');
-    el.textContent = 'Загружаю...';
-    allClientRows = [];
+    const stopLoading = beginLoading(el, { label: 'Загружаем клиентов…', mode: allClientRows.length ? 'line' : 'skeleton', retain: allClientRows.length > 0 });
+    clientsStop = stopLoading;
     document.getElementById('clients-search').disabled = true;
     apply.disabled = true;
     try {
@@ -84,6 +89,7 @@ async function loadClientsForCity(city, resetPeriod = false) {
         clientsLoaded = false;
         el.innerHTML = '<p>' + escHtml(error.message) + '</p><button type="button" class="secondary" id="clients-retry">Повторить</button>';
     } finally {
+        stopLoading();
         if (request === clientsRequest) apply.disabled = false;
     }
 }
@@ -142,7 +148,8 @@ async function openClientDetail(client, saleType) {
     document.getElementById('clients-detail-view').classList.remove('is-hidden');
     document.getElementById('detail-client-name').textContent = client;
     document.getElementById('detail-client-type').textContent = saleType;
-    document.getElementById('detail-summary').textContent = 'Загружаю...';
+    const stopLoading = beginLoading(document.getElementById('detail-summary'), { label: 'Загружаем ассортимент…', retain: false });
+    detailStop = stopLoading;
     document.getElementById('detail-sku-list').textContent = '';
     renderHistoryInto('detail-history', 'detail-history-list', []);
     const city = currentRole !== 'ambassador' ? selectedClientsCity : null;
@@ -159,18 +166,22 @@ async function openClientDetail(client, saleType) {
         if (request === detailRequest) renderClientDetail(client, saleType, body);
     } catch (error) {
         if (request !== detailRequest || error.name === 'AbortError') return;
-        document.getElementById('detail-summary').textContent = error.message;
-    }
+        const summary = document.getElementById('detail-summary');
+        summary.innerHTML = '<p>' + escHtml(error.message) + '</p><button type="button" class="secondary" id="detail-retry">Повторить</button>';
+        document.getElementById('detail-retry').addEventListener('click', () => openClientDetail(client, saleType));
+    } finally { stopLoading(); }
 }
 
 document.getElementById('clients-search').addEventListener('input', filterClientsList);
 document.getElementById('clients-list-content').addEventListener('click', event => {
     if (event.target.closest('#clients-retry')) { loadClientsForCity(selectedClientsCity); return; }
+    if (document.getElementById('clients-period-apply').disabled) return;
     const row = event.target.closest('.client-summary-row');
     if (row) openClientDetail(row.dataset.client, row.dataset.saleType);
 });
 document.getElementById('clients-list-content').addEventListener('keydown', event => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (document.getElementById('clients-period-apply').disabled) return;
     const row = event.target.closest('.client-summary-row');
     if (row) { event.preventDefault(); openClientDetail(row.dataset.client, row.dataset.saleType); }
 });
@@ -183,6 +194,7 @@ document.getElementById('clients-period-apply').addEventListener('click', () => 
     loadClientsForCity(selectedClientsCity);
 });
 document.getElementById('clients-back-btn').addEventListener('click', () => {
+    detailStop();
     detailRequest++;
     if (detailAbort) detailAbort.abort();
     document.getElementById('clients-detail-view').classList.add('is-hidden');
