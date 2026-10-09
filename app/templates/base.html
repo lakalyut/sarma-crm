@@ -40,6 +40,7 @@
 
         <div class="app-shell">
             <div class="card">
+                {% if admin_area %}{% include "includes/admin_context.html" %}{% endif %}
                 {% block content %}{% endblock %}
             </div>
         </div>
@@ -56,5 +57,6 @@
 <script src="{{ asset('js/csrf.js') }}"></script>
 <script src="{{ asset('js/ui_accessibility.js') }}"></script>
 <script src="{{ asset('js/filter_state.js') }}"></script>
+<script src="{{ asset('js/admin_navigation.js') }}"></script>
 </body>
 </html>

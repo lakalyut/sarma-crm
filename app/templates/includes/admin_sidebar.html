@@ -1,0 +1,18 @@
+<div class="sidebar-nav-group admin-navigation">
+    <a href="/admin" class="sidebar-nav-link {% if request.url.path == '/admin' %}active{% endif %}" title="Администрирование" {% if request.url.path == '/admin' %}aria-current="page"{% endif %}>
+        <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M3 9h18M9 9v12"></path></svg>
+        <span class="sidebar-nav-text">Администрирование</span>
+    </a>
+    {% for group in admin_groups %}
+    <details class="admin-nav-group" data-admin-group="{{ group.id }}" {% if request.url.path == '/admin' or (admin_group and admin_group.id == group.id) %}open{% endif %} {% if admin_group and admin_group.id == group.id %}data-active="true"{% endif %}>
+        <summary>{{ group.title }}<span aria-hidden="true">▾</span></summary>
+        {% for link in group.links %}
+        {% set count = (admin_counts or {}).get(link.counter, 0) if link.counter else 0 %}
+        <a href="{{ link.url }}" class="sidebar-nav-link admin-nav-link {% if admin_link and admin_link.url == link.url %}active{% endif %}" title="{{ link.title }}" {% if admin_link and admin_link.url == link.url %}aria-current="page"{% endif %}>
+            <span class="sidebar-nav-text">{{ link.title }}</span>
+            {% if count %}<span class="sidebar-nav-badge" aria-label="{{ count }} требуют проверки">{{ count if count < 1000 else '999+' }}</span>{% endif %}
+        </a>
+        {% endfor %}
+    </details>
+    {% endfor %}
+</div>

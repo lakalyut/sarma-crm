@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-page-heading"><div><h1>Администрирование</h1><p class="muted">Справочники, импорт продаж и качество данных — в одном месте.</p></div></div>
+<div class="admin-overview-grid">
+    {% for group in admin_groups %}
+    <section class="admin-overview-card" aria-labelledby="admin-{{ group.id }}-title">
+        <h2 id="admin-{{ group.id }}-title">{{ group.title }}</h2>
+        <p class="muted">{{ group.description }}</p>
+        <div class="admin-overview-links">
+            {% for link in group.links %}
+            {% set count = (admin_counts or {}).get(link.counter, 0) if link.counter else 0 %}
+            <a href="{{ link.url }}"><span>{{ link.title }}</span>{% if count %}<span class="admin-count">{{ count|format_ru_number }}</span>{% else %}<span aria-hidden="true">→</span>{% endif %}</a>
+            {% endfor %}
+        </div>
+        {% if group.id == 'quality' %}<p class="admin-footnote">Счётчики: строки продаж для сопоставления и номенклатуры, клиенты с разными типами точек — для ревизии типов.</p>{% endif %}
+    </section>
+    {% endfor %}
+</div>
+<section class="admin-overview-card admin-recent">
+    <div class="admin-page-heading"><h2>Последние импорты</h2><a href="/admin/imports" class="btn btn-secondary">Вся история</a></div>
+    {% if recent_imports %}
+    {% for item in recent_imports %}<div class="admin-recent-row"><div><strong>{{ item.city }}</strong><div class="muted">{{ item.months.split(', ')|format_month_list }}</div></div><span>{{ item.rows_imported|format_ru_number }} строк</span><time>{{ item.created_at.strftime('%d.%m.%Y %H:%M') }}</time></div>{% endfor %}
+    {% else %}<p class="muted">Импортов пока нет. Начните с загрузки продаж.</p><a href="/import-xlsx" class="btn">Загрузить данные</a>{% endif %}
+</section>
+{% endblock %}

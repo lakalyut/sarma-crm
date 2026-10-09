@@ -520,3 +520,60 @@ def test_miniapp_required_highlights_and_last_visit_labels(page):
     )
     page.locator("#submit-btn").click()
     assert page.locator("#comment-input").get_attribute("aria-invalid") == "true"
+
+
+@pytest.mark.parametrize("width", [320, 390, 768, 1440])
+def test_admin_navigation_groups_and_responsive_workspace(page, width):
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto("https://pulse-ui.test/admin", wait_until="networkidle")
+    assert page.locator(".admin-overview-grid > section").count() == 3
+    assert page.evaluate("document.documentElement.scrollWidth") <= width
+    if width <= 768:
+        page.locator("#sidebar-burger").click()
+    group = page.locator('[data-admin-group="management"]')
+    group.locator("summary").click()
+    page.wait_for_function("localStorage.getItem('pulseAdminGroup:management') === '0'")
+    page.goto("https://pulse-ui.test/admin/unmatched", wait_until="networkidle")
+    assert not group.evaluate("el => el.open")
+    assert page.locator('[data-admin-group="quality"]').evaluate("el => el.open")
+    assert (
+        page.locator('.admin-section-nav [aria-current="page"]').inner_text()
+        == "Несопоставленные"
+    )
+    page.goto("https://pulse-ui.test/admin/users", wait_until="networkidle")
+    assert group.evaluate("el => el.open")
+    assert (
+        page.locator('.admin-section-nav [aria-current="page"]').inner_text()
+        == "Пользователи"
+    )
+    page.goto("https://pulse-ui.test/admin/imports", wait_until="networkidle")
+    assert (
+        page.locator('.admin-section-nav [aria-current="page"]').inner_text()
+        == "История и удаление"
+    )
+    assert page.evaluate("document.documentElement.scrollWidth") <= width
+
+
+def test_import_history_selection_to_filtered_preview(page, db_session):
+    from app.models import EventLog
+
+    db_session.add(EventLog(city="Иркутск", months="2026-08-01", rows_imported=2))
+    db_session.commit()
+    page.goto("https://pulse-ui.test/admin/imports", wait_until="networkidle")
+    page.locator(".admin-history a", has_text="Выбрать период").click()
+    assert page.locator("#delete-import-city").input_value() == "Иркутск"
+    assert (
+        page.locator("#delete-months-multiselect input:checked").input_value()
+        == "2026-08-01"
+    )
+    page.get_by_role("button", name="Показать количество").click()
+    page.locator('form[action="/admin/imports/delete/confirm"]').wait_for(
+        state="visible"
+    )
+    assert "Найдено строк для удаления: 2" in page.locator("body").inner_text()
+    assert (
+        page.locator(
+            'form[action="/admin/imports/delete/confirm"] input[name="city"]'
+        ).input_value()
+        == "Иркутск"
+    )

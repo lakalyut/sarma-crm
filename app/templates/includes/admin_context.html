@@ -1,0 +1,11 @@
+<nav class="admin-breadcrumbs" aria-label="Путь в админке">
+    <a href="/admin">Администрирование</a>
+    {% if admin_group %}<span aria-hidden="true">/</span><span>{{ admin_group.title }}</span>{% endif %}
+</nav>
+{% if admin_group %}
+<nav class="admin-section-nav" aria-label="{{ admin_group.title }}">
+    {% for link in admin_group.links %}
+    <a href="{{ link.url }}" {% if admin_link and admin_link.url == link.url %}class="active" aria-current="page"{% endif %}>{{ link.title }}</a>
+    {% endfor %}
+</nav>
+{% endif %}

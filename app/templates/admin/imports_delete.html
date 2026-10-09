@@ -2,12 +2,27 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ asset('css/imports_delete.css') }}">
-<h1>Удаление импортированных продаж</h1>
+<div class="admin-page-heading"><div><h1>История и удаление импортов</h1><p class="muted">Загруженные продажи и управление данными.</p></div><a href="/import-xlsx" class="btn">Загрузить данные</a></div>
+<section class="admin-history" aria-labelledby="import-history-title">
+    <h2 id="import-history-title">История загрузок</h2>
+    <form method="get" action="/admin/imports" class="admin-history-filter">
+        <div class="field filter-field"><label for="history-city">Город</label><select id="history-city" name="city" class="js-custom-select"><option value="">Все города</option>{% for city in cities %}<option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>{% endfor %}</select></div>
+        <div class="field filter-field filter-actions-row"><button type="submit" class="btn btn-secondary">Показать</button></div>
+    </form>
+    {% if import_history %}
+    <div class="sheet-wrapper"><table class="sheet-table"><thead><tr><th>Город и период</th><th>Дата загрузки</th><th>Кто загрузил</th><th>Строк загружено</th><th>Несопоставлено при загрузке</th><th>Действие</th></tr></thead><tbody>
+        {% for item in import_history %}<tr><td data-label="Город и период"><strong>{{ item.event.city }}</strong><div class="muted">{{ item.months|format_month_list }}</div></td><td data-label="Дата загрузки">{{ item.event.created_at.strftime('%d.%m.%Y %H:%M') }}</td><td data-label="Кто загрузил">{{ item.event.user.email if item.event.user else '—' }}</td><td data-label="Строк загружено">{{ item.event.rows_imported|format_ru_number }}</td><td data-label="Несопоставлено при загрузке">{{ item.event.rows_unmatched|format_ru_number }}</td><td data-label="Действие">{% if item.event.city and item.months %}<a href="{{ item.selection_url }}" class="btn btn-secondary">Выбрать период</a>{% else %}<span class="muted">Задайте фильтры ниже</span>{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>
+    <nav class="admin-pagination" aria-label="Страницы истории">{% if history_previous %}<a href="{{ history_previous }}" class="btn btn-secondary">← Назад</a>{% endif %}<span class="muted">Страница {{ history_page }} · {{ history_total|format_ru_number }} загрузок</span>{% if history_next %}<a href="{{ history_next }}" class="btn btn-secondary">Далее →</a>{% endif %}</nav>
+    {% else %}<p class="muted">Для выбранного города загрузок пока нет.</p>{% endif %}
+</section>
+<section class="admin-delete-section" id="delete-data" aria-labelledby="delete-data-title">
+<h2 id="delete-data-title">Удаление продаж</h2>
 
 {% include "includes/messages.html" %}
 
 <div class="filter-summary" style="margin-bottom: 14px;">
-    Удаляются только записи продаж из базы. Справочник продуктов и пользователи не затрагиваются.
+    Удаляются продажи по выбранным фильтрам, включая повторные загрузки за тот же период. История показывает объём на момент импорта. Перед удалением проверьте фактическое количество строк. Справочник продуктов и пользователи не затрагиваются.
 </div>
 
 <div class="filters-card">
@@ -80,8 +95,8 @@
             <div class="multiselect" id="delete-types-multiselect">
                 <div class="multiselect-display">
                     <span class="multiselect-text">
-                        {% if selected_type %}
-                            {{ selected_type }}
+                        {% if selected_types %}
+                            {{ selected_types|join(', ') }}
                         {% else %}
                             Не выбраны
                         {% endif %}
@@ -103,7 +118,7 @@
                                     type="checkbox"
                                     name="sale_types"
                                     value="{{ t }}"
-                                    {% if selected_type == t %}checked{% endif %}
+                                    {% if t in selected_types %}checked{% endif %}
                                 >
                                 <span>{{ t }}</span>
                             </label>
@@ -118,7 +133,7 @@
             <label>&nbsp;</label>
             <div class="filters-actions">
                 <button type="submit">Показать количество</button>
-                <a href="/admin/imports/delete" class="btn btn-secondary">Сбросить</a>
+                <a href="/admin/imports" class="btn btn-secondary">Сбросить</a>
             </div>
         </div>
     </div>
@@ -144,7 +159,7 @@
 
                 <div class="flex-row" style="gap:12px;">
                     <button type="submit" class="btn btn-danger">Удалить данные</button>
-                    <a href="/admin/imports/delete" class="btn btn-secondary">Сбросить</a>
+                    <a href="/admin/imports" class="btn btn-secondary">Сбросить</a>
                 </div>
             </form>
         </div>
@@ -305,4 +320,5 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
+</section>
 {% endblock %}

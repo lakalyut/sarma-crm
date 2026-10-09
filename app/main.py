@@ -23,6 +23,7 @@ from .routes.admin_unmatched import router as admin_unmatched_router
 from .routes.admin_updates import router as admin_updates_router
 from .routes.admin_users import router as admin_users_router
 from .routes.admin_visits import router as admin_visits_router
+from .routes.admin_workspace import router as admin_workspace_router
 from .routes.ambassador_app import router as ambassador_app_router
 from .routes.ambassador_web import router as ambassador_web_router
 from .routes.analytics import router as analytics_router
@@ -88,6 +89,7 @@ app.include_router(imports_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
 app.include_router(admin_imports_router)
+app.include_router(admin_workspace_router)
 app.include_router(client_analysis_router)
 app.include_router(admin_abc_router)
 app.include_router(admin_regions_router)
