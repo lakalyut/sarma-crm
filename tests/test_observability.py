@@ -142,9 +142,10 @@ def test_import_phases_correlate_with_request(admin_client, caplog):
         "read_upload",
         "parse_excel",
         "prepare_columns",
+        "prepare_catalog",
         "match_and_build_rows",
         "save_sales",
-        "save_import_log",
+        "commit_import",
     ]
     assert all(phase["outcome"] == "ok" for phase in phases)
     assert all(phase["request_id"] == request["request_id"] for phase in phases)

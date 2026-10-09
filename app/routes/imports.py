@@ -8,15 +8,9 @@ from sqlalchemy.orm import Session
 from ..auth_deps import require_admin
 from ..auth_models import User
 from ..database import get_db
-from ..models import Product, Sale
 from ..observability import import_phase
-from ..product_parser import (
-    build_canonical_name,
-    extract_weight,
-    match_product_by_flavor,
-)
 from ..render import render
-from ..services.event_log_service import log_import
+from ..services.import_service import IMPORT_COLUMNS, import_sales
 from ..services.sales_options_service import get_cities, get_months, get_types
 from ..templating import format_month
 
@@ -58,7 +52,7 @@ def import_xlsx_form(
 
 
 @router.post("/import-xlsx")
-async def import_xlsx(
+def import_xlsx(
     request: Request,
     city: str = Form(...),
     file: UploadFile = File(...),
@@ -69,12 +63,9 @@ async def import_xlsx(
         return _import_form(request, db, error="Файл должен быть в формате .xlsx")
 
     with import_phase("read_upload"):
-        content = await file.read()
+        content = file.file.read(MAX_IMPORT_FILE_SIZE + 1)
     if len(content) > MAX_IMPORT_FILE_SIZE:
-        size_mb = len(content) / (1024 * 1024)
-        return _import_form(
-            request, db, error=f"Файл слишком большой ({size_mb:.1f} МБ) — лимит 20 МБ."
-        )
+        return _import_form(request, db, error="Файл слишком большой — лимит 20 МБ.")
 
     try:
         with import_phase("parse_excel"):
@@ -82,66 +73,11 @@ async def import_xlsx(
     except Exception as e:
         return _import_form(request, db, error=f"Ошибка чтения XLSX: {e}")
 
-    required = ["Месяц", "Тип", "Клиент", "Номенклатура", "SKU", "Количество", "Вес"]
-    missing = [c for c in required if c not in df.columns]
+    missing = [c for c in IMPORT_COLUMNS if c not in df.columns]
     if missing:
         return _import_form(request, db, error=f'Нет колонок: {", ".join(missing)}')
 
-    with import_phase("prepare_columns"):
-        df["Количество"] = pd.to_numeric(df["Количество"], errors="coerce").fillna(0)
-        df["Вес"] = pd.to_numeric(df["Вес"], errors="coerce").fillna(0)
-
-    products = db.query(Product).filter(Product.is_active.is_(True)).all()
-
-    imported = 0
-    unmatched = 0
-    months_seen: set[str] = set()
-
-    with import_phase("match_and_build_rows"):
-        for _, row in df.iterrows():
-            raw_name = str(row["Номенклатура"])
-            raw_sku = str(row["SKU"])
-            p, _score = match_product_by_flavor(raw_name, products)
-
-            month = str(row["Месяц"])
-            months_seen.add(month)
-
-            sale = Sale(
-                city=city,
-                month=month,
-                type=str(row["Тип"]),
-                client=str(row["Клиент"]),
-                raw_name=raw_name,
-                raw_sku=raw_sku,
-                qty=float(row["Количество"]),
-                weight=float(row["Вес"]),
-            )
-
-            if p:
-                sale.product_id = p.id
-                w = extract_weight(raw_name) or p.default_weight_g
-                sale.sku = p.canonical_sku
-                sale.name = build_canonical_name(p.canonical_sku, w)
-                sale.matched = True
-            else:
-                sale.matched = False
-                unmatched += 1
-
-            db.add(sale)
-            imported += 1
-
-    with import_phase("save_sales"):
-        db.commit()
-
-    with import_phase("save_import_log"):
-        log_import(
-            db,
-            city=city,
-            months=sorted(months_seen),
-            rows_imported=imported,
-            rows_unmatched=unmatched,
-            user_id=admin.id,
-        )
+    imported, unmatched = import_sales(db, df, city, admin.id)
 
     return _import_form(
         request,

@@ -14,6 +14,8 @@ def log_import(
     rows_imported: int,
     rows_unmatched: int,
     user_id: int | None,
+    *,
+    commit: bool = True,
 ) -> None:
     db.add(
         EventLog(
@@ -25,7 +27,8 @@ def log_import(
             user_id=user_id,
         )
     )
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def list_events(db: Session, city: str | None = None) -> list[EventLog]:

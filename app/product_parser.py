@@ -63,7 +63,9 @@ def extract_weight(raw: str):
     return int(m.group(1)) if m else None
 
 
-def extract_flavor_from_raw(raw: str, products: list[Product]) -> str:
+def extract_flavor_from_raw(
+    raw: str, products: list[Product], *, brands: list[str] | None = None
+) -> str:
     text = raw.lower()
     text = re.sub(r"\(.*?\)", " ", text)
     text = re.sub(r"\d+\s*(г|гр|g)\b", " ", text)
@@ -74,9 +76,10 @@ def extract_flavor_from_raw(raw: str, products: list[Product]) -> str:
     text = re.sub(r"\b(легкая линейка|крепкая линейка)\b", " ", text)
     text = re.sub(r"\b(легкая|крепкая)\b", " ", text)
 
-    brands = sorted(
-        {p.brand.lower() for p in products if p.brand}, key=len, reverse=True
-    )
+    if brands is None:
+        brands = sorted(
+            {p.brand.lower() for p in products if p.brand}, key=len, reverse=True
+        )
     for b in brands:
         idx = text.find(b)
         if idx != -1:
@@ -121,3 +124,40 @@ def match_product_by_flavor(raw_name: str, products: list[Product]):
         return None, int(score)
 
     return flavor_map[best], int(score)
+
+
+class ProductMatcher:
+    """Prepare a catalog once; preserve the existing matching/tie rules."""
+
+    def __init__(self, products: list[Product]):
+        self.products = products
+        self.brands = sorted(
+            {p.brand.lower() for p in products if p.brand}, key=len, reverse=True
+        )
+        self.exact = {}
+        for product in products:
+            self.exact.setdefault(product.norm_flavor, product)
+        self.flavors = {p.flavor: p for p in products}
+        self.choices = list(self.flavors)
+        self.cache = {}
+
+    def match(self, raw_name: str):
+        if raw_name not in self.cache:
+            self.cache[raw_name] = self._match(raw_name)
+        return self.cache[raw_name]
+
+    def _match(self, raw_name: str):
+        if not self.products:
+            return None, 0
+        query = (
+            extract_flavor_from_raw(raw_name, self.products, brands=self.brands)
+            or raw_name
+        )
+        exact = self.exact.get(normalize_text(query))
+        if exact is not None:
+            return exact, 100
+        match = process.extractOne(query, self.choices, scorer=fuzz.WRatio)
+        if match is None:
+            return None, 0
+        best, score = match[0], match[1]
+        return (self.flavors[best] if score >= 70 else None), int(score)
