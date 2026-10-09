@@ -149,7 +149,7 @@ enforce'ит то, что enforce'ит Postgres). Миграция `f7be60371402
 (`LoginAttempt` в `auth_models.py`) — строка на каждую неудачную попытку. Перед
 `verify_password()` считаются неудачные попытки по email за последние 15 минут; 5 и
 больше — блок без похода в bcrypt. Осознанно не по IP: за приложением стоит nginx
-([deploy/nginx.conf](deploy/nginx.conf)), `request.client.host` в контейнере всегда был бы
+([deploy/nginx/default.conf](deploy/nginx/default.conf)), `request.client.host` в контейнере всегда был бы
 адресом прокси, а не клиента — понадобилась бы отдельная настройка доверия к
 `X-Forwarded-For`/`X-Real-IP`, не делали.
 
@@ -669,7 +669,7 @@ CSS — прав CSS**, документ не первичен. Полный в�
 инлайн-стилей в классы) сделаны — см. горизонт 2.5 в ROADMAP.md.
 
 **Gzip на все ответы** — `app.add_middleware(GZipMiddleware, minimum_size=1000)` в
-[app/main.py](app/main.py). Ни nginx ([deploy/nginx.conf](deploy/nginx.conf)), ни
+[app/main.py](app/main.py). Ни nginx ([deploy/nginx/default.conf](deploy/nginx/default.conf)), ни
 FastAPI сжатием не занимались вообще — большие аналитические HTML-страницы (много
 однотипных строк таблицы — одни и те же имена классов/атрибутов повторяются сотни
 раз) жмутся в 15-25×, добавлено горизонтом 12 ROADMAP.md после жалобы на скорость
