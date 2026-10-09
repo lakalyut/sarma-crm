@@ -83,3 +83,16 @@ jobs:
           RUN_BROWSER_TESTS: "1"
           PYTHONPATH: ${{ github.workspace }}
         run: pytest -q tests/test_ui_browser.py
+
+      - name: Build and check production image
+        run: |
+          docker build -t pulse-image-check .
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect("postgresql://sarma_test:ci-test-password@127.0.0.1:5432/postgres", autocommit=True) as connection:
+              connection.execute("CREATE DATABASE sarma_image_test")
+          PY
+          docker run --rm -i --network host \
+            -e IMAGE_SMOKE_TEST=1 \
+            -e DATABASE_URL=postgresql+psycopg://sarma_test:ci-test-password@127.0.0.1:5432/sarma_image_test \
+            pulse-image-check python - < scripts/check_image.py
