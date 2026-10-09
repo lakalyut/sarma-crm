@@ -1,6 +1,13 @@
+x-log-limits: &log-limits
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:16
+    logging: *log-limits
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -16,11 +23,7 @@ services:
 
   web:
     build: .
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *log-limits
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       APP_SECRET_KEY: ${APP_SECRET_KEY}
@@ -48,6 +51,7 @@ services:
 
   nginx:
     image: nginx:1.25
+    logging: *log-limits
     ports:
       - "80:80"
       - "443:443"
@@ -62,6 +66,7 @@ services:
 
   certbot:
     image: certbot/certbot:latest
+    logging: *log-limits
     volumes:
       - certbot_www:/var/www/certbot
       - letsencrypt:/etc/letsencrypt

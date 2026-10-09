@@ -25,6 +25,9 @@ on:
 
 jobs:
   recover:
+    concurrency:
+      group: sarma-crm-vps
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - name: SSH

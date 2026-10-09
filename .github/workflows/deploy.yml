@@ -9,6 +9,9 @@ on:
 
 jobs:
   deploy:
+    concurrency:
+      group: sarma-crm-vps
+      cancel-in-progress: false
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
 
@@ -20,7 +23,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            set -e
+            set -euo pipefail
+            umask 077
 
             cd /home/ubuntu/sarma-crm
 
@@ -32,9 +36,12 @@ jobs:
             sudo docker compose exec -T db bash -lc 'until pg_isready -U sarma -d sarma; do sleep 1; done'
 
             mkdir -p /home/ubuntu/sarma_backups
-            sudo docker compose exec -T db pg_dump -U sarma sarma | gzip > "/home/ubuntu/sarma_backups/backup_$(date +%F_%H-%M-%S).sql.gz"
-
-            find /home/ubuntu/sarma_backups -type f -name "backup_*.sql.gz" -mtime +14 -delete
+            backup_file="/home/ubuntu/sarma_backups/backup_$(date -u +%F_%H-%M-%S).sql.gz"
+            backup_pending="${backup_file}.tmp"
+            trap 'rm -f "$backup_pending"' EXIT
+            sudo docker compose exec -T db pg_dump -U sarma sarma | gzip > "$backup_pending"
+            gzip -t "$backup_pending"
+            mv "$backup_pending" "$backup_file"
 
             sudo docker compose build web 
 
@@ -48,3 +55,4 @@ jobs:
             sudo docker compose exec -T web python -m app.release_updates
 
             sudo docker image prune -f
+            python3 scripts/backup_retention.py /home/ubuntu/sarma_backups --apply
