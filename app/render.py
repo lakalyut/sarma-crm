@@ -29,6 +29,10 @@ def render(request: Request, template_name: str, context: dict) -> Response:
         "current_user": user,
         "unread_events": unread_events,
         "csrf_token": csrf_token,
+        "operation_notice": {
+            "saved": "Изменения сохранены.",
+            "created": "Запись создана.",
+        }.get(request.query_params.get("notice", ""), ""),
         **admin_context,
         **context,
     }

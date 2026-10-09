@@ -2,7 +2,7 @@
 (() => {
     const logo = document.currentScript.dataset.logo;
     const running = new Map();
-    function begin(target, { label = 'Загружаем данные…', mode = 'line', retain = true, button = false } = {}) {
+    function begin(target, { label = 'Загружаем данные…', mode = 'line', retain = true, button = false, lock = true } = {}) {
         if (!target) return () => {};
         if (running.has(target)) running.get(target)();
         const previousBusy = target.getAttribute('aria-busy');
@@ -10,7 +10,7 @@
         const previousAriaDisabled = target.getAttribute('aria-disabled');
         const original = button ? Array.from(target.childNodes) : [];
         if (button) {
-            target.disabled = true;
+            if (lock) target.disabled = true;
             target.setAttribute('aria-disabled', 'true');
         } else if (!retain) target.replaceChildren();
         target.setAttribute('aria-busy', 'true');
@@ -71,18 +71,63 @@
         running.set(target, stop);
         return stop;
     }
-    window.PulseLoading = { begin };
+    const submitting = new Set();
+    const root = () => document.querySelector('.app-main .app-shell, .amb-web-content');
+    function navigation(label = 'Открываем страницу…') {
+        const target = root();
+        if (target && running.has(target)) return false;
+        begin(target, { label });
+        return true;
+    }
+    function notice(target, text, { error = false, retry } = {}) {
+        const message = document.createElement('div');
+        message.className = 'message ' + (error ? 'error' : 'ok');
+        message.setAttribute('role', error ? 'alert' : 'status');
+        message.textContent = text;
+        if (retry) {
+            const button = document.createElement('button');
+            button.type = 'button'; button.textContent = 'Повторить';
+            button.className = 'btn btn-secondary';
+            button.addEventListener('click', () => { message.remove(); retry(); });
+            message.append(button);
+        }
+        target.prepend(message);
+        return message;
+    }
+    window.PulseLoading = { begin, navigation, notice };
     window.addEventListener('pageshow', event => {
-        if (event.persisted) Array.from(running.values()).forEach(stop => stop());
+        if (event.persisted) {
+            Array.from(running.values()).forEach(stop => stop());
+            submitting.clear();
+        }
     });
     document.addEventListener('submit', event => {
         const form = event.target;
-        if ((form.method || 'get').toLowerCase() !== 'get' || form.target === '_blank') return;
-        const main = document.querySelector('.app-main .app-shell');
-        if (main && running.has(main)) { event.preventDefault(); return; }
+        if (!root() || form.target === '_blank') return;
+        const post = (form.method || 'get').toLowerCase() === 'post';
+        if (submitting.has(form) || (!post && running.has(root()))) { event.preventDefault(); return; }
         queueMicrotask(() => {
             if (event.defaultPrevented) return;
-            begin(main, { label: location.pathname.includes('client-analysis') ? 'Готовим отчёт…' : 'Обновляем данные…' });
+            if (!post) { navigation(location.pathname.includes('client-analysis') ? 'Готовим отчёт…' : 'Обновляем данные…'); return; }
+            submitting.add(form);
+            const button = event.submitter || form.querySelector('button[type="submit"], button:not([type]), input[type="submit"]');
+            const action = form.action;
+            const label = action.includes('logout') ? 'Выходим…' : action.includes('preview') ? 'Проверяем…' : action.includes('delete') ? 'Удаляем…' : action.includes('import') ? 'Загружаем…' : /\/(send|retry)$/.test(action) ? 'Отправляем…' : 'Сохраняем…';
+            begin(button?.tagName === 'INPUT' ? root() : button || root(), { label, button: button?.tagName === 'BUTTON', lock: false });
+        });
+    });
+    document.addEventListener('click', event => {
+        const link = event.target.closest('a[href]');
+        if (!link || !root() || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;
+        const url = new URL(link.href, location.href);
+        if (url.origin !== location.origin || url.searchParams.get('download') === '1' || url.pathname.startsWith('/static/') || url.pathname.startsWith('/api/')) return;
+        if (url.pathname === location.pathname && url.search === location.search) return;
+        if (running.has(root())) { event.preventDefault(); return; }
+        queueMicrotask(() => { if (!event.defaultPrevented) navigation(); });
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.message.ok, .message.error').forEach(message => {
+            message.setAttribute('role', message.classList.contains('error') ? 'alert' : 'status');
         });
     });
     document.addEventListener('click', async event => {

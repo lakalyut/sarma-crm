@@ -516,6 +516,32 @@ document.addEventListener("DOMContentLoaded", function () {
         return url.toString();
     }
 
+    const pendingDetails = new Map();
+    const feedback = document.createElement('div');
+    feedback.className = 'ca-loading-feedback';
+    tbody.closest('.sheet-wrapper').before(feedback);
+    async function detailData(url) {
+        if (pendingDetails.has(url)) return pendingDetails.get(url);
+        const job = (async () => {
+            const slot = document.createElement('div');
+            feedback.append(slot);
+            const stop = window.PulseLoading.begin(slot, { label: 'Загружаем детали…' });
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Не удалось загрузить детали.');
+                return await response.json();
+            } finally {
+                stop(); slot.remove(); pendingDetails.delete(url);
+            }
+        })();
+        pendingDetails.set(url, job);
+        return job;
+    }
+    function detailError(retry) {
+        feedback.querySelectorAll('.message.error').forEach(message => message.remove());
+        window.PulseLoading.notice(feedback, 'Не удалось загрузить детали.', {error: true, retry});
+    }
+
     async function ensureClients(type) {
         if (state.typeClientsCache[type]) return;
         const url = apiUrl("/api/client-analysis/clients", {
@@ -525,8 +551,7 @@ document.addEventListener("DOMContentLoaded", function () {
             clients: state.clients,
             segment_id: state.typeSegmentId[type]
         });
-        const res = await fetch(url);
-        state.typeClientsCache[type] = await res.json();
+        state.typeClientsCache[type] = await detailData(url);
     }
 
     async function ensureNomenclature(type, client) {
@@ -538,8 +563,7 @@ document.addEventListener("DOMContentLoaded", function () {
             sale_type: type,
             months: state.months
         });
-        const res = await fetch(url);
-        state.nomenclatureCache[key] = await res.json();
+        state.nomenclatureCache[key] = await detailData(url);
     }
 
     async function ensureMissing(type, client) {
@@ -551,86 +575,100 @@ document.addEventListener("DOMContentLoaded", function () {
             sale_type: type,
             segment_id: state.typeSegmentId[type]
         });
-        const res = await fetch(url);
-        state.missingCache[key] = await res.json();
+        state.missingCache[key] = await detailData(url);
     }
 
     tbody.addEventListener("click", async function (e) {
-        const toggleBtn = e.target.closest("[data-ca-toggle]");
-        if (toggleBtn) {
-            const level = toggleBtn.dataset.level;
-            const key = toggleBtn.dataset.key;
-            const parentType = toggleBtn.dataset.type;
+        const clicked = e.target.closest('[data-ca-toggle], [data-ca-subview]');
+        const attributes = clicked ? Array.from(clicked.attributes).filter(a => a.name.startsWith('data-')).map(a => [a.name, a.value]) : [];
+        const retry = () => {
+            const button = Array.from(tbody.querySelectorAll('[data-ca-toggle], [data-ca-subview]')).find(el => attributes.every(([name, value]) => el.getAttribute(name) === value));
+            button?.click();
+        };
+        try {
+            const toggleBtn = e.target.closest("[data-ca-toggle]");
+            if (toggleBtn) {
+                const level = toggleBtn.dataset.level;
+                const key = toggleBtn.dataset.key;
+                const parentType = toggleBtn.dataset.type;
 
-            if (level === "type") {
-                if (state.expandedTypes.has(key)) {
-                    state.expandedTypes.delete(key);
+                if (level === "type") {
+                    if (state.expandedTypes.has(key)) {
+                        state.expandedTypes.delete(key);
+                        renderAll();
+                        return;
+                    }
+                    state.expandedTypes.add(key);
+                    renderAll();
+                    try { await ensureClients(key); }
+                    catch (error) { state.expandedTypes.delete(key); renderAll(); throw error; }
                     renderAll();
                     return;
                 }
-                state.expandedTypes.add(key);
-                renderAll();
-                await ensureClients(key);
-                renderAll();
+
+                if (level === "client") {
+                    const clientKey = parentType + "|" + key;
+                    if (state.expandedClients.has(clientKey)) {
+                        state.expandedClients.delete(clientKey);
+                        renderAll();
+                        return;
+                    }
+                    state.expandedClients.add(clientKey);
+                    state.clientSubView[clientKey] = state.clientSubView[clientKey] || "nomenclature";
+                    renderAll();
+                    try { await ensureNomenclature(parentType, key); }
+                    catch (error) { state.expandedClients.delete(clientKey); renderAll(); throw error; }
+                    renderAll();
+                }
                 return;
             }
 
-            if (level === "client") {
-                const clientKey = parentType + "|" + key;
-                if (state.expandedClients.has(clientKey)) {
-                    state.expandedClients.delete(clientKey);
+            const subBtn = e.target.closest("[data-ca-subview]");
+            if (subBtn) {
+                const type = subBtn.dataset.type;
+                const client = subBtn.dataset.client;
+                const view = subBtn.dataset.subview;
+                const key = type + "|" + client;
+
+                state.clientSubView[key] = view;
+                renderAll();
+
+                if (view === "missing") {
+                    await ensureMissing(type, client);
                     renderAll();
-                    return;
                 }
-                state.expandedClients.add(clientKey);
-                state.clientSubView[clientKey] = state.clientSubView[clientKey] || "nomenclature";
-                renderAll();
-                await ensureNomenclature(parentType, key);
-                renderAll();
             }
-            return;
-        }
-
-        const subBtn = e.target.closest("[data-ca-subview]");
-        if (subBtn) {
-            const type = subBtn.dataset.type;
-            const client = subBtn.dataset.client;
-            const view = subBtn.dataset.subview;
-            const key = type + "|" + client;
-
-            state.clientSubView[key] = view;
-            renderAll();
-
-            if (view === "missing") {
-                await ensureMissing(type, client);
-                renderAll();
-            }
-        }
+        } catch (_) { detailError(retry); }
     });
 
     tbody.addEventListener("change", async function (e) {
         const select = e.target.closest("[data-ca-segment-select]");
         if (!select) return;
 
-        const type = select.dataset.type;
-        state.typeSegmentId[type] = select.value;
+        try {
+            const type = select.dataset.type;
+            state.typeSegmentId[type] = select.value;
 
-        Object.keys(state.missingCache).forEach(function (key) {
-            if (key.startsWith(type + "|")) delete state.missingCache[key];
-        });
+            Object.keys(state.missingCache).forEach(function (key) {
+                if (key.startsWith(type + "|")) delete state.missingCache[key];
+            });
 
-        delete state.typeClientsCache[type];
-        renderAll();
-        await ensureClients(type);
+            delete state.typeClientsCache[type];
+            renderAll();
+            await ensureClients(type);
 
-        const visibleMissingClients = Object.keys(state.clientSubView).filter(function (key) {
-            return key.startsWith(type + "|") && state.clientSubView[key] === "missing" && state.expandedClients.has(key);
-        });
-        await Promise.all(visibleMissingClients.map(function (key) {
-            return ensureMissing(type, key.slice(type.length + 1));
-        }));
+            const visibleMissingClients = Object.keys(state.clientSubView).filter(function (key) {
+                return key.startsWith(type + "|") && state.clientSubView[key] === "missing" && state.expandedClients.has(key);
+            });
+            await Promise.all(visibleMissingClients.map(function (key) {
+                return ensureMissing(type, key.slice(type.length + 1));
+            }));
 
-        renderAll();
+            renderAll();
+        } catch (_) { detailError(() => {
+            const current = Array.from(tbody.querySelectorAll('[data-ca-segment-select]')).find(el => el.dataset.type === select.dataset.type);
+            current?.dispatchEvent(new Event('change', {bubbles: true}));
+        }); }
     });
 
     document.querySelectorAll("#ca-metric-tabs .chart-tab").forEach(function (btn) {

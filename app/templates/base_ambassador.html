@@ -95,6 +95,7 @@
   </header>
 
   <div class="amb-web-content{% if wide_content %} amb-web-content-wide{% endif %}">
+    {% if operation_notice %}<div class="message ok" role="status">{{ operation_notice }}</div>{% endif %}
     {% block content %}{% endblock %}
   </div>
 

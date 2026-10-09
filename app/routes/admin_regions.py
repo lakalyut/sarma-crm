@@ -86,7 +86,7 @@ async def regions_save(
 
     svc.save_city_assignments(db, assignments)
 
-    return RedirectResponse("/admin/regions", status_code=HTTP_302_FOUND)
+    return RedirectResponse("/admin/regions?notice=saved", status_code=HTTP_302_FOUND)
 
 
 @router.post("/new")
@@ -95,5 +95,8 @@ def region_new(
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
-    svc.add_region(db, name)
-    return RedirectResponse("/admin/regions", status_code=HTTP_302_FOUND)
+    region = svc.add_region(db, name)
+    return RedirectResponse(
+        "/admin/regions?notice=created" if region else "/admin/regions",
+        status_code=HTTP_302_FOUND,
+    )

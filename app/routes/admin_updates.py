@@ -88,11 +88,20 @@ def edit(
     except ValueError as exc:
         return detail(request, db, update, str(exc))
     # Conditional write also protects edits racing with the Send button.
-    db.query(ReleaseUpdate).filter_by(id=update_id, status="draft").update(
-        {"title": title.strip(), "body": body.strip(), "audience": audience}
+    updated = (
+        db.query(ReleaseUpdate)
+        .filter_by(id=update_id, status="draft")
+        .update({"title": title.strip(), "body": body.strip(), "audience": audience})
     )
     db.commit()
-    return RedirectResponse(f"/admin/updates/{update_id}", status_code=303)
+    if not updated:
+        return detail(
+            request,
+            db,
+            get_update(db, update_id),
+            "Обновление уже отправляется. Изменения не сохранены.",
+        )
+    return RedirectResponse(f"/admin/updates/{update_id}?notice=saved", status_code=303)
 
 
 @router.post("/{update_id}/send")

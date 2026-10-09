@@ -81,7 +81,7 @@ async def abc_matrix_save(
 
     db.commit()
 
-    return RedirectResponse("/admin/abc", status_code=HTTP_302_FOUND)
+    return RedirectResponse("/admin/abc?notice=saved", status_code=HTTP_302_FOUND)
 
 
 @router.post("/segments/new")
@@ -91,4 +91,7 @@ def abc_segment_new(
     _admin: User = Depends(require_admin),
 ):
     add_segment(db, name)
-    return RedirectResponse("/admin/abc", status_code=HTTP_302_FOUND)
+    return RedirectResponse(
+        "/admin/abc?notice=saved" if name.strip() else "/admin/abc",
+        status_code=HTTP_302_FOUND,
+    )

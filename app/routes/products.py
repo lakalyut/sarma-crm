@@ -85,7 +85,9 @@ def product_new(
         return RedirectResponse(
             f"/admin/products/edit/{p.id}?dup=1", status_code=HTTP_302_FOUND
         )
-    return RedirectResponse("/admin/products", status_code=HTTP_302_FOUND)
+    return RedirectResponse(
+        "/admin/products?notice=created", status_code=HTTP_302_FOUND
+    )
 
 
 @router.get("/admin/products/import")

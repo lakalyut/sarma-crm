@@ -115,3 +115,21 @@ def test_quality_counts_include_missing_type(db_session):
     make_sale(db_session, "Москва", "2026-01-01", None)
     make_sale(db_session, "Москва", "2026-02-01", "HoReCa")
     assert quality_counts(db_session) == {"unmatched": 2, "nomenclature": 0, "types": 1}
+
+
+def test_create_region_confirms_result_without_false_empty_success(
+    admin_client, db_session
+):
+    from app.models import Region
+
+    response = admin_client.post(
+        "/admin/regions/new", data={"name": "Урал", "csrf_token": CSRF_TOKEN}
+    )
+    assert response.status_code == 200
+    assert 'role="status">Запись создана.' in response.text
+    assert db_session.query(Region).filter_by(name="Урал").count() == 1
+    response = admin_client.post(
+        "/admin/regions/new", data={"name": "   ", "csrf_token": CSRF_TOKEN}
+    )
+    assert "Запись создана." not in response.text
+    assert db_session.query(Region).count() == 1

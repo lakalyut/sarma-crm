@@ -9,9 +9,6 @@
   {% if saved %}
     <div class="message ok">Сохранено.</div>
   {% endif %}
-  {% if error %}
-    <div class="message error">{{ error }}</div>
-  {% endif %}
 
   <form method="post" action="/admin/users/{{ user.id }}/edit">
     <div class="field">

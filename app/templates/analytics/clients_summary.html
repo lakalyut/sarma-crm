@@ -741,7 +741,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (pageCity) url.searchParams.set("city", pageCity);
         pageMonths.forEach(m => url.searchParams.append("months", m));
         getSelectedClients().forEach(c => url.searchParams.append("clients", c));
-        window.location.href = url.toString();
+        if (window.PulseLoading.navigation("Готовим отчёт…")) window.location.href = url.toString();
     }
 
     document.querySelectorAll(".ca-row-select").forEach(cb => {

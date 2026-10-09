@@ -765,3 +765,108 @@ def test_miniapp_boot_loading_and_retry(page):
     page.locator("#clients-list-content .pulse-loader").wait_for(state="visible")
     pending_clients.pop().fulfill(json=clients_body)
     page.locator(".client-summary-row").wait_for(state="visible")
+
+
+def test_web_detail_loading_error_retry_and_cache(page):
+    page.goto(
+        "https://pulse-ui.test/analytics/client-analysis?city=Иркутск&months=2026-09-01&tab=summary",
+        wait_until="networkidle",
+    )
+    pending = []
+    page.route("**/api/client-analysis/clients?**", lambda route: pending.append(route))
+    toggle = page.locator(
+        '[data-ca-toggle][data-level="type"][aria-expanded="false"]'
+    ).first
+    toggle.click()
+    page.locator(".ca-loading-feedback .pulse-loader").wait_for(state="visible")
+    assert len(pending) == 1
+    pending.pop().fulfill(status=503, json={"detail": "Ошибка"})
+    page.locator('.ca-loading-feedback [role="alert"]').wait_for(state="visible")
+    page.locator(".ca-loading-feedback button", has_text="Повторить").click()
+    page.locator(".ca-loading-feedback .pulse-loader").wait_for(state="visible")
+    assert len(pending) == 1
+    pending.pop().fulfill(json=[])
+    page.wait_for_function(
+        "!document.querySelector('.ca-loading-feedback .pulse-loader')"
+    )
+    assert page.locator(".ca-loading-feedback .message").count() == 0
+    page.locator(
+        '[data-ca-toggle][data-level="type"][aria-expanded="true"]'
+    ).last.click()
+    page.locator(
+        '[data-ca-toggle][data-level="type"][aria-expanded="false"]'
+    ).last.click()
+    assert not pending
+
+
+def test_native_save_preserves_submitter_validation_and_blocks_duplicates(page):
+    page.evaluate(
+        """() => {
+        const frame=document.createElement('iframe'); frame.name='native-save-target'; frame.hidden=true; document.body.append(frame);
+        const form=document.createElement('form'); form.id='native-save'; form.method='post'; form.action='/admin/test-save'; form.target=frame.name;
+        form.innerHTML='<input name="title" required><button id="save-button" name="operation" value="save" type="submit">Сохранить</button>';
+        document.querySelector('.app-shell').prepend(form);
+    }"""
+    )
+    pending = []
+    page.route("**/admin/test-save", lambda route: pending.append(route))
+    submit = "document.getElementById('native-save').requestSubmit(document.getElementById('save-button'));"
+    page.evaluate(submit)
+    assert not pending
+    assert page.locator("#save-button").get_attribute("aria-busy") is None
+    page.locator("#native-save input").fill("Название")
+    page.evaluate(
+        "document.getElementById('native-save').addEventListener('submit', e => e.preventDefault(), {once:true});"
+    )
+    page.evaluate(submit)
+    assert not pending
+    assert page.locator("#save-button").get_attribute("aria-busy") is None
+    page.evaluate(submit)
+    page.locator("#save-button .pulse-loader").wait_for(state="visible")
+    assert page.locator("#save-button").inner_text() == "Сохраняем…"
+    assert parse_qs(pending[0].request.post_data)["operation"] == ["save"]
+    page.evaluate(submit)
+    assert len(pending) == 1
+    page.evaluate(
+        "window.dispatchEvent(new PageTransitionEvent('pageshow', {persisted:true}));"
+    )
+    assert page.locator("#save-button").inner_text() == "Сохранить"
+    assert page.locator("#save-button").get_attribute("aria-busy") is None
+    pending.pop().fulfill(
+        content_type="text/html", body="<html><body>Сохранено</body></html>"
+    )
+    page.frame(name="native-save-target").wait_for_url("**/admin/test-save")
+
+
+def test_web_navigation_skips_modified_clicks_and_shows_loading(page):
+    started = []
+    page.on(
+        "console",
+        lambda msg: (
+            started.append(msg.text) if msg.text.startswith("navigation:") else None
+        ),
+    )
+    page.evaluate(
+        """() => {
+        const a=document.createElement('a'); a.id='navigate-test'; a.href='/admin/users'; a.textContent='Пользователи';
+        document.querySelector('.app-shell').prepend(a);
+        a.addEventListener('click', e => { if (e.ctrlKey) e.preventDefault(); });
+        // The DOM can't be queried while Playwright waits for a native navigation.
+        const shell=document.querySelector('.app-shell');
+        const observer=new MutationObserver(() => { if(shell.getAttribute('aria-busy') === 'true') console.log('navigation:busy'); });
+        observer.observe(shell, {attributes:true, attributeFilter:['aria-busy']});
+        a.dispatchEvent(new MouseEvent('click', {bubbles:true,ctrlKey:true,cancelable:true}));
+    }"""
+    )
+    assert not started
+    pending = []
+    page.route("**/admin/users", lambda route: pending.append(route))
+    page.evaluate("document.getElementById('navigate-test').click();")
+    # Native navigation starts after the old page has entered its busy state.
+    page.wait_for_timeout(100)
+    assert started
+    assert len(pending) == 1
+    pending.pop().fulfill(
+        content_type="text/html", body="<html><body>Пользователи</body></html>"
+    )
+    page.wait_for_url("**/admin/users")

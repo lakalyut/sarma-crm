@@ -20,3 +20,10 @@
 
 .pulse-loader { grid-column: 1 / -1; }
 .pulse-skeleton { display: block; flex-basis: 100%; height: 54px; border-radius: 10px; background: var(--bg-page); border: 1px solid var(--border); }
+
+.amb-web-content.pulse-loading-active { position: relative; }
+.amb-web-content > .pulse-loader, .ca-loading-feedback .pulse-loader { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; }
+.app-main .message.ok, .app-main .message.error, .amb-web-content .message.ok, .amb-web-content .message.error { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-radius: 10px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.message.ok { color: var(--success); }
+.message.error { color: var(--danger); }
+form:has([aria-busy="true"]) button[type="submit"] { cursor: progress; }

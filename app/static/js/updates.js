@@ -12,6 +12,5 @@
     editor.addEventListener('change', changed);
     send.addEventListener('submit', function (event) {
         if (dirty) event.preventDefault();
-        else btn.disabled = true;
     });
 })();

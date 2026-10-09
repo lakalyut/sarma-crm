@@ -1,7 +1,7 @@
 {% if error %}
-  <div class="message error">{{ error }}</div>
+  <div class="message error" role="alert">{{ error }}</div>
 {% endif %}
 
 {% if message %}
-  <div class="message ok">{{ message }}</div>
+  <div class="message ok" role="status">{{ message }}</div>
 {% endif %}
