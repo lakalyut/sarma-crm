@@ -13,6 +13,7 @@ on:
           - performance
           - disk
           - cache-prune
+          - cache-prune-all
           - journal-limit
           - recover
           - gitssh
@@ -97,16 +98,30 @@ jobs:
               sudo docker compose exec -T web python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status)"
               exit 0
             fi
-            if [ "${{ github.event.inputs.mode }}" = "cache-prune" ]; then
+            if [ "${{ github.event.inputs.mode }}" = "cache-prune" ] || [ "${{ github.event.inputs.mode }}" = "cache-prune-all" ]; then
               set -euo pipefail
               export LC_ALL=C
               cd /home/ubuntu/sarma-crm
               sudo docker compose exec -T web python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status)"
+              check_cache_cleanup_routes() {
+                for endpoint in sarma-crm.ru/ready guide-crm.ru/; do
+                  domain=${endpoint%%/*}
+                  curl --fail --silent --show-error --connect-timeout 5 --max-time 10 \
+                    --resolve "${domain}:443:127.0.0.1" "https://${endpoint}" >/dev/null
+                  printf 'HTTPS verified: %s\n' "$endpoint"
+                done
+              }
+              check_cache_cleanup_routes
               printf '\nBefore cache cleanup:\n'
               df -hT /
               sudo docker system df
               available_before=$(df -B1 --output=avail / | tail -n 1)
-              sudo docker builder prune --all --force --filter 'until=168h'
+              if [ "${{ github.event.inputs.mode }}" = "cache-prune-all" ]; then
+                # One-off cleanup of unused build cache of any age, not images or volumes.
+                sudo docker builder prune --all --force
+              else
+                sudo docker builder prune --all --force --filter 'until=168h'
+              fi
               printf '\nAfter cache cleanup:\n'
               df -hT /
               sudo docker system df
@@ -114,6 +129,7 @@ jobs:
               printf 'Root filesystem available-space change: %s bytes\n' "$((available_after - available_before))"
               sudo docker compose ps
               sudo docker compose exec -T web python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status)"
+              check_cache_cleanup_routes
               exit 0
             fi
             if [ "${{ github.event.inputs.mode }}" = "disk" ]; then
