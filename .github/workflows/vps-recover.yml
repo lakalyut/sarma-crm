@@ -8,6 +8,7 @@ on:
         type: choice
         options:
           - diag
+          - network-diag
           - routing-diag
           - routing-recover
           - performance
@@ -33,7 +34,34 @@ jobs:
       cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
+      - name: Network diagnostics (no SSH)
+        if: ${{ github.event.inputs.mode == 'network-diag' }}
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -uo pipefail
+          printf 'External checks from GitHub runner; failures are reported, not repaired.\n'
+          for domain in sarma-crm.ru guide-crm.ru; do
+            printf '\nDNS: %s\n' "$domain"
+            getent ahostsv4 "$domain" || true
+          done
+          if [ -n "$VPS_HOST" ]; then
+            for port in 22 80 443; do
+              printf '\nVPS TCP port %s\n' "$port"
+              nc -vz -w 5 "$VPS_HOST" "$port" 2>&1 || true
+            done
+          else
+            printf 'VPS_HOST is not configured; direct TCP checks skipped.\n'
+          fi
+          for url in http://sarma-crm.ru/ https://sarma-crm.ru/ready https://guide-crm.ru/; do
+            printf '\nPublic endpoint: %s\n' "$url"
+            curl --silent --show-error --connect-timeout 5 --max-time 10 \
+              --output /dev/null --write-out 'HTTP=%{http_code} remote_ip=%{remote_ip} total_seconds=%{time_total}\n' \
+              "$url" || printf 'curl failed with exit code %s\n' "$?"
+          done
+          printf '\nDiagnostic collection finished. A successful workflow does not imply healthy endpoints.\n'
       - name: SSH
+        if: ${{ github.event.inputs.mode != 'network-diag' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}

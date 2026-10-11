@@ -12,7 +12,10 @@ WORKFLOW = Path(__file__).resolve().parents[1] / ".github/workflows/vps-recover.
 @pytest.mark.parametrize("fail_health", [False, True])
 def test_cache_cleanup_mode(tmp_path, mode, fail_health):
     workflow = yaml.safe_load(WORKFLOW.read_text())
-    script = workflow["jobs"]["recover"]["steps"][0]["with"]["script"]
+    step = next(
+        step for step in workflow["jobs"]["recover"]["steps"] if step["name"] == "SSH"
+    )
+    script = step["with"]["script"]
     script = script.replace("${{ github.event.inputs.mode }}", mode)
     script = script.replace("cd /home/ubuntu/sarma-crm", f"cd {tmp_path}")
     mock_path = tmp_path / "bin"
