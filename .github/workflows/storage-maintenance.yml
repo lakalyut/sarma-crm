@@ -1,32 +1,27 @@
-name: VPS storage maintenance
+name: Selectel storage diagnostics
 
 on:
-  schedule:
-    # Sunday 03:00 Asia/Irkutsk = Saturday 19:00 UTC.
-    - cron: "0 19 * * 6"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: pulse-selectel
+  cancel-in-progress: false
+
 jobs:
-  maintenance:
+  diagnostics:
     runs-on: ubuntu-latest
-    concurrency:
-      group: sarma-crm-vps
-      cancel-in-progress: false
     steps:
-      - name: Clean aged build cache and retain backups
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          command_timeout: 15m
-          script: |
-            set -euo pipefail
-            cd /home/ubuntu/sarma-crm
-            sudo docker compose exec -T web python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status)"
-            df -h /
-            sudo docker builder prune --all --force --filter 'until=168h'
-            python3 scripts/backup_retention.py /home/ubuntu/sarma_backups --apply
-            df -h /
-            sudo docker system df
-            sudo docker compose exec -T web python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status)"
+      - uses: actions/checkout@v4
+      - name: Set up verified SSH access
+        env:
+          SELECTEL_SSH_PRIVATE_KEY: ${{ secrets.SELECTEL_SSH_PRIVATE_KEY }}
+        run: bash deploy/selectel/ssh-setup.sh
+      - name: Inspect shared server storage
+        run: |
+          ssh -F "$RUNNER_TEMP/pulse-ssh/config" pulse-selectel 'df -h /; docker system df; du -sh /root/pulse-backups /root/pulse-releases 2>/dev/null || true'
+      - name: Remove runner SSH credentials and encrypted temporary file
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/pulse-ssh" "$RUNNER_TEMP/pulse-backup.tar.gz.gpg"

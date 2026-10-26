@@ -2,57 +2,67 @@ name: Deploy (sarma-crm)
 
 on:
   workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulse-selectel
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    concurrency:
-      group: sarma-crm-vps
-      cancel-in-progress: false
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push' }}
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-
+    timeout-minutes: 40
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@v4
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            umask 077
-
-            cd /home/ubuntu/sarma-crm
-
-            git fetch --all
-            git reset --hard origin/main
-
-            sudo docker compose up -d db
-
-            sudo docker compose exec -T db bash -lc 'until pg_isready -U sarma -d sarma; do sleep 1; done'
-
-            mkdir -p /home/ubuntu/sarma_backups
-            backup_file="/home/ubuntu/sarma_backups/backup_$(date -u +%F_%H-%M-%S).sql.gz"
-            backup_pending="${backup_file}.tmp"
-            trap 'rm -f "$backup_pending"' EXIT
-            sudo docker compose exec -T db pg_dump -U sarma sarma | gzip > "$backup_pending"
-            gzip -t "$backup_pending"
-            mv "$backup_pending" "$backup_file"
-
-            sudo docker compose build web 
-
-            sudo docker compose run --rm web alembic upgrade head
-
-            # Update only Pulse's backend, then validate and reload the shared proxy.
-            sudo docker compose up -d --no-deps --wait --wait-timeout 120 web
-            bash scripts/reload_proxy.sh
-
-            sudo docker compose exec -T web python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=10)"
-            sudo docker compose exec -T web python -m app.release_updates
-
-            sudo docker image prune -f
-            python3 scripts/backup_retention.py /home/ubuntu/sarma_backups --apply
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Reject superseded deployment
+        run: |
+          set -euo pipefail
+          latest=$(git ls-remote origin refs/heads/main | cut -f1)
+          [ "$(git rev-parse HEAD)" = "$latest" ] || { echo 'This revision was superseded on main; deploy the latest successful CI run.'; exit 1; }
+      - name: Set up verified SSH access
+        env:
+          SELECTEL_SSH_PRIVATE_KEY: ${{ secrets.SELECTEL_SSH_PRIVATE_KEY }}
+        run: bash deploy/selectel/ssh-setup.sh
+      - name: Export, restore-test and encrypt backup
+        env:
+          PULSE_BACKUP_PASSPHRASE: ${{ secrets.PULSE_BACKUP_PASSPHRASE }}
+        run: bash deploy/selectel/export-backup.sh
+      - name: Save encrypted off-server backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulse-backup.tar.gz.gpg
+          if-no-files-found: error
+          retention-days: 30
+      - name: Package and deliver exact source revision
+        run: |
+          set -euo pipefail
+          revision=$(git rev-parse HEAD)
+          git archive --format=tar.gz -o "$RUNNER_TEMP/pulse-source.tar.gz" HEAD
+          ssh -F "$RUNNER_TEMP/pulse-ssh/config" pulse-selectel "mkdir -p /root/pulse-releases/$revision"
+          scp -F "$RUNNER_TEMP/pulse-ssh/config" "$RUNNER_TEMP/pulse-source.tar.gz" "pulse-selectel:/root/pulse-releases/$revision/source.tar.gz"
+          ssh -F "$RUNNER_TEMP/pulse-ssh/config" pulse-selectel "tar -xzf /root/pulse-releases/$revision/source.tar.gz -C /root/pulse-releases/$revision"
+      - name: Build and deploy Pulse on Selectel
+        run: |
+          set -euo pipefail
+          revision=$(git rev-parse HEAD)
+          ssh -F "$RUNNER_TEMP/pulse-ssh/config" pulse-selectel "bash /root/pulse-releases/$revision/deploy/selectel/deploy.sh $revision"
+      - name: Verify public HTTPS
+        run: curl --fail --silent --show-error --retry 3 --max-time 20 https://sarma-crm.ru/ready
+      - name: Remove runner SSH credentials and encrypted temporary file
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/pulse-ssh" "$RUNNER_TEMP/pulse-backup.tar.gz.gpg"

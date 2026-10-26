@@ -1,0 +1,38 @@
+services:
+  web:
+    image: ${PULSE_IMAGE:?PULSE_IMAGE is required}
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      TELEGRAM_API_BASE_URL: https://tg-relay.guide-crm.ru
+      TELEGRAM_RELAY_SECRET: ${TELEGRAM_RELAY_SECRET:-}
+      TELEGRAM_POLLING_ENABLED: ${PULSE_POLLING_ENABLED:-1}
+      PUBLIC_BASE_URL: https://sarma-crm.ru
+    ports:
+      - "127.0.0.1:8001:8000"
+    networks:
+      default:
+      guide:
+        aliases: [pulse-web]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  default:
+    external: true
+    name: sarma-crm_default
+  guide:
+    external: true
+    name: guide_bot_default

@@ -1,0 +1,39 @@
+name: Pulse encrypted backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily 03:40 Asia/Irkutsk (19:40 UTC on the previous day).
+    - cron: "40 19 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulse-selectel
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up verified SSH access
+        env:
+          SELECTEL_SSH_PRIVATE_KEY: ${{ secrets.SELECTEL_SSH_PRIVATE_KEY }}
+        run: bash deploy/selectel/ssh-setup.sh
+      - name: Export, restore-test and encrypt backup
+        env:
+          PULSE_BACKUP_PASSPHRASE: ${{ secrets.PULSE_BACKUP_PASSPHRASE }}
+        run: bash deploy/selectel/export-backup.sh
+      - name: Save encrypted off-server backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulse-backup.tar.gz.gpg
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove runner SSH credentials and encrypted temporary file
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/pulse-ssh" "$RUNNER_TEMP/pulse-backup.tar.gz.gpg"
