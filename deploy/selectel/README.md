@@ -49,7 +49,7 @@ If cutover fails, the script attempts to restart the prior image. It never
 restores an older database automatically: schema-incompatible migrations can
 require manual recovery. Both old images and release directories are retained;
 monitor storage through **Selectel storage diagnostics**. No global Docker prune
-runs on this shared host. Release notifications are not sent by deployment.
+runs on this shared host. The recovery announcement `pulse-restored-2026-10-26` is imported and queued once after HTTPS checks pass. The existing update sender respects user opt-outs; delivery status appears in `/admin/updates`.
 
 ## Backups and restore
 

@@ -53,5 +53,6 @@ rm -f /root/pulse-current.pending
 ln -s "$release" /root/pulse-current.pending
 mv -Tf /root/pulse-current.pending /root/pulse-current
 printf '%s\n' "$revision" > /root/sarma-crm/.deploy-revision
+"${compose[@]}" exec -T web python -m app.publish_recovery_update
 cutover=0
 echo "Pulse deployment healthy: $revision"
