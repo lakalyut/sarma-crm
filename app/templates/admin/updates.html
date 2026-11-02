@@ -1,7 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
+<link rel="stylesheet" href="{{ asset('css/updates.css') }}">
 <h1>Обновления</h1>
 <p class="page-subtitle">После выпуска обновления здесь появляется черновик. Проверьте текст и выберите получателей перед отправкой.</p>
+<h2>Сообщить о городах</h2>
+<p class="page-subtitle">Выберите города с загруженными продажами. Создастся черновик: проверьте текст и получателей перед отправкой.</p>
+{% if error %}<div class="message error">{{ error }}</div>{% endif %}
+{% if cities %}
+<form method="post" action="/admin/updates/cities">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="field"><span>Города</span>
+        <div class="city-update-list">
+        {% for city in cities %}
+            <label><input type="checkbox" name="cities" value="{{ city }}"> {{ city }}</label>
+        {% endfor %}
+        </div>
+    </div>
+    <button type="submit">Создать черновик</button>
+</form>
+{% else %}<p class="page-subtitle">Городов с загруженными продажами пока нет.</p>{% endif %}
+<h2>Объявления</h2>
 {% if updates %}
 <div class="sheet-wrapper"><div class="sheet-scroller">
 <table class="sheet-table">

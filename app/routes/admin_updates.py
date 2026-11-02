@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import ReleaseUpdate, UpdateDelivery
 from ..render import render
 from ..services import release_update_service as service
+from ..services.city_update_service import create_city_draft, imported_cities
 
 router = APIRouter(prefix="/admin/updates", dependencies=[Depends(require_admin)])
 
@@ -53,12 +54,40 @@ def updates(request: Request, db: Session = Depends(get_db)):
         {
             "title": "Обновления — Пульс",
             "statuses": service.STATUSES,
+            "cities": imported_cities(db),
             "updates": db.query(ReleaseUpdate)
             .order_by(ReleaseUpdate.id.desc())
             .limit(100)
             .all(),
         },
     )
+
+
+@router.post("/cities")
+def create_cities_update(
+    request: Request,
+    cities: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+):
+    try:
+        update = create_city_draft(db, cities)
+    except ValueError as exc:
+        db.rollback()
+        return render(
+            request,
+            "admin/updates.html",
+            {
+                "title": "Обновления — Пульс",
+                "statuses": service.STATUSES,
+                "cities": imported_cities(db),
+                "updates": db.query(ReleaseUpdate)
+                .order_by(ReleaseUpdate.id.desc())
+                .limit(100)
+                .all(),
+                "error": str(exc),
+            },
+        )
+    return RedirectResponse(f"/admin/updates/{update.id}", status_code=303)
 
 
 @router.get("/{update_id}")

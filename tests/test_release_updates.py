@@ -317,3 +317,75 @@ def test_disabled_user_cannot_use_settings(db_session, monkeypatch):
         "https://test",
     )
     assert sent == [(user.telegram_id, bot.DENY_TEXT)]
+
+
+def test_admin_selects_imported_cities_for_review_without_sending(
+    admin_client, db_session, monkeypatch
+):
+    from app.models import Sale
+
+    db_session.add_all([Sale(city="Иркутск"), Sale(city="Москва")])
+    db_session.commit()
+    sent = []
+    monkeypatch.setattr(svc, "send_update_message", lambda *args: sent.append(args))
+
+    page = admin_client.get("/admin/updates")
+    assert page.status_code == 200
+    assert 'value="Иркутск"' in page.text
+    assert 'value="Москва"' in page.text
+
+    response = admin_client.post(
+        "/admin/updates/cities",
+        data={"csrf_token": CSRF_TOKEN, "cities": ["Иркутск"]},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    update = db_session.query(ReleaseUpdate).one()
+    assert update.status == "draft"
+    assert "Иркутск" in update.body
+    assert "Москва" not in update.body
+    assert db_session.query(UpdateDelivery).count() == 0
+    assert sent == []
+    assert "Иркутск" in admin_client.get(response.headers["location"]).text
+
+
+def test_city_announcement_rejects_unloaded_city_and_empty_selection(
+    admin_client, db_session
+):
+    from app.models import Sale
+
+    db_session.add(Sale(city="Иркутск"))
+    db_session.commit()
+    for data in (
+        {"csrf_token": CSRF_TOKEN},
+        {"csrf_token": CSRF_TOKEN, "cities": "Новосибирск"},
+        {"csrf_token": CSRF_TOKEN, "cities": ["Иркутск", "Новосибирск"]},
+    ):
+        response = admin_client.post("/admin/updates/cities", data=data)
+        assert response.status_code == 200
+        assert "Выберите от 1 до 30 городов" in response.text
+    assert db_session.query(ReleaseUpdate).count() == 0
+
+
+def test_city_announcement_requires_admin_and_csrf(client, admin_client, db_session):
+    from app.models import Sale
+
+    db_session.add(Sale(city="Иркутск"))
+    db_session.commit()
+    assert (
+        admin_client.post(
+            "/admin/updates/cities", data={"cities": "Иркутск"}
+        ).status_code
+        == 403
+    )
+    client.cookies.clear()
+    client.cookies.set("csrf_token", CSRF_TOKEN)
+    assert (
+        client.post(
+            "/admin/updates/cities",
+            data={"cities": "Иркутск", "csrf_token": CSRF_TOKEN},
+            follow_redirects=False,
+        ).status_code
+        == 302
+    )
+    assert db_session.query(ReleaseUpdate).count() == 0
