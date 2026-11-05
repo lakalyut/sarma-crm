@@ -101,7 +101,9 @@ def test_resync_client_type_updates_all_rows(db_session):
     from app.models import Sale
 
     db_session.expire_all()
-    types = {s.type for s in db_session.query(Sale).filter(Sale.client == "Кафе В").all()}
+    types = {
+        s.type for s in db_session.query(Sale).filter(Sale.client == "Кафе В").all()
+    }
     assert types == {"HoReCa"}
 
     other = db_session.query(Sale).filter(Sale.client == "Кафе Другое").first()
@@ -140,5 +142,7 @@ def test_type_review_page_and_resync_route(admin_client, db_session):
     from app.models import Sale
 
     db_session.expire_all()
-    types = {s.type for s in db_session.query(Sale).filter(Sale.client == "Кафе Г").all()}
+    types = {
+        s.type for s in db_session.query(Sale).filter(Sale.client == "Кафе Г").all()
+    }
     assert types == {"HoReCa"}

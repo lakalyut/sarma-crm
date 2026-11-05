@@ -27,7 +27,9 @@ from ..utils.dates import parse_month
 
 def get_review_cities(db: Session) -> list[str]:
     """Города с продажами для фильтра ревизии."""
-    return sorted(city for (city,) in db.query(Sale.city).distinct() if city and city.strip())
+    return sorted(
+        city for (city,) in db.query(Sale.city).distinct() if city and city.strip()
+    )
 
 
 def get_type_drift_groups(db: Session, city: str | None = None) -> list[dict]:
@@ -51,7 +53,9 @@ def get_type_drift_groups(db: Session, city: str | None = None) -> list[dict]:
     # типа, которую надо показать и куда-то выровнять, а не потерять при
     # группировке.
     by_client: dict[tuple[str, str], dict[str | None, int]] = defaultdict(dict)
-    latest_by_client: dict[tuple[str, str], tuple[tuple[int, int], set[str | None]]] = {}
+    latest_by_client: dict[tuple[str, str], tuple[tuple[int, int], set[str | None]]] = (
+        {}
+    )
     for row in rows:
         city = row.city or "—"
         client = row.client or "—"
@@ -97,10 +101,14 @@ def get_type_drift_groups(db: Session, city: str | None = None) -> list[dict]:
                 ),  # то же самое, но только реальные значения — для выбора
                 "total_rows": total_rows,
                 "default_type": default_type,
-                "latest_month": f"{latest[0][0]:04d}-{latest[0][1]:02d}-01" if latest else None,
-                "latest_types": sorted(latest[1], key=lambda t: (t is None, t or ""))
-                if latest
-                else [],
+                "latest_month": (
+                    f"{latest[0][0]:04d}-{latest[0][1]:02d}-01" if latest else None
+                ),
+                "latest_types": (
+                    sorted(latest[1], key=lambda t: (t is None, t or ""))
+                    if latest
+                    else []
+                ),
             }
         )
 
