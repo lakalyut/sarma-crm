@@ -6,6 +6,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from .auth_models import SessionModel, User
 from .database import get_db
+from .observability import set_actor
 from .services.city_access_service import apply_city_scope
 
 
@@ -40,6 +41,7 @@ def get_current_user(
         return None
 
     apply_city_scope(db, user)
+    set_actor(user.id, user.role)
     return user
 
 

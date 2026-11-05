@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from ..auth_models import PasswordToken, User, default_expiry, new_password_token
+from ..observability import log_action
 
 
 def sha256_hex(value: str) -> str:
@@ -35,6 +36,8 @@ def issue_password_reset_link(db: Session, user: User, base_url: str) -> str:
         created_at=now,
     )
     db.add(pt)
+    user_id = user.id
     db.commit()
+    log_action("password_reset_link_created", target_id=user_id)
 
     return f"{base_url.rstrip('/')}/auth/set-password?token={raw_token}"

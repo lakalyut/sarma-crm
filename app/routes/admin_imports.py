@@ -9,6 +9,7 @@ from ..auth_deps import require_admin
 from ..auth_models import User
 from ..database import get_db
 from ..models import EventLog, Sale
+from ..observability import log_action
 from ..render import render
 from ..services.admin_workspace_service import recent_imports
 from ..services.cities_service import delete_empty_city, get_empty_cities
@@ -180,6 +181,7 @@ def imports_delete_confirm(
             error="По выбранным фильтрам ничего не найдено.",
         )
 
-    db.query(Sale).filter(*filters).delete(synchronize_session=False)
+    deleted = db.query(Sale).filter(*filters).delete(synchronize_session=False)
     db.commit()
+    log_action("sales_deleted", rows_deleted=deleted)
     return _delete_page(request, db, message=f"Удалено строк: {preview_count}")

@@ -7,7 +7,7 @@ from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from ..models import Product, Sale
-from ..observability import import_phase
+from ..observability import import_phase, log_action
 from ..product_parser import ProductMatcher, build_canonical_name, extract_weight
 from .event_log_service import log_import
 
@@ -80,4 +80,10 @@ def import_sales(
     except Exception:
         db.rollback()
         raise
+    log_action(
+        "sales_imported",
+        user_id=user_id,
+        rows_imported=imported,
+        rows_unmatched=unmatched,
+    )
     return imported, unmatched

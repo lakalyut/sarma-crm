@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from .auth_models import User
 from .database import get_db
+from .observability import set_actor
 
 MAX_AUTH_AGE_SECONDS = 24 * 60 * 60
 
@@ -121,6 +122,8 @@ def get_current_ambassador(
     )
     if not user:
         raise HTTPException(status_code=403, detail="Пользователь не найден")
+
+    set_actor(user.id, user.role)
 
     if not user.first_name:
         raise HTTPException(

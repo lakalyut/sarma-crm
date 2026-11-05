@@ -14,6 +14,7 @@ from .auth_deps import get_current_user
 from .auth_routes import router as auth_router
 from .csrf import attach_csrf_cookie, csrf_guard, get_csrf_token
 from .database import Base, SessionLocal, engine
+from .logging_config import configure_logging
 from .observability import RequestMetricsMiddleware
 from .routes.admin_abc import router as admin_abc_router
 from .routes.admin_imports import router as admin_imports_router
@@ -44,6 +45,7 @@ from .telegram_poller import stop as stop_telegram_poller
 from .templating import templates
 
 load_dotenv()
+configure_logging()
 
 AUTO_CREATE_SCHEMA = os.getenv("AUTO_CREATE_SCHEMA", "0") == "1"
 if AUTO_CREATE_SCHEMA:
@@ -155,4 +157,8 @@ def not_found_handler(request: Request, exc):
 
 @app.exception_handler(Exception)
 def server_error_handler(request: Request, exc):
-    return _render_error(request, "errors/500.html", 500)
+    response = _render_error(request, "errors/500.html", 500)
+    request_id = request.scope.get("pulse_request_id")
+    if request_id:
+        response.headers["X-Request-ID"] = request_id
+    return response

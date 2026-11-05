@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from ..database import SessionLocal
+from ..observability import log_exception
 from ..services.telegram_bot_service import handle_update
 
 router = APIRouter()
@@ -34,10 +35,8 @@ async def telegram_webhook(request: Request):
         try:
             handle_update(db, body, base_url)
         except Exception as exc:  # noqa: BLE001
-            # В проекте нет logging-инфраструктуры (не заводим её здесь отдельной
-            # задачей) — но ответ всё равно должен быть 200, иначе Telegram будет
-            # бесконечно ретраить один и тот же update.
-            print(f"telegram webhook error: {exc!r}")
+            # Ответ 200 предотвращает повторную доставку сломанного update.
+            log_exception("telegram_webhook_error", exc)
     finally:
         db.close()
 

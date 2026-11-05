@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from html import unescape
 
@@ -8,6 +9,7 @@ from conftest import CSRF_TOKEN, signed_init_data
 from app.auth_models import SessionModel, User, default_expiry
 from app.models import Product, Sale, Visit, VisitProduct
 from app.services.leaderboard_service import get_leaderboard
+from tests.test_observability import records
 
 
 @pytest.fixture
@@ -99,7 +101,10 @@ def test_enabled_user_records_two_cities_and_appears_in_leaderboard(
     assert client.get("/analytics/client-analysis").status_code == 200
 
 
-def test_revocation_restores_demo_and_preserves_history(client, db_session, visitor):
+def test_revocation_restores_demo_and_preserves_history(
+    client, db_session, visitor, caplog
+):
+    caplog.set_level(logging.INFO, logger="uvicorn.error.pulse")
     user, product = visitor
     client.post("/ambassador/app/visits", headers=headers(user), json=payload(product))
     user.can_create_visits = False
@@ -113,6 +118,14 @@ def test_revocation_restores_demo_and_preserves_history(client, db_session, visi
     assert response.json()["demo"] is True
     assert response.json()["visit_id"] is None
     assert db_session.query(Visit).count() == 1
+    actions = records(caplog, "user_action")
+    assert len(actions) == 1
+    assert actions[0]["action"] == "visit_created"
+    assert actions[0]["user_id"] == user.id
+    assert actions[0]["target_id"] == db_session.query(Visit).one().id
+    requests = records(caplog, "http_request")
+    assert all(row["user_id"] == user.id for row in requests)
+    assert actions[0]["request_id"] == requests[0]["request_id"]
     assert get_leaderboard(db_session) == []
     assert (
         client.post("/ambassador/app/verify", headers=headers(user)).json()[

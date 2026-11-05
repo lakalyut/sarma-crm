@@ -23,6 +23,7 @@ import os
 import threading
 
 from .database import SessionLocal
+from .observability import log_exception
 from .services.telegram_bot_service import handle_update
 from .telegram_client import delete_webhook, get_updates
 
@@ -42,7 +43,7 @@ def _process_update(db, update: dict, base_url: str) -> None:
         handle_update(db, update, base_url)
     except Exception as exc:  # noqa: BLE001 — тот же принцип, что был в вебхуке:
         # один сломанный апдейт не должен уронить весь цикл поллинга.
-        print(f"telegram poller: handle_update error: {exc!r}")
+        log_exception("telegram_update_error", exc)
 
 
 def _poll_once(offset: int | None, base_url: str) -> tuple[list[dict], int | None]:
@@ -59,7 +60,7 @@ def _poll_loop() -> None:
     try:
         delete_webhook()
     except Exception as exc:  # noqa: BLE001
-        print(f"telegram poller: deleteWebhook error: {exc!r}")
+        log_exception("telegram_delete_webhook_error", exc)
 
     offset: int | None = None
     base_url = _public_base_url()
@@ -69,7 +70,7 @@ def _poll_loop() -> None:
             updates, offset = _poll_once(offset, base_url)
         except Exception as exc:  # noqa: BLE001 — сеть моргнула — не падаем,
             # пробуем ещё раз после паузы.
-            print(f"telegram poller: getUpdates error: {exc!r}")
+            log_exception("telegram_poll_error", exc, retry_in_seconds=_ERROR_BACKOFF)
             _stop_event.wait(_ERROR_BACKOFF)
             continue
 

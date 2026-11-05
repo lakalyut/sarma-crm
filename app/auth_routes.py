@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
 
+from .auth_deps import get_current_user
 from .auth_models import (
     LoginAttempt,
     PasswordToken,
@@ -17,6 +18,7 @@ from .auth_models import (
 from .auth_security import hash_password, verify_password
 from .csrf import attach_csrf_cookie, get_csrf_token
 from .database import get_db
+from .observability import log_action, set_actor
 from .templating import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -65,6 +67,7 @@ def login(
         .count()
     )
     if recent_attempts >= LOGIN_ATTEMPT_LIMIT:
+        log_action("login", outcome="blocked", reason="rate_limit")
         return _render(
             request,
             "auth/login.html",
@@ -78,6 +81,7 @@ def login(
     if not user or not user.is_active or not user.password_hash:
         db.add(LoginAttempt(email=email))
         db.commit()
+        log_action("login", outcome="rejected", reason="invalid_credentials")
         return _render(
             request,
             "auth/login.html",
@@ -87,6 +91,7 @@ def login(
     if not verify_password(password, user.password_hash):
         db.add(LoginAttempt(email=email))
         db.commit()
+        log_action("login", outcome="rejected", reason="invalid_credentials")
         return _render(
             request,
             "auth/login.html",
@@ -98,7 +103,9 @@ def login(
         id=sid, user_id=user.id, expires_at=default_expiry(hours=24 * 14)
     )
     db.add(sess)
+    set_actor(user.id, user.role)
     db.commit()
+    log_action("login")
 
     landing = "/ambassador" if user.role == "ambassador" else "/"
     resp = RedirectResponse(url=landing, status_code=HTTP_302_FOUND)
@@ -116,12 +123,15 @@ def login(
 
 @router.post("/logout")
 def logout(db: Session = Depends(get_db), request: Request = None):
+    user = get_current_user(request, db) if request else None
     sid = request.cookies.get("session_id") if request else None
     if sid:
         db.query(SessionModel).filter(SessionModel.id == sid).delete()
         db.commit()
 
     resp = RedirectResponse(url="/auth/login", status_code=HTTP_302_FOUND)
+    if user:
+        log_action("logout")
     resp.delete_cookie("session_id", path="/")
     return resp
 
@@ -194,7 +204,9 @@ def set_password(
     user.password_hash = hash_password(password)
     pt.used_at = datetime.now(UTC)
 
+    set_actor(user.id, user.role)
     db.commit()
+    log_action("password_set")
 
     return _render(
         request,

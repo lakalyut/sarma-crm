@@ -10,7 +10,7 @@ from sqlalchemy.exc import OperationalError
 
 from app.database import engine, get_db
 from app.main import app
-from app.observability import RequestMetricsMiddleware
+from app.observability import RequestMetricsMiddleware, set_actor
 from tests.test_import_xlsx import CSRF_TOKEN, XLSX_MIME, build_xlsx
 
 
@@ -31,6 +31,7 @@ def test_concurrent_sync_sql_counts_are_isolated(caplog):
 
     @test_app.get("/measure/{count}")
     def measure(count: int):
+        set_actor(count, "user")
         barrier.wait(timeout=5)
         with engine.connect() as conn:
             for _ in range(count):
@@ -46,6 +47,7 @@ def test_concurrent_sync_sql_counts_are_isolated(caplog):
     assert all(response.status_code == 200 for response in responses)
     logs = records(caplog, "http_request")
     assert sorted(record["sql_count"] for record in logs) == [2, 5]
+    assert all(record["user_id"] == record["sql_count"] for record in logs)
     assert len({record["request_id"] for record in logs}) == 2
     assert all(record["route"] == "/measure/{count}" for record in logs)
     assert all(

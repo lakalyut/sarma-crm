@@ -1,15 +1,14 @@
 """Persistent queue, one sender thread in the existing single-worker deployment."""
 
-import logging
 import os
 import threading
 
 from .database import SessionLocal
+from .observability import log_exception
 from .services.release_update_service import deliver_next, recover_interrupted
 
 _stop = threading.Event()
 _thread = None
-logger = logging.getLogger(__name__)
 
 
 def _run():
@@ -22,8 +21,8 @@ def _run():
                     recover_interrupted(db)
                     recover = False
                 delay = deliver_next(db)
-        except Exception:  # noqa: BLE001
-            logger.error("Update sender database error; will retry")
+        except Exception as exc:  # noqa: BLE001
+            log_exception("update_sender_error", exc, retry_in_seconds=delay)
             recover = True
         _stop.wait(delay)
 

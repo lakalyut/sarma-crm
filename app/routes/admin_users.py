@@ -7,6 +7,7 @@ from ..auth_deps import require_admin
 from ..auth_models import PasswordToken, SessionModel, User, UserCity
 from ..database import get_db
 from ..models import EventLog, Visit
+from ..observability import log_action
 from ..render import render
 from ..services.admin_users_service import issue_password_reset_link
 from ..services.sales_options_service import get_cities
@@ -115,7 +116,10 @@ def user_new_submit(
             UserCity(city=city) for city in sorted(set(assigned_cities))
         ]
     db.add(user)
+    db.flush()
+    target_id = user.id
     db.commit()
+    log_action("user_created", target_id=target_id, assigned_role=role)
     db.refresh(user)
 
     link = issue_password_reset_link(db, user, str(request.base_url))
@@ -242,6 +246,7 @@ def user_edit_submit(
     user.last_name = last_name or None
     user.can_create_visits = can_create_visits if user.role == "user" else False
     db.commit()
+    log_action("user_updated", target_id=user_id)
 
     return RedirectResponse(
         f"/admin/users/{user.id}/edit?saved=1", status_code=HTTP_302_FOUND
@@ -271,7 +276,9 @@ def user_toggle_active(
         )
 
     user.is_active = not user.is_active
+    active = user.is_active
     db.commit()
+    log_action("user_active_changed", target_id=user_id, active=active)
     return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 
 
@@ -332,6 +339,7 @@ def user_change_role(
     if role != "user":
         user.can_create_visits = False
     db.commit()
+    log_action("user_role_changed", target_id=user_id, assigned_role=role)
     return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)
 
 
@@ -381,5 +389,6 @@ def user_delete(
     db.query(EventLog).filter(EventLog.user_id == user.id).update({"user_id": None})
     db.delete(user)
     db.commit()
+    log_action("user_deleted", target_id=user_id)
 
     return RedirectResponse("/admin/users", status_code=HTTP_302_FOUND)

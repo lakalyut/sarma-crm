@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from ..auth_models import User
 from ..models import AbcSegment, Product, ProductAbcRating, Visit, VisitProduct
+from ..observability import log_action
 from . import sales_options_service
 from .abc_service import guess_default_segment
 
@@ -312,7 +313,10 @@ def create_visit(
 
     _set_visit_products(db, visit.id, product_ids)
 
+    visit_id = visit.id
+    actor_id = ambassador.id
     db.commit()
+    log_action("visit_created", target_id=visit_id, user_id=actor_id)
     db.refresh(visit)
     return visit
 
@@ -371,12 +375,16 @@ def update_visit(
 
     _set_visit_products(db, visit.id, product_ids)
 
+    visit_id = visit.id
     db.commit()
+    log_action("visit_updated", target_id=visit_id)
     db.refresh(visit)
     return visit
 
 
 def delete_visit(db: Session, visit: Visit) -> None:
+    visit_id = visit.id
     db.query(VisitProduct).filter(VisitProduct.visit_id == visit.id).delete()
     db.delete(visit)
     db.commit()
+    log_action("visit_deleted", target_id=visit_id)
