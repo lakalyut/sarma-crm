@@ -24,12 +24,30 @@ def _sale(db_session, city, client, sale_type, month, weight=10.0):
 
 
 def test_no_drift_when_type_consistent(db_session):
-    from app.services.type_review_service import get_type_drift_groups
+    from app.services.type_review_service import (
+        get_review_cities,
+        get_type_drift_groups,
+    )
 
     _sale(db_session, "Иркутск", "Кафе А", "HoReCa", "2026-07-01")
     _sale(db_session, "Иркутск", "Кафе А", "HoReCa", "2026-08-01")
 
     assert get_type_drift_groups(db_session) == []
+    assert get_review_cities(db_session) == []
+
+
+def test_review_cities_only_include_actionable_drift(db_session):
+    from app.services.type_review_service import get_review_cities, resync_client_type
+
+    _sale(db_session, "Иркутск", "Кафе А", "HoReCa", "2026-07-01")
+    _sale(db_session, "Иркутск", "Кафе А", None, "2026-08-01")
+    _sale(db_session, "Ангарск", "Кафе Б", "Розница", "2026-07-01")
+    _sale(db_session, "Братск", "Кафе В", None, "2026-07-01")
+    _sale(db_session, "Братск", "Кафе В", "", "2026-08-01")
+
+    assert get_review_cities(db_session) == ["Иркутск"]
+    resync_client_type(db_session, "Иркутск", "Кафе А", "HoReCa")
+    assert get_review_cities(db_session) == []
 
 
 def test_drift_detected_and_default_is_majority(db_session):

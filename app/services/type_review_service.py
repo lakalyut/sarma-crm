@@ -26,9 +26,21 @@ from ..utils.dates import parse_month
 
 
 def get_review_cities(db: Session) -> list[str]:
-    """Города с продажами для фильтра ревизии."""
+    """Города, где есть хотя бы один клиент с исправляемым расхождением."""
+    rows = db.query(Sale.city, Sale.client, Sale.type).group_by(
+        Sale.city, Sale.client, Sale.type
+    )
+    types_by_client: dict[tuple[str, str | None], set[str | None]] = defaultdict(set)
+    for city, client, point_type in rows:
+        if city and city.strip():
+            types_by_client[(city, client)].add(point_type)
+
     return sorted(
-        city for (city,) in db.query(Sale.city).distinct() if city and city.strip()
+        {
+            city
+            for (city, _), types in types_by_client.items()
+            if len(types) > 1 and any(types)
+        }
     )
 
 
