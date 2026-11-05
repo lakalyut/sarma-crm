@@ -11,12 +11,25 @@
     данные из XLSX не трогаются.
 </div>
 
+<form method="get" action="/admin/point-types/review" class="filters" style="margin-bottom: 16px;">
+    <div class="field filter-field">
+        <label for="review-city">Город</label>
+        <select id="review-city" name="city" class="js-custom-select">
+            <option value="">Все города</option>
+            {% for city in cities %}
+                <option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn-secondary">Показать</button>
+</form>
+
 {% if resynced is not none %}
     <div class="message ok">Выровнено продаж: {{ resynced }}.</div>
 {% endif %}
 
 {% if not groups %}
-    <div class="message ok">Расхождений по типам точек не найдено 🎉</div>
+    <div class="message ok">Расхождений по типам точек{% if selected_city %} в городе {{ selected_city }}{% endif %} не найдено 🎉</div>
 {% else %}
     <div class="message error">
         Клиентов с расхождением: <b>{{ groups|length }}</b>, строк продаж под ними: <b>{{ total }}</b>.
@@ -30,6 +43,7 @@
                         <th>Город</th>
                         <th>Клиент</th>
                         <th>Встречавшиеся типы (строк)</th>
+                        <th>Тип в последнем месяце продаж</th>
                         <th>Действие</th>
                     </tr>
                 </thead>
@@ -44,9 +58,16 @@
                                 {% endfor %}
                             </td>
                             <td>
+                                {% if g.latest_month %}
+                                    {{ g.latest_month|format_month }}:<br>
+                                    {% for t in g.latest_types %}{{ t or "— (пусто)" }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                {% else %}Период не указан{% endif %}
+                            </td>
+                            <td>
                                 <form method="post" action="/admin/point-types/review/resync" style="margin:0; display:flex; align-items:center; gap:6px;">
                                     <input type="hidden" name="city" value="{{ g.city }}">
                                     <input type="hidden" name="client" value="{{ g.client }}">
+                                    <input type="hidden" name="filter_city" value="{{ selected_city }}">
                                     <select name="correct_type" class="js-custom-select">
                                         {% for t, cnt in g.type_options %}
                                             <option value="{{ t }}" {% if t == g.default_type %}selected{% endif %}>{{ t }} ({{ cnt }})</option>

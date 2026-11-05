@@ -1,6 +1,8 @@
 """Ревизия типов точек — детект клиентов с разными `Sale.type` от месяца к
 месяцу + ручное выравнивание. См. `services/type_review_service.py`."""
 
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -9,7 +11,11 @@ from starlette.status import HTTP_303_SEE_OTHER
 from ..auth_deps import require_admin
 from ..database import get_db
 from ..render import render
-from ..services.type_review_service import get_type_drift_groups, resync_client_type
+from ..services.type_review_service import (
+    get_review_cities,
+    get_type_drift_groups,
+    resync_client_type,
+)
 
 router = APIRouter(prefix="/admin/point-types", tags=["admin-point-types"])
 
@@ -19,17 +25,20 @@ _REVIEW_URL = "/admin/point-types/review"
 @router.get("/review")
 def type_review(
     request: Request,
+    city: str = "",
     resynced: int = -1,
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
-    groups = get_type_drift_groups(db)
+    groups = get_type_drift_groups(db, city=city or None)
     return render(
         request,
         "admin/type_review.html",
         {
             "title": "Ревизия типов точек — Пульс",
             "groups": groups,
+            "cities": get_review_cities(db),
+            "selected_city": city,
             "total": sum(g["total_rows"] for g in groups),
             "resynced": resynced if resynced >= 0 else None,
         },
@@ -41,10 +50,12 @@ def type_review_resync(
     city: str = Form(...),
     client: str = Form(...),
     correct_type: str = Form(...),
+    filter_city: str = Form(""),
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
     n = resync_client_type(db, city, client, correct_type)
     return RedirectResponse(
-        f"{_REVIEW_URL}?resynced={n}", status_code=HTTP_303_SEE_OTHER
+        f"{_REVIEW_URL}?{urlencode({'resynced': n, 'city': filter_city})}",
+        status_code=HTTP_303_SEE_OTHER,
     )

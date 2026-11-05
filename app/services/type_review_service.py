@@ -22,33 +22,52 @@ from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from ..models import Sale
+from ..utils.dates import parse_month
 
 
-def get_type_drift_groups(db: Session) -> list[dict]:
+def get_review_cities(db: Session) -> list[str]:
+    """Города с продажами для фильтра ревизии."""
+    return sorted(city for (city,) in db.query(Sale.city).distinct() if city and city.strip())
+
+
+def get_type_drift_groups(db: Session, city: str | None = None) -> list[dict]:
     """(город, клиент), у которых `Sale.type` принимает больше одного
-    значения за всю историю — кандидаты на выравнивание. Один SQL-запрос,
-    строк в результате — по числу уникальных троек (город, клиент, тип), не
-    по числу продаж: на реалистичных объёмах это тысячи, не десятки тысяч."""
-    rows = (
-        db.query(
-            Sale.city,
-            Sale.client,
-            Sale.type,
-            func.count(Sale.id).label("cnt"),
-        )
-        .group_by(Sale.city, Sale.client, Sale.type)
-        .all()
+    значения за всю историю — кандидаты на выравнивание. Один SQL-запрос;
+    строк в результате — по числу уникальных (город, клиент, тип, месяц),
+    а не по числу продаж."""
+    query = db.query(
+        Sale.city,
+        Sale.client,
+        Sale.type,
+        Sale.month,
+        func.count(Sale.id).label("cnt"),
     )
+    if city:
+        query = query.filter(Sale.city == city)
+    rows = query.group_by(Sale.city, Sale.client, Sale.type, Sale.month).all()
 
     # Сохраняем `type=None` как есть (не подменяем плейсхолдером) — регионы,
     # которые вообще не присылают тип, дают именно NULL, это тоже «версия»
     # типа, которую надо показать и куда-то выровнять, а не потерять при
     # группировке.
     by_client: dict[tuple[str, str], dict[str | None, int]] = defaultdict(dict)
+    latest_by_client: dict[tuple[str, str], tuple[tuple[int, int], set[str | None]]] = {}
     for row in rows:
         city = row.city or "—"
         client = row.client or "—"
-        by_client[(city, client)][row.type] = row.cnt
+        key = (city, client)
+        counts = by_client[key]
+        counts[row.type] = counts.get(row.type, 0) + row.cnt
+
+        # Sale.month — период продаж, а не время ручного исправления. Данные
+        # хранятся и в ISO, и в русском формате: сравниваем разобранные месяцы.
+        period = parse_month(row.month)
+        if period:
+            previous = latest_by_client.get(key)
+            if previous is None or period > previous[0]:
+                latest_by_client[key] = (period, {row.type})
+            elif period == previous[0]:
+                previous[1].add(row.type)
 
     groups = []
     for (city, client), counts_by_type in by_client.items():
@@ -64,6 +83,7 @@ def get_type_drift_groups(db: Session) -> list[dict]:
 
         default_type = max(non_null_counts.items(), key=lambda kv: kv[1])[0]
         total_rows = sum(counts_by_type.values())
+        latest = latest_by_client.get((city, client))
 
         groups.append(
             {
@@ -77,6 +97,10 @@ def get_type_drift_groups(db: Session) -> list[dict]:
                 ),  # то же самое, но только реальные значения — для выбора
                 "total_rows": total_rows,
                 "default_type": default_type,
+                "latest_month": f"{latest[0][0]:04d}-{latest[0][1]:02d}-01" if latest else None,
+                "latest_types": sorted(latest[1], key=lambda t: (t is None, t or ""))
+                if latest
+                else [],
             }
         )
 
