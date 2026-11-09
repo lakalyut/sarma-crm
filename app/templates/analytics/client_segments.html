@@ -1,0 +1,61 @@
+{% extends base_template|default('base.html') %}
+{% block content %}
+<div id="client-segments">
+<h1>ABC / XYZ клиентов</h1>
+{% include "includes/client_tabs.html" %}
+<form method="get" class="filters-card">
+    <div class="filters-grid">
+        <div class="field"><label for="segments-city">Город</label>
+            <select id="segments-city" name="city"><option value="">Выберите город</option>{% for city in cities %}<option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>{% endfor %}</select>
+        </div>
+        <div class="field"><label for="segments-length">Период</label><select id="segments-length" name="length"><option value="6" {% if not report or report.length == 6 %}selected{% endif %}>6 полных месяцев</option><option value="12" {% if report and report.length == 12 %}selected{% endif %}>12 полных месяцев</option></select></div>
+        {% if report %}<div class="field"><label for="segments-end">По месяц включительно</label><select id="segments-end" name="end">{% for month in ([report.end] + report.end_options)|unique %}<option value="{{ month }}" {% if month == report.end %}selected{% endif %}>{{ (month ~ '-01')|format_month }}</option>{% endfor %}</select></div>{% endif %}
+    </div>
+    <label class="segment-confirm"><input type="checkbox" name="complete" value="true" {% if report and report.complete %}checked{% endif %}> Подтверждаю, что отчёты города за выбранный период загружены полностью</label>
+    <button type="submit" class="btn">Рассчитать</button>
+    <p id="segments-pending" role="status" hidden>Фильтры изменены. Нажмите «Рассчитать», чтобы обновить результаты.</p>
+</form>
+{% if report %}
+<p class="segment-context">{{ (report.window[0] ~ '-01')|format_month }} — {{ (report.end ~ '-01')|format_month }} · Объём положительных отгрузок, кг</p>
+{% if report.missing %}<div class="message error">Нет данных города за {% for month in report.missing %}{{ (month ~ '-01')|format_month }}{% if not loop.last %}, {% endif %}{% endfor %}. XYZ недоступен. ABC рассчитан по имеющимся данным периода.</div>
+{% elif not report.complete %}<div class="message">Для XYZ подтвердите полноту загрузки отчётов. Наличие строк в БД само по себе не подтверждает полноту месяца.</div>{% endif %}
+{% if report.returns %}<div class="message">Из расчёта исключены строки с отрицательным весом или количеством — {{ report.returns }}. Показан объём положительных отгрузок.</div>{% endif %}
+{% if report.invalid_months %}<div class="message error">Обнаружены группы данных с нераспознанным месяцем — {{ report.invalid_months }}. Проверьте исходные отчёты.</div>{% endif %}
+<div class="segment-totals"><span>Клиентов с закупками <strong>{{ report.active_clients }}</strong></span><span>Объём <strong>{{ report.total_volume|format_ru_number(2) }} кг</strong></span></div>
+{% set reasons = {'insufficient': 'Недостаточно истории', 'missing': 'Есть пропуски данных города', 'unconfirmed': 'Полнота отчётов не подтверждена', 'inactive': 'Нет закупок за период', 'invalid': 'Есть нераспознанные месяцы'} %}
+<div class="segment-layout">
+    <section aria-label="Матрица ABC XYZ">
+        <h2>Сегменты</h2>
+        <div class="segment-matrix">
+        {% for abc in 'ABC' %}{% for xyz in 'XYZ' %}{% set code = abc ~ xyz %}{% set cell = report.matrix[code] %}
+            <button type="button" class="segment-cell" data-segment="{{ code }}" aria-pressed="false"><strong>{{ code }}</strong><span>{{ cell.count }} кл. · {{ cell.share|format_ru_number(1) }}%</span></button>
+        {% endfor %}{% endfor %}
+        </div>
+        <div class="segment-reasons">{% for code, count in report.reasons.items() %}<button type="button" class="btn btn-secondary" data-segment="{{ code }}" aria-pressed="false">{{ reasons[code] }} · {{ count }}</button>{% endfor %}</div>
+    </section>
+    <section class="segment-list" aria-label="Список клиентов">
+        <div class="segment-list-controls"><label for="segments-search">Поиск клиента<input id="segments-search" type="search" placeholder="Название клиента"></label><button type="button" class="btn btn-secondary" data-segment="" aria-pressed="true">Все сегменты</button></div>
+        <p id="segments-count" role="status" aria-live="polite"></p>
+        <div class="sheet-scroller"><table class="sheet-table">
+            <thead><tr><th>Клиент и динамика</th><th>Класс</th><th>Объём, кг ↓</th><th>Доля города</th><th>CV</th><th>Закупки</th></tr></thead>
+            <tbody>{% for row in report.rows %}<tr data-client="{{ row.client }}" data-class="{{ row.segment }}">
+                <td><details class="segment-client"><summary>{{ row.client }}</summary>
+                    <p>Первое появление в данных {{ (row.first_seen ~ '-01')|format_month }}</p>
+                    <div class="segment-months">{% for month in report.window %}<div><span>{{ (month ~ '-01')|format_month }}</span><strong>{% if month in report.missing %}Нет данных{% else %}{{ row.monthly[loop.index0]|format_ru_number(2) }} кг{% endif %}</strong></div>{% endfor %}</div>
+                    {% if row.reason %}<p>{{ reasons[row.reason] }}</p>{% else %}<p>CV {{ row.cv|format_ru_number(1) }}%. {{ {'X': 'Стабильный месячный объём.', 'Y': 'Умеренные колебания месячного объёма.', 'Z': 'Высокие колебания месячного объёма.'}[row.xyz] }}</p>{% endif %}
+                </details></td>
+                <td>{{ row.abc or '—' }}{{ row.xyz or '—' }}</td><td>{{ row.volume|format_ru_number(2) }}</td><td>{{ row.share|format_ru_number(2) }}%</td><td>{% if row.cv is not none %}{{ row.cv|format_ru_number(1) }}%{% else %}—{% endif %}</td><td>{{ row.active_months }}/{{ report.length }} мес.</td>
+            </tr>{% endfor %}</tbody>
+        </table></div>
+        <p id="segments-empty" {% if report.rows %}hidden{% endif %}>Клиентов по выбранным условиям нет.</p>
+    </section>
+</div>
+<details class="segment-method"><summary>Как рассчитываются классы</summary>
+    <p>ABC показывает вклад клиента в положительный объём отгрузок города. Клиенты упорядочены по объёму, при равенстве — по названию. A — до достижения 80% накопленной доли, B — до 95%, C — остальные. Клиент, пересекающий границу, остаётся в начавшемся классе.</p>
+    <p>XYZ показывает колебания месячного объёма. CV — стандартное отклонение за все месяцы окна, делённое на среднее. X ≤ 25%, Y ≤ 50%, Z &gt; 50%. В полном отчёте отсутствие закупок клиента считается нулём. При короткой истории или пропусках отчётов XYZ не присваивается.</p>
+    <p>Клиенты объединяются по названию внутри города, включая разные типы точки. Сопоставление товара со справочником не меняет вес отгрузки. Поиск и выбор сегмента сохраняют исходную базу расчёта. Сезонность и тренд отдельно не корректируются.</p>
+</details>
+{% else %}<p>Выберите город для расчёта сегментов клиентов.</p>{% endif %}
+</div>
+<script src="{{ asset('js/client_segments.js') }}" defer></script>
+{% endblock %}

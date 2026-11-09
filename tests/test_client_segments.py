@@ -1,0 +1,145 @@
+from datetime import date
+
+import pytest
+
+from app.models import Sale
+from app.services.client_segments_service import build_client_segments
+
+
+def add_sales(db, client, weights, start=5, city="СПБ", sale_type="HoReCa"):
+    for offset, weight in enumerate(weights):
+        db.add(
+            Sale(
+                city=city,
+                client=client,
+                type=sale_type,
+                month=f"2026-{start + offset:02d}-01",
+                weight=weight,
+                qty=1,
+            )
+        )
+    db.commit()
+
+
+def report(db, **kwargs):
+    return build_client_segments(db, "СПБ", today=date(2026, 11, 9), **kwargs)
+
+
+def test_abc_boundaries_and_dominant_client(db_session):
+    for name, weight in [("A", 80), ("B", 15), ("C", 5)]:
+        add_sales(db_session, name, [weight] * 6)
+    data = report(db_session, complete=True)
+    assert [row["abc"] for row in data["rows"]] == ["A", "B", "C"]
+    assert [row["xyz"] for row in data["rows"]] == ["X"] * 3
+    assert sum(cell["count"] for cell in data["matrix"].values()) == 3
+    add_sales(db_session, "Giant", [1000] * 6)
+    assert report(db_session)["rows"][0]["abc"] == "A"
+
+
+def test_missing_client_months_are_zeros_but_missing_city_month_blocks_xyz(db_session):
+    add_sales(db_session, "Steady", [10] * 6)
+    add_sales(db_session, "Intermittent", [20, 0, 20, 0, 20, 0])
+    data = report(db_session, complete=True)
+    intermittent = next(row for row in data["rows"] if row["client"] == "Intermittent")
+    assert intermittent["xyz"] == "Z"
+    assert intermittent["cv"] == pytest.approx(100)
+    assert intermittent["active_months"] == 3
+    db_session.query(Sale).filter(Sale.month == "2026-07-01").delete()
+    db_session.commit()
+    data = report(db_session, complete=True)
+    assert data["missing"] == ["2026-07"]
+    assert all(
+        row["xyz"] is None and row["reason"] == "missing" for row in data["rows"]
+    )
+
+
+def test_fullness_confirmation_short_history_and_inactive(db_session):
+    add_sales(db_session, "Steady", [10] * 6)
+    add_sales(db_session, "Recent", [10, 10], start=9)
+    add_sales(db_session, "Old", [5], start=1)
+    data = report(db_session)
+    assert data["reasons"] == {"unconfirmed": 1, "insufficient": 1, "inactive": 1}
+    assert data["active_clients"] == 2
+    assert all(row["xyz"] is None for row in data["rows"])
+    data = report(db_session, complete=True)
+    assert data["matrix"]["AX"]["count"] == 1
+
+
+def test_mixed_month_formats_types_returns_and_current_month(db_session):
+    add_sales(db_session, "Same", [10] * 6)
+    db_session.add(
+        Sale(
+            city="СПБ",
+            client="Same",
+            type="Розница",
+            month="Май 2026",
+            weight=10,
+            qty=1,
+        )
+    )
+    db_session.add(
+        Sale(city="СПБ", client="Same", month="2026-06-01", weight=-5, qty=-1)
+    )
+    db_session.add(
+        Sale(city="СПБ", client="Same", month="2026-07-01", weight=5, qty=-1)
+    )
+    db_session.add(
+        Sale(city="СПБ", client="Same", month="2026-11-01", weight=1000, qty=1)
+    )
+    add_sales(db_session, "Other city", [900] * 6, city="Москва")
+    db_session.commit()
+    data = report(db_session, complete=True)
+    assert data["end"] == "2026-10"
+    assert data["total_volume"] == 70
+    assert len(data["rows"]) == 1
+    assert data["rows"][0]["monthly"] == [20, 10, 10, 10, 10, 10]
+    assert data["returns"] == 2
+
+
+def test_invalid_month_disables_xyz(db_session):
+    add_sales(db_session, "Same", [10] * 6)
+    db_session.add(Sale(city="СПБ", client="Same", month="bad-month", weight=10, qty=1))
+    db_session.commit()
+    data = report(db_session, complete=True)
+    assert data["invalid_months"] == 1
+    assert data["rows"][0]["reason"] == "invalid"
+
+
+def test_route_renders_filters_and_escaped_client_name(admin_client, db_session):
+    add_sales(db_session, '<script>alert("x")</script>', [10] * 6)
+    response = admin_client.get(
+        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&complete=true"
+    )
+    assert response.status_code == 200
+    assert "&lt;script&gt;" in response.text
+    assert 'data-segment="AX"' in response.text
+    assert "client_segments.js" in response.text
+    assert "client_segments.css" in response.text
+    assert admin_client.get("/analytics/clients/abc-xyz?length=3").status_code == 400
+    assert admin_client.get("/analytics/clients/abc-xyz?end=oops").status_code == 400
+    assert admin_client.get("/analytics/clients/abc-xyz?end=2999-01").status_code == 400
+    assert admin_client.get("/analytics/clients/abc-xyz").status_code == 200
+
+
+def test_city_access_is_preserved(client, db_session):
+    from app.auth_models import SessionModel, User, UserCity, default_expiry
+
+    add_sales(db_session, "Allowed", [10] * 6)
+    add_sales(db_session, "Forbidden", [10] * 6, city="Москва")
+    user = User(
+        email="segments@test.local", role="ambassador", city="СПБ", is_active=True
+    )
+    db_session.add(user)
+    db_session.flush()
+    db_session.add(
+        SessionModel(id="segments-test", user_id=user.id, expires_at=default_expiry())
+    )
+    db_session.commit()
+    client.cookies.set("session_id", "segments-test")
+    response = client.get("/analytics/clients/abc-xyz?city=Москва&end=2026-10")
+    assert response.status_code == 200
+    assert "Allowed" in response.text and "Forbidden" not in response.text
+    user.role = "brand_ambassador"
+    db_session.add(UserCity(user_id=user.id, city="СПБ"))
+    db_session.commit()
+    assert client.get("/analytics/clients/abc-xyz?city=Москва").status_code == 403

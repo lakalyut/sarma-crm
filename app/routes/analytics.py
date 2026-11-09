@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, Query, Request
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND
@@ -19,6 +22,7 @@ from ..services.ambassadors_service import (
 )
 from ..services.charts_service import get_charts_metrics_data
 from ..services.client_health_service import STATUS_ORDER, build_client_health
+from ..services.client_segments_service import build_client_segments
 from ..services.clients_service import (
     get_client_detail_data,
     get_clients_summary_data,
@@ -29,6 +33,54 @@ from ..utils.dates import month_sort_key
 from ..utils.params import get_int_param
 
 router = APIRouter()
+
+
+@router.get("/analytics/clients/abc-xyz")
+def client_segments(
+    request: Request,
+    city: str = "",
+    length: int = Query(default=6),
+    end: str = "",
+    complete: bool = False,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_client_viewer),
+):
+    if length not in (6, 12):
+        raise HTTPException(400, "Выберите период 6 или 12 месяцев")
+    today = datetime.now(ZoneInfo("Asia/Irkutsk")).date()
+    end_month = None
+    if end:
+        try:
+            parsed = date.fromisoformat(end + "-01")
+        except ValueError as exc:
+            raise HTTPException(400, "Некорректный месяц окончания") from exc
+        if parsed >= today.replace(day=1):
+            raise HTTPException(400, "Выберите завершённый месяц")
+        end_month = (parsed.year, parsed.month)
+    cities = get_cities(db)
+    if user.role == "ambassador":
+        city = user.city or ""
+        cities = [city] if city else []
+    elif user.role == "brand_ambassador":
+        cities = [value for value in cities if value in user.allowed_cities]
+    report = (
+        build_client_segments(
+            db, city, length=length, end=end_month, complete=complete, today=today
+        )
+        if city
+        else None
+    )
+    return render(
+        request,
+        "analytics/client_segments.html",
+        {
+            "title": "ABC / XYZ клиентов — Пульс",
+            "selected_city": city,
+            "cities": cities,
+            "report": report,
+            **_layout_context(user),
+        },
+    )
 
 
 def _layout_context(user: User) -> dict:
