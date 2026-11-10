@@ -14,7 +14,8 @@ def main() -> None:
     manifest = Path(__file__).resolve().parent.parent / "release_updates.json"
     releases = json.loads(manifest.read_text(encoding="utf-8"))
     with SessionLocal() as db:
-        import_releases(db, releases)
+        added = import_releases(db, releases)
+        print(f"Release drafts created: {added}")
         update = db.query(ReleaseUpdate).filter_by(release_key=KEY).one()
         if update.status == "draft":
             queue_update(db, update.id)
