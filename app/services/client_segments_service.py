@@ -20,7 +20,9 @@ def month_value(month):
     return f"{month[0]:04d}-{month[1]:02d}"
 
 
-def build_client_segments(db, city, *, length=6, end=None, complete=False, today=None):
+def build_client_segments(
+    db, city, *, length=6, end=None, complete=False, today=None, sale_type=None
+):
     today = today or date.today()
     current = (today.year, today.month)
     valid_client = func.trim(Sale.client)
@@ -33,13 +35,14 @@ def build_client_segments(db, city, *, length=6, end=None, complete=False, today
         db.query(
             valid_client.label("client"),
             Sale.month,
+            Sale.type.label("sale_type"),
             func.sum(case((positive, Sale.weight), else_=0)).label("volume"),
             func.sum(case((or_(Sale.weight < 0, Sale.qty < 0), 1), else_=0)).label(
                 "returns"
             ),
         )
         .filter(Sale.city == city)
-        .group_by(valid_client, Sale.month)
+        .group_by(valid_client, Sale.month, Sale.type)
         .all()
     )
     loaded = {
@@ -54,6 +57,8 @@ def build_client_segments(db, city, *, length=6, end=None, complete=False, today
     first_seen = {}
     returns = invalid_months = 0
     for row in groups:
+        if sale_type and row.sale_type != sale_type:
+            continue
         month = parse_month(row.month)
         if month is None:
             invalid_months += 1

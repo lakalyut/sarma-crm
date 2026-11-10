@@ -105,6 +105,48 @@ def test_invalid_month_disables_xyz(db_session):
     assert data["rows"][0]["reason"] == "invalid"
 
 
+def test_type_filter_recalculates_classes_and_shares(db_session):
+    add_sales(db_session, "Cafe", [40] * 6)
+    add_sales(db_session, "Small cafe", [10] * 6)
+    add_sales(db_session, "Shop", [360] * 6, sale_type="Розница")
+    all_rows = {row["client"]: row for row in report(db_session)["rows"]}
+    assert all_rows["Cafe"]["abc"] == "B"
+    data = report(db_session, complete=True, sale_type="HoReCa")
+    assert data["total_volume"] == 300
+    assert [row["client"] for row in data["rows"]] == ["Cafe", "Small cafe"]
+    assert [row["abc"] for row in data["rows"]] == ["A", "B"]
+    assert [row["share"] for row in data["rows"]] == [80, 20]
+
+
+def test_type_without_sales_in_city_month_is_zero_not_missing(db_session):
+    add_sales(db_session, "Shop", [20] * 6, sale_type="Розница")
+    add_sales(db_session, "Cafe", [20, 0, 20, 0, 20, 0])
+    db_session.query(Sale).filter(Sale.type == "HoReCa", Sale.weight == 0).delete()
+    db_session.commit()
+    data = report(db_session, complete=True, sale_type="HoReCa")
+    assert data["missing"] == []
+    assert data["rows"][0]["xyz"] == "Z"
+    assert data["rows"][0]["monthly"] == [20, 0, 20, 0, 20, 0]
+
+
+def test_route_preserves_selected_type(admin_client, db_session):
+    add_sales(db_session, "Cafe", [20] * 6)
+    add_sales(db_session, "Excluded shop", [900] * 6, sale_type="Розница")
+    response = admin_client.get(
+        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&sale_type=HoReCa&complete=true"
+    )
+    assert response.status_code == 200
+    assert '<option value="HoReCa" selected>' in response.text
+    assert "Доля типа" in response.text
+    assert "Excluded shop" not in response.text
+    assert (
+        admin_client.get(
+            "/analytics/clients/abc-xyz?city=СПБ&sale_type=invalid"
+        ).status_code
+        == 400
+    )
+
+
 def test_route_renders_filters_and_escaped_client_name(admin_client, db_session):
     add_sales(db_session, '<script>alert("x")</script>', [10] * 6)
     response = admin_client.get(

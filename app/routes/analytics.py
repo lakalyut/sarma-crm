@@ -42,6 +42,7 @@ def client_segments(
     length: int = Query(default=6),
     end: str = "",
     complete: bool = False,
+    sale_type: str = "",
     db: Session = Depends(get_db),
     user: User = Depends(require_client_viewer),
 ):
@@ -63,9 +64,18 @@ def client_segments(
         cities = [city] if city else []
     elif user.role == "brand_ambassador":
         cities = [value for value in cities if value in user.allowed_cities]
+    sale_types = get_types(db, city=city) if city else []
+    if sale_type and sale_type not in sale_types:
+        raise HTTPException(400, "Выберите тип точки из списка выбранного города")
     report = (
         build_client_segments(
-            db, city, length=length, end=end_month, complete=complete, today=today
+            db,
+            city,
+            length=length,
+            end=end_month,
+            complete=complete,
+            today=today,
+            sale_type=sale_type,
         )
         if city
         else None
@@ -77,6 +87,8 @@ def client_segments(
             "title": "ABC / XYZ клиентов — Пульс",
             "selected_city": city,
             "cities": cities,
+            "sale_types": sale_types,
+            "selected_type": sale_type,
             "report": report,
             **_layout_context(user),
         },

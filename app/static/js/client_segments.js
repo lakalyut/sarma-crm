@@ -1,6 +1,9 @@
 (() => {
     const root = document.getElementById('client-segments');
     if (!root) return;
+    root.querySelector('#segments-city').addEventListener('change', () => {
+        root.querySelector('#segments-type').value = '';
+    });
     root.querySelectorAll('form select').forEach(select => select.addEventListener('change', () => {
         root.querySelector('input[name="complete"]').checked = false;
     }));
