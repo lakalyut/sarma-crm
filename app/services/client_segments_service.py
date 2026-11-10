@@ -21,8 +21,18 @@ def month_value(month):
 
 
 def build_client_segments(
-    db, city, *, length=6, end=None, complete=False, today=None, sale_type=None
+    db,
+    city,
+    *,
+    length=6,
+    end=None,
+    complete=False,
+    today=None,
+    sale_type=None,
+    mode="volume",
 ):
+    if mode not in ("volume", "presence"):
+        raise ValueError("Unknown XYZ mode")
     today = today or date.today()
     current = (today.year, today.month)
     valid_client = func.trim(Sale.client)
@@ -90,16 +100,26 @@ def build_client_segments(
             reason = "insufficient"
         elif not complete:
             reason = "unconfirmed"
-        cv = pstdev(monthly) / mean(monthly) * 100 if not reason else None
-        xyz = (
-            ("X" if cv <= 25 else "Y" if cv <= 50 else "Z") if cv is not None else None
+        active_months = sum(value > 0 for value in monthly)
+        regularity = active_months / length * 100 if not reason else None
+        cv = (
+            pstdev(monthly) / mean(monthly) * 100
+            if not reason and mode == "volume"
+            else None
         )
+        xyz = None
+        if not reason:
+            if mode == "presence":
+                xyz = "X" if regularity >= 80 else "Y" if regularity >= 50 else "Z"
+            else:
+                xyz = "X" if cv <= 25 else "Y" if cv <= 50 else "Z"
         rows.append(
             {
                 "client": client,
                 "volume": total,
                 "monthly": monthly,
-                "active_months": sum(value > 0 for value in monthly),
+                "active_months": active_months,
+                "regularity": regularity,
                 "first_seen": month_value(first_seen[client]),
                 "cv": cv,
                 "xyz": xyz,
@@ -134,6 +154,7 @@ def build_client_segments(
         "end": month_value(end),
         "length": length,
         "complete": complete,
+        "mode": mode,
         "end_options": [month_value(month) for month in sorted(loaded, reverse=True)],
         "missing": [month_value(month) for month in missing],
         "returns": returns,

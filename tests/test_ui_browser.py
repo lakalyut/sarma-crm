@@ -202,6 +202,60 @@ def test_client_segments_city_options_failure_can_reload(page):
     assert page.locator("#segments-type option").all_text_contents() == ["Все типы"]
 
 
+def test_client_segments_switches_xyz_mode_with_filters(page, db_session):
+    from app.models import Sale
+
+    name = "Клуб с длинным названием — Северный берег"
+    for month, weight in [("2026-04-01", 100), ("2026-05-01", 1), ("2026-06-01", 1)]:
+        db_session.add(
+            Sale(
+                city="Иркутск",
+                client=name,
+                type="Кальянная",
+                month=month,
+                weight=weight,
+                qty=1,
+            )
+        )
+    db_session.commit()
+    page.goto(
+        "https://pulse-ui.test/analytics/clients/abc-xyz?city=Иркутск&end=2026-09&sale_type=Кальянная&length=6&complete=true",
+        wait_until="networkidle",
+    )
+    row = page.locator("tr[data-client]").filter(has_text=name)
+    volume_class = row.locator("td").nth(1).inner_text()
+    assert volume_class.endswith("Z")
+    page.get_by_role("button", name="Наличие закупок", exact=True).click()
+    page.wait_for_url(
+        lambda url: parse_qs(urlsplit(url).query).get("mode") == ["presence"],
+        wait_until="networkidle",
+    )
+    query = parse_qs(urlsplit(page.url).query)
+    assert query["sale_type"] == ["Кальянная"]
+    assert query["complete"] == ["true"]
+    assert query["length"] == ["6"]
+    assert query["end"] == ["2026-09"]
+    row = page.locator("tr[data-client]").filter(has_text=name)
+    assert row.locator("td").nth(1).inner_text() == volume_class[0] + "X"
+    assert row.locator('.segment-presence [data-present="true"]').count() == 6
+    assert page.get_by_role(
+        "columnheader", name="Регулярность", exact=True
+    ).is_visible()
+    page.get_by_role("button", name="Колебания объёма", exact=True).click()
+    page.wait_for_url(
+        lambda url: parse_qs(urlsplit(url).query).get("mode") == ["volume"],
+        wait_until="networkidle",
+    )
+    assert (
+        page.locator("tr[data-client]")
+        .filter(has_text=name)
+        .locator("td")
+        .nth(1)
+        .inner_text()
+        == volume_class
+    )
+
+
 def test_multiselect_keyboard_and_native_form_value(page):
     page.locator(".clients-filter-panel > summary").click()
     display = page.locator("#months-multiselect .multiselect-display")

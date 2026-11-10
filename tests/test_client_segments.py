@@ -36,6 +36,60 @@ def test_abc_boundaries_and_dominant_client(db_session):
     assert report(db_session)["rows"][0]["abc"] == "A"
 
 
+@pytest.mark.parametrize(
+    "active,expected", [(6, "X"), (5, "X"), (4, "Y"), (3, "Y"), (2, "Z"), (1, "Z")]
+)
+def test_presence_thresholds_count_months_not_volume(db_session, active, expected):
+    add_sales(db_session, "Client", [10] + [10] * (active - 1) + [0] * (6 - active))
+    # Multiple lines in the same month still count as one purchase month.
+    add_sales(db_session, "Client", [990], start=5)
+    row = report(db_session, complete=True, mode="presence")["rows"][0]
+    assert row["active_months"] == active
+    assert row["regularity"] == pytest.approx(active / 6 * 100)
+    assert row["xyz"] == expected
+    assert row["cv"] is None
+
+
+def test_presence_preserves_abc_and_data_quality_rules(db_session):
+    add_sales(db_session, "Variable", [1, 2, 3, 10, 50, 100])
+    add_sales(db_session, "Old", [5], start=1)
+    add_sales(db_session, "Recent", [10, 10], start=9)
+    volume = report(db_session, complete=True)
+    presence = report(db_session, complete=True, mode="presence")
+    assert [(r["client"], r["abc"], r["share"]) for r in volume["rows"]] == [
+        (r["client"], r["abc"], r["share"]) for r in presence["rows"]
+    ]
+    assert presence["rows"][0]["xyz"] == "X"
+    assert volume["rows"][0]["xyz"] == "Z"
+    assert presence["reasons"] == {"insufficient": 1, "inactive": 1}
+    assert report(db_session, mode="presence")["rows"][0]["reason"] == "unconfirmed"
+    db_session.query(Sale).filter(Sale.month == "2026-07-01").delete()
+    db_session.commit()
+    assert (
+        report(db_session, complete=True, mode="presence")["rows"][0]["reason"]
+        == "missing"
+    )
+
+
+@pytest.mark.parametrize("active,expected", [(10, "X"), (9, "Y"), (6, "Y"), (5, "Z")])
+def test_presence_twelve_month_window(db_session, active, expected):
+    for index in range(12):
+        year, month = divmod(2025 * 12 + 10 + index, 12)
+        db_session.add(
+            Sale(
+                city="СПБ",
+                client="Client",
+                month=f"{year}-{month+1:02d}-01",
+                weight=10 if index < active else 0,
+                qty=1,
+            )
+        )
+    db_session.commit()
+    row = report(db_session, length=12, complete=True, mode="presence")["rows"][0]
+    assert row["xyz"] == expected
+    assert row["active_months"] == active
+
+
 def test_missing_client_months_are_zeros_but_missing_city_month_blocks_xyz(db_session):
     add_sales(db_session, "Steady", [10] * 6)
     add_sales(db_session, "Intermittent", [20, 0, 20, 0, 20, 0])
@@ -144,6 +198,18 @@ def test_route_preserves_selected_type(admin_client, db_session):
             "/analytics/clients/abc-xyz?city=СПБ&sale_type=invalid"
         ).status_code
         == 400
+    )
+    response = admin_client.get(
+        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&sale_type=HoReCa&complete=true&mode=presence"
+    )
+    assert response.status_code == 200
+    assert 'data-mode="presence" aria-pressed="true"' in response.text
+    assert 'name="mode" value="presence"' in response.text
+    assert "Регулярность" in response.text
+    assert "Есть закупка" in response.text
+    assert "Excluded shop" not in response.text
+    assert (
+        admin_client.get("/analytics/clients/abc-xyz?mode=invalid").status_code == 422
     )
 
 

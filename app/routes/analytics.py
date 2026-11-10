@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -54,6 +55,7 @@ def client_segments(
     end: str = "",
     complete: bool = False,
     sale_type: str = "",
+    mode: Literal["volume", "presence"] = "volume",
     db: Session = Depends(get_db),
     user: User = Depends(require_client_viewer),
 ):
@@ -87,6 +89,7 @@ def client_segments(
             complete=complete,
             today=today,
             sale_type=sale_type,
+            mode=mode,
         )
         if city
         else None
@@ -100,6 +103,7 @@ def client_segments(
             "cities": cities,
             "sale_types": sale_types,
             "selected_type": sale_type,
+            "mode": mode,
             "report": report,
             **_layout_context(user),
         },

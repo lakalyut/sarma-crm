@@ -5,7 +5,8 @@
 {% include "includes/client_tabs.html" %}
 <details class="filters-card clients-filter-panel" open>
     <summary>Фильтры · {{ selected_city or 'Все города' }}</summary>
-    <form method="get">
+    <form method="get" id="segments-filters-form">
+    <input type="hidden" name="mode" value="{{ mode }}">
     <div class="filters-grid clients-filters-grid">
         <div class="field filter-field">
             <label for="segments-city">Город</label>
@@ -46,7 +47,7 @@
             <label>&nbsp;</label>
             <div class="filters-actions">
                 <button type="submit" class="btn btn-secondary">Показать</button>
-                <a href="/analytics/clients/abc-xyz?{{ {'city': selected_city or ''}|urlencode }}" class="btn btn-secondary">Сбросить</a>
+                <a href="/analytics/clients/abc-xyz?{{ {'city': selected_city or '', 'mode': mode}|urlencode }}" class="btn btn-secondary">Сбросить</a>
             </div>
         </div>
     </div>
@@ -55,6 +56,12 @@
     <p id="segments-options-status" role="status" aria-live="polite" hidden></p>
     </form>
 </details>
+<div class="segment-mode" role="group" aria-label="Оценка XYZ">
+    <span>Оценка XYZ</span>
+    <button type="button" class="btn btn-secondary" data-mode="volume" aria-pressed="{{ 'true' if mode == 'volume' else 'false' }}">Колебания объёма</button>
+    <button type="button" class="btn btn-secondary" data-mode="presence" aria-pressed="{{ 'true' if mode == 'presence' else 'false' }}">Наличие закупок</button>
+</div>
+<p class="segment-context">ABC — вклад в объём отгрузок · XYZ — {{ 'доля месяцев с закупками' if mode == 'presence' else 'колебания месячного объёма' }}</p>
 {% if report %}
 <p class="segment-context">{{ (report.window[0] ~ '-01')|format_month }} — {{ (report.end ~ '-01')|format_month }} · {{ selected_type or 'Все типы точек' }} · Объём положительных отгрузок, кг</p>
 {% if report.missing %}<div class="message error">Нет данных города за {% for month in report.missing %}{{ (month ~ '-01')|format_month }}{% if not loop.last %}, {% endif %}{% endfor %}. XYZ недоступен. ABC рассчитан по имеющимся данным периода.</div>
@@ -77,14 +84,15 @@
         <div class="segment-list-controls"><label for="segments-search">Поиск клиента<input id="segments-search" type="search" placeholder="Название клиента"></label><button type="button" class="btn btn-secondary" data-segment="" aria-pressed="true">Все сегменты</button></div>
         <p id="segments-count" role="status" aria-live="polite"></p>
         <div class="sheet-scroller"><table class="sheet-table">
-            <thead><tr><th>Клиент и динамика</th><th>Класс</th><th>Объём, кг ↓</th><th>Доля {{ 'типа' if selected_type else 'города' }}</th><th>CV</th><th>Закупки</th></tr></thead>
+            <thead><tr><th>Клиент и динамика</th><th>Класс</th><th>Объём, кг ↓</th><th>Доля {{ 'типа' if selected_type else 'города' }}</th><th>{{ 'Регулярность' if mode == 'presence' else 'CV' }}</th><th>Закупки</th></tr></thead>
             <tbody>{% for row in report.rows %}<tr data-client="{{ row.client }}" data-class="{{ row.segment }}">
                 <td><details class="segment-client"><summary>{{ row.client }}</summary>
                     <p>Первое появление в выбранных данных {{ (row.first_seen ~ '-01')|format_month }}</p>
-                    <div class="segment-months">{% for month in report.window %}<div><span>{{ (month ~ '-01')|format_month }}</span><strong>{% if month in report.missing %}Нет данных{% else %}{{ row.monthly[loop.index0]|format_ru_number(2) }} кг{% endif %}</strong></div>{% endfor %}</div>
-                    {% if row.reason %}<p>{{ reasons[row.reason] }}</p>{% else %}<p>CV {{ row.cv|format_ru_number(1) }}%. {{ {'X': 'Стабильный месячный объём.', 'Y': 'Умеренные колебания месячного объёма.', 'Z': 'Высокие колебания месячного объёма.'}[row.xyz] }}</p>{% endif %}
+                    <div class="segment-months">{% for month in report.window %}<div><span>{{ (month ~ '-01')|format_month }}</span><strong>{% if month in report.missing %}Нет данных{% elif mode == 'presence' %}{{ '✓ Есть закупка' if row.monthly[loop.index0] > 0 else '— Нет закупки' }}{% else %}{{ row.monthly[loop.index0]|format_ru_number(2) }} кг{% endif %}</strong></div>{% endfor %}</div>
+                    {% if row.reason %}<p>{{ reasons[row.reason] }}</p>{% elif mode == 'presence' %}<p>Закупки в {{ row.active_months }} из {{ report.length }} месяцев — {{ row.regularity|format_ru_number(1) }}%. {{ {'X': 'Высокая регулярность закупок.', 'Y': 'Умеренная регулярность закупок.', 'Z': 'Редкие закупки.'}[row.xyz] }}</p>{% else %}<p>CV {{ row.cv|format_ru_number(1) }}%. {{ {'X': 'Стабильный месячный объём.', 'Y': 'Умеренные колебания месячного объёма.', 'Z': 'Высокие колебания месячного объёма.'}[row.xyz] }}</p>{% endif %}
                 </details></td>
-                <td>{{ row.abc or '—' }}{{ row.xyz or '—' }}</td><td>{{ row.volume|format_ru_number(2) }}</td><td>{{ row.share|format_ru_number(2) }}%</td><td>{% if row.cv is not none %}{{ row.cv|format_ru_number(1) }}%{% else %}—{% endif %}</td><td>{{ row.active_months }}/{{ report.length }} мес.</td>
+                <td>{{ row.abc or '—' }}{{ row.xyz or '—' }}</td><td>{{ row.volume|format_ru_number(2) }}</td><td>{{ row.share|format_ru_number(2) }}%</td><td>{% set value = row.regularity if mode == 'presence' else row.cv %}{% if value is not none %}{{ value|format_ru_number(1) }}%{% else %}—{% endif %}</td>
+                <td>{% if mode == 'presence' %}<div class="segment-presence" role="list" aria-label="Наличие закупок по месяцам">{% for month in report.window %}<span role="listitem" data-present="{{ 'true' if month not in report.missing and row.monthly[loop.index0] > 0 else 'false' }}" aria-label="{{ (month ~ '-01')|format_month }} — {{ 'нет данных' if month in report.missing else 'есть закупка' if row.monthly[loop.index0] > 0 else 'нет закупки' }}"><small>{{ month[-2:] }}</small>{{ '?' if month in report.missing else '✓' if row.monthly[loop.index0] > 0 else '—' }}</span>{% endfor %}</div>{% endif %}{{ row.active_months }}/{{ report.length }} мес.</td>
             </tr>{% endfor %}</tbody>
         </table></div>
         <p id="segments-empty" {% if report.rows %}hidden{% endif %}>Клиентов по выбранным условиям нет.</p>
@@ -92,7 +100,9 @@
 </div>
 <details class="segment-method"><summary>Как рассчитываются классы</summary>
     <p>ABC показывает вклад клиента в положительный объём отгрузок выбранного города и типа точки. При выборе типа классы и доли пересчитываются внутри этого типа. Клиенты упорядочены по объёму, при равенстве — по названию. A — до достижения 80% накопленной доли, B — до 95%, C — остальные. Клиент, пересекающий границу, остаётся в начавшемся классе.</p>
-    <p>XYZ показывает колебания месячного объёма. CV — стандартное отклонение за все месяцы окна, делённое на среднее. X ≤ 25%, Y ≤ 50%, Z &gt; 50%. В полном отчёте отсутствие закупок клиента считается нулём. При короткой истории или пропусках отчётов XYZ не присваивается.</p>
+    {% if mode == 'presence' %}<p>XYZ показывает долю месяцев с положительной отгрузкой. X — от 80% месяцев включительно, Y — от 50% до 80%, Z — менее 50%. За 6 месяцев X означает 5–6 месяцев с закупками, Y — 3–4, Z — 1–2. За 12 месяцев X — 10–12, Y — 6–9, Z — 1–5. Клиенты без закупок за период показаны отдельно. Несколько отгрузок внутри одного месяца учитываются как один месяц с закупкой.</p>
+    {% else %}<p>XYZ показывает колебания месячного объёма. CV — стандартное отклонение за все месяцы окна, делённое на среднее. X ≤ 25%, Y ≤ 50%, Z &gt; 50%.</p>{% endif %}
+    <p>В полном отчёте отсутствие закупок клиента считается нулём. При короткой истории или пропусках отчётов XYZ не присваивается.</p>
     <p>Клиенты объединяются по названию внутри города с учётом фильтра типа точки. Полнота месяцев проверяется по данным всего города. Сопоставление товара со справочником не меняет вес отгрузки. Поиск и выбор сегмента сохраняют исходную базу расчёта. Сезонность и тренд отдельно не корректируются.</p>
 </details>
 {% else %}<p>Выберите город для расчёта сегментов клиентов.</p>{% endif %}

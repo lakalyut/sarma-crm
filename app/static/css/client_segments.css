@@ -1,5 +1,6 @@
 .segment-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }
 .segment-tabs [aria-current="page"] { background: var(--primary-tint); color: var(--primary-text); }
+.segment-mode { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .segment-confirm { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0; }
 .segment-context { color: var(--text-muted); margin: 16px 0; }
 .segment-totals { display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0; }
@@ -24,6 +25,10 @@
 .segment-months { display: grid; gap: 8px; margin: 12px 0; min-width: 180px; }
 .segment-months div { display: flex; justify-content: space-between; gap: 12px; }
 .segment-months span { color: var(--text-muted); }
+.segment-presence { display: grid; grid-template-columns: repeat(6, 28px); gap: 4px; margin-bottom: 8px; }
+.segment-presence > span { display: flex; flex-direction: column; align-items: center; background: var(--surface-alt); color: var(--text-muted); border-radius: var(--radius-xs); padding: 4px 0; }
+.segment-presence > span[data-present="true"] { background: var(--primary-tint); color: var(--primary-text); }
+.segment-presence small { font-size: 11px; }
 .segment-method { margin-top: 24px; }
 .segment-method summary { cursor: pointer; }
 .segment-method p { margin: 12px 0; }

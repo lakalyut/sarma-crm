@@ -4,6 +4,12 @@
     const city = root.querySelector('#segments-city');
     const type = root.querySelector('#segments-type');
     const submit = root.querySelector('button[type="submit"]');
+    const modeButtons = Array.from(root.querySelectorAll('button[data-mode]'));
+    modeButtons.forEach(button => button.addEventListener('click', () => {
+        if (submit.disabled) return;
+        root.querySelector('input[name="mode"]').value = button.dataset.mode;
+        root.querySelector('form').requestSubmit(submit);
+    }));
     const status = root.querySelector('#segments-options-status');
     let optionsRequest;
     city.addEventListener('change', async () => {
@@ -13,6 +19,7 @@
         type.replaceChildren(new Option('Все типы', ''));
         type.disabled = true;
         submit.disabled = true;
+        modeButtons.forEach(button => { button.disabled = true; });
         type.dispatchEvent(new Event('display-sync', { bubbles: true }));
         status.textContent = 'Загружаем типы точки…';
         status.hidden = false;
@@ -35,6 +42,7 @@
             if (optionsRequest === request) {
                 type.disabled = false;
                 submit.disabled = false;
+                modeButtons.forEach(button => { button.disabled = false; });
                 type.dispatchEvent(new Event('display-sync', { bubbles: true }));
             }
         }
