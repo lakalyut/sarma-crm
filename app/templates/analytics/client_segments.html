@@ -3,19 +3,57 @@
 <div id="client-segments">
 <h1>ABC / XYZ клиентов</h1>
 {% include "includes/client_tabs.html" %}
-<form method="get" class="filters-card">
-    <div class="filters-grid">
-        <div class="field"><label for="segments-city">Город</label>
-            <select id="segments-city" name="city"><option value="">Выберите город</option>{% for city in cities %}<option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>{% endfor %}</select>
+<details class="filters-card clients-filter-panel" open>
+    <summary>Фильтры · {{ selected_city or 'Все города' }}</summary>
+    <form method="get">
+    <div class="filters-grid clients-filters-grid">
+        <div class="field filter-field">
+            <label for="segments-city">Город</label>
+            <select id="segments-city" name="city" class="js-custom-select">
+                <option value="">Выберите город</option>
+                {% for city in cities %}
+                <option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>
+                {% endfor %}
+            </select>
         </div>
-        <div class="field"><label for="segments-type">Тип точки</label><select id="segments-type" name="sale_type"><option value="">Все типы</option>{% for point_type in sale_types %}<option value="{{ point_type }}" {% if point_type == selected_type %}selected{% endif %}>{{ point_type }}</option>{% endfor %}</select></div>
-        <div class="field"><label for="segments-length">Период</label><select id="segments-length" name="length"><option value="6" {% if not report or report.length == 6 %}selected{% endif %}>6 полных месяцев</option><option value="12" {% if report and report.length == 12 %}selected{% endif %}>12 полных месяцев</option></select></div>
-        {% if report %}<div class="field"><label for="segments-end">По месяц включительно</label><select id="segments-end" name="end">{% for month in ([report.end] + report.end_options)|unique %}<option value="{{ month }}" {% if month == report.end %}selected{% endif %}>{{ (month ~ '-01')|format_month }}</option>{% endfor %}</select></div>{% endif %}
+        <div class="field filter-field">
+            <label for="segments-type">Тип точки</label>
+            <select id="segments-type" name="sale_type" class="js-custom-select">
+                <option value="">Все типы</option>
+                {% for point_type in sale_types %}
+                <option value="{{ point_type }}" {% if point_type == selected_type %}selected{% endif %}>{{ point_type }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field filter-field">
+            <label for="segments-length">Период</label>
+            <select id="segments-length" name="length" class="js-custom-select" data-filter-empty="6">
+                <option value="6" {% if not report or report.length == 6 %}selected{% endif %}>6 полных месяцев</option>
+                <option value="12" {% if report and report.length == 12 %}selected{% endif %}>12 полных месяцев</option>
+            </select>
+        </div>
+        {% if report %}
+        <div class="field filter-field">
+            <label for="segments-end">По месяц включительно</label>
+            <select id="segments-end" name="end" class="js-custom-select">
+                {% for month in ([report.end] + report.end_options)|unique %}
+                <option value="{{ month }}" {% if month == report.end %}selected{% endif %}>{{ (month ~ '-01')|format_month }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="field filter-field filter-actions-row">
+            <label>&nbsp;</label>
+            <div class="filters-actions">
+                <button type="submit" class="btn btn-secondary">Показать</button>
+                <a href="/analytics/clients/abc-xyz?{{ {'city': selected_city or ''}|urlencode }}" class="btn btn-secondary">Сбросить</a>
+            </div>
+        </div>
     </div>
     <label class="segment-confirm"><input type="checkbox" name="complete" value="true" {% if report and report.complete %}checked{% endif %}> Подтверждаю, что отчёты города за выбранный период загружены полностью</label>
-    <button type="submit" class="btn">Рассчитать</button>
-    <p id="segments-pending" role="status" hidden>Фильтры изменены. Нажмите «Рассчитать», чтобы обновить результаты.</p>
-</form>
+    <p id="segments-pending" role="status" hidden>Фильтры изменены. Нажмите «Показать», чтобы обновить результаты.</p>
+    </form>
+</details>
 {% if report %}
 <p class="segment-context">{{ (report.window[0] ~ '-01')|format_month }} — {{ (report.end ~ '-01')|format_month }} · {{ selected_type or 'Все типы точек' }} · Объём положительных отгрузок, кг</p>
 {% if report.missing %}<div class="message error">Нет данных города за {% for month in report.missing %}{{ (month ~ '-01')|format_month }}{% if not loop.last %}, {% endif %}{% endfor %}. XYZ недоступен. ABC рассчитан по имеющимся данным периода.</div>

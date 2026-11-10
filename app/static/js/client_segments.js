@@ -2,7 +2,9 @@
     const root = document.getElementById('client-segments');
     if (!root) return;
     root.querySelector('#segments-city').addEventListener('change', () => {
-        root.querySelector('#segments-type').value = '';
+        const type = root.querySelector('#segments-type');
+        type.value = '';
+        type.dispatchEvent(new Event('display-sync', { bubbles: true }));
     });
     root.querySelectorAll('form select').forEach(select => select.addEventListener('change', () => {
         root.querySelector('input[name="complete"]').checked = false;

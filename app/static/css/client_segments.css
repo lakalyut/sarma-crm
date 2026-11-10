@@ -1,7 +1,5 @@
 .segment-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }
 .segment-tabs [aria-current="page"] { background: var(--primary-tint); color: var(--primary-text); }
-#client-segments .filters-card { margin-top: 16px; }
-#client-segments .filters-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .segment-confirm { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0; }
 .segment-context { color: var(--text-muted); margin: 16px 0; }
 .segment-totals { display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0; }
@@ -18,6 +16,7 @@
 .segment-list-controls label { flex: 1; }
 #segments-search { display: block; width: 100%; margin-top: 6px; min-height: var(--control-height); padding: 8px 12px; border: 1px solid var(--input-border); border-radius: var(--radius-md); font: inherit; color: var(--text-main); background: var(--surface); }
 #client-segments .sheet-table td { vertical-align: top; }
+#client-segments .sheet-table { table-layout: auto; }
 #segments-count { color: var(--text-muted); margin: 12px 0; }
 .segment-client summary { color: var(--primary-text); cursor: pointer; }
 .segment-client[open] { min-width: 260px; }
@@ -29,4 +28,3 @@
 .segment-method summary { cursor: pointer; }
 .segment-method p { margin: 12px 0; }
 @media (max-width: 900px) { .segment-layout { grid-template-columns: 1fr; } }
-@media (max-width: 600px) { #client-segments .filters-grid { grid-template-columns: 1fr; } }
