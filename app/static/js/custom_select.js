@@ -3,8 +3,10 @@
 function initCustomSelect(select) {
     if (!select || select.dataset.customSelectReady) return;
     select.dataset.customSelectReady = "1";
+    const searchable = select.hasAttribute("data-searchable");
     const wrapper = document.createElement("div");
     wrapper.className = "custom-select";
+    if (searchable) wrapper.classList.add("custom-select-searchable");
     select.className.split(/\s+/).filter(c => c && c !== "js-custom-select")
         .forEach(c => wrapper.classList.add(c));
     if (select.getAttribute("style")) wrapper.setAttribute("style", select.getAttribute("style"));
@@ -12,11 +14,17 @@ function initCustomSelect(select) {
     wrapper.appendChild(select);
     select.classList.add("custom-select-native");
 
-    const display = document.createElement("div");
+    const display = document.createElement(searchable ? "input" : "div");
     display.className = "custom-select-display";
     display.setAttribute("role", "combobox");
     display.setAttribute("aria-haspopup", "listbox");
     display.setAttribute("aria-expanded", "false");
+    if (searchable) {
+        display.type = "text";
+        display.autocomplete = "off";
+        display.setAttribute("aria-autocomplete", "list");
+        display.placeholder = "Начните вводить";
+    }
     const label = (select.labels && select.labels[0]) ||
         wrapper.parentElement.querySelector("label");
     display.setAttribute("aria-label", select.getAttribute("aria-label") ||
@@ -27,7 +35,7 @@ function initCustomSelect(select) {
     arrow.className = "custom-select-arrow";
     arrow.setAttribute("aria-hidden", "true");
     arrow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="6 9 12 15 18 9"></polyline></svg>';
-    display.append(text, arrow);
+    if (!searchable) display.append(text, arrow);
     const dropdown = document.createElement("div");
     dropdown.className = "custom-select-dropdown";
     dropdown.id = "select-list-" + (++initCustomSelect.sequence);
@@ -35,24 +43,40 @@ function initCustomSelect(select) {
     dropdown.setAttribute("aria-label", display.getAttribute("aria-label"));
     display.setAttribute("aria-controls", dropdown.id);
     wrapper.append(display, dropdown);
+    if (searchable) wrapper.append(arrow);
     let activeIndex = select.selectedIndex;
     let query = "", queryTime = 0;
     const enabled = opt => !opt.disabled && !(opt.parentElement.tagName === "OPTGROUP" && opt.parentElement.disabled);
+
+    function filterOptions() {
+        let count = 0;
+        Array.from(select.options).forEach((opt, i) => {
+            const visible = !query || opt.textContent.toLocaleLowerCase().includes(query);
+            dropdown.children[i].hidden = !visible;
+            if (visible && enabled(opt)) count++;
+        });
+        const empty = dropdown.querySelector(".custom-select-empty");
+        if (empty) empty.hidden = count > 0;
+    }
 
     function highlight(index) {
         activeIndex = index;
         Array.from(dropdown.children).forEach((item, i) => item.classList.toggle("highlighted", i === index));
         const item = dropdown.children[index];
-        if (item && wrapper.classList.contains("open")) {
+        if (index >= 0 && item && wrapper.classList.contains("open")) {
             display.setAttribute("aria-activedescendant", item.id);
             item.scrollIntoView({ block: "nearest" });
-        }
+        } else display.removeAttribute("aria-activedescendant");
     }
     function close() {
         query = "";
         wrapper.classList.remove("open");
         display.setAttribute("aria-expanded", "false");
         display.removeAttribute("aria-activedescendant");
+        if (searchable) {
+            display.value = select.selectedOptions[0]?.textContent.trim() || "";
+            filterOptions();
+        }
     }
     wrapper.closeCustomSelect = close;
     function open() {
@@ -66,11 +90,13 @@ function initCustomSelect(select) {
     }
     function syncDisplay() {
         text.textContent = select.selectedOptions[0]?.textContent.trim() || "";
+        if (searchable && !query) display.value = text.textContent;
+        if (searchable) display.disabled = select.disabled;
         display.tabIndex = select.disabled ? -1 : 0;
         display.setAttribute("aria-disabled", String(select.disabled));
         display.setAttribute("aria-required", String(select.required));
         display.setAttribute("aria-invalid", select.getAttribute("aria-invalid") || "false");
-        Array.from(dropdown.children).forEach((item, i) => {
+        Array.from(dropdown.querySelectorAll(".custom-select-option")).forEach((item, i) => {
             item.classList.toggle("active", i === select.selectedIndex);
             item.setAttribute("aria-selected", String(i === select.selectedIndex));
         });
@@ -99,23 +125,40 @@ function initCustomSelect(select) {
             item.addEventListener("click", () => choose(i));
             dropdown.appendChild(item);
         });
+        if (searchable) {
+            const empty = document.createElement("div");
+            empty.className = "custom-select-empty";
+            empty.textContent = "Ничего не найдено";
+            empty.hidden = true;
+            dropdown.appendChild(empty);
+            filterOptions();
+        }
         syncDisplay();
         if (wrapper.classList.contains("open")) highlight(select.selectedIndex);
     }
     display.addEventListener("click", e => {
         e.stopPropagation();
+        if (searchable) { if (!wrapper.classList.contains("open")) open(); display.select(); return; }
         if (wrapper.classList.contains("open")) close(); else open();
     });
+    if (searchable) display.addEventListener("input", () => {
+        if (!wrapper.classList.contains("open")) open();
+        query = display.value.trim().toLocaleLowerCase();
+        filterOptions();
+        const index = Array.from(select.options).findIndex((opt, i) => enabled(opt) && !dropdown.children[i].hidden);
+        highlight(index);
+    });
+    if (searchable) display.addEventListener("focus", () => display.select());
     display.addEventListener("keydown", e => {
         const isOpen = wrapper.classList.contains("open");
         if (e.key === "Escape" || e.key === "Tab") { close(); return; }
-        if (e.key === "Enter" || (e.key === " " && !query)) {
+        if (e.key === "Enter" || (!searchable && e.key === " " && !query)) {
             e.preventDefault();
             if (isOpen) choose(activeIndex); else open();
             return;
         }
         const options = Array.from(select.options);
-        const indices = options.map((opt, i) => enabled(opt) ? i : -1).filter(i => i >= 0);
+        const indices = options.map((opt, i) => enabled(opt) && !dropdown.children[i].hidden ? i : -1).filter(i => i >= 0);
         if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
             e.preventDefault();
             if (!isOpen) open();
@@ -124,7 +167,7 @@ function initCustomSelect(select) {
             else if (e.key === "End") pos = indices.length - 1;
             else pos = Math.max(0, Math.min(indices.length - 1, pos + (e.key === "ArrowDown" ? 1 : -1)));
             if (indices[pos] !== undefined) highlight(indices[pos]);
-        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        } else if (!searchable && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
             e.preventDefault();
             const now = Date.now();
             query = (now - queryTime > 700 ? "" : query) + e.key.toLocaleLowerCase();

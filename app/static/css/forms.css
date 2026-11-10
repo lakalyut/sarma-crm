@@ -59,6 +59,15 @@ select:focus {
         position: relative;
     }
 
+.custom-select-searchable > input.custom-select-display { padding-right: 34px; }
+.custom-select-searchable > .custom-select-arrow {
+        position: absolute;
+        right: 12px;
+        top: calc(var(--control-height) / 2 - 5px);
+        pointer-events: none;
+    }
+.custom-select-empty { padding: 8px 10px; color: var(--text-muted); font-size: 13px; }
+
 .custom-select-native {
         display: none;
     }

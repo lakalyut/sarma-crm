@@ -35,6 +35,17 @@ from ..utils.params import get_int_param
 router = APIRouter()
 
 
+@router.get("/api/clients/abc-xyz/options")
+def client_segment_options(
+    city: str = "",
+    db: Session = Depends(get_db),
+    user: User = Depends(require_client_viewer),
+):
+    if user.role == "ambassador":
+        city = user.city or ""
+    return {"types": get_types(db, city=city) if city else []}
+
+
 @router.get("/analytics/clients/abc-xyz")
 def client_segments(
     request: Request,

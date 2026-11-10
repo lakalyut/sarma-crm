@@ -9,7 +9,7 @@
     <div class="filters-grid clients-filters-grid">
         <div class="field filter-field">
             <label for="segments-city">Город</label>
-            <select id="segments-city" name="city" class="js-custom-select">
+            <select id="segments-city" name="city" class="js-custom-select" data-searchable>
                 <option value="">Выберите город</option>
                 {% for city in cities %}
                 <option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>
@@ -18,7 +18,7 @@
         </div>
         <div class="field filter-field">
             <label for="segments-type">Тип точки</label>
-            <select id="segments-type" name="sale_type" class="js-custom-select">
+            <select id="segments-type" name="sale_type" class="js-custom-select" data-searchable>
                 <option value="">Все типы</option>
                 {% for point_type in sale_types %}
                 <option value="{{ point_type }}" {% if point_type == selected_type %}selected{% endif %}>{{ point_type }}</option>
@@ -52,6 +52,7 @@
     </div>
     <label class="segment-confirm"><input type="checkbox" name="complete" value="true" {% if report and report.complete %}checked{% endif %}> Подтверждаю, что отчёты города за выбранный период загружены полностью</label>
     <p id="segments-pending" role="status" hidden>Фильтры изменены. Нажмите «Показать», чтобы обновить результаты.</p>
+    <p id="segments-options-status" role="status" aria-live="polite" hidden></p>
     </form>
 </details>
 {% if report %}

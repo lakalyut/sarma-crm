@@ -135,6 +135,73 @@ def test_custom_select_keyboard_sync_and_dynamic_options(page):
     assert display.get_attribute("tabindex") == "-1"
 
 
+def test_client_segments_search_keyboard_and_city_types(page, db_session):
+    from app.models import Sale
+
+    db_session.query(Sale).filter(Sale.city == "Москва", Sale.type == "Магазин").update(
+        {"type": "Розница"}
+    )
+    db_session.commit()
+    page.goto(
+        "https://pulse-ui.test/analytics/clients/abc-xyz?city=Иркутск&end=2026-09",
+        wait_until="networkidle",
+    )
+    point_type = page.get_by_role("combobox", name="Тип точки", exact=True)
+    point_type.fill("агаз")
+    point_type.press("ArrowDown")
+    point_type.press("Enter")
+    assert page.locator("#segments-type").input_value() == "Магазин"
+
+    city = page.get_by_role("combobox", name="Город", exact=True)
+    city.fill("оск")
+    city.press("ArrowDown")
+    city.press("Enter")
+    page.wait_for_function(
+        "!document.querySelector('#segments-type').disabled && Array.from(document.querySelector('#segments-type').options).some(o=>o.value==='Розница')"
+    )
+    assert page.locator("#segments-type").input_value() == ""
+    assert page.locator("#segments-type option").all_text_contents() == [
+        "Все типы",
+        "Кальянная",
+        "Розница",
+    ]
+
+    point_type.fill("роз")
+    point_type.press("Enter")
+    assert page.locator("#segments-type").input_value() == "Розница"
+    point_type.fill("нет такого типа")
+    assert page.locator(".custom-select-empty:visible").count() == 1
+    point_type.press("Enter")
+    assert page.locator("#segments-type").input_value() == "Розница"
+    point_type.press("Escape")
+    assert point_type.input_value() == "Розница"
+    page.get_by_role("button", name="Показать", exact=True).click()
+    page.wait_for_url(
+        lambda url: parse_qs(urlsplit(url).query).get("sale_type") == ["Розница"],
+        wait_until="networkidle",
+    )
+    assert parse_qs(urlsplit(page.url).query)["city"] == ["Москва"]
+
+
+def test_client_segments_city_options_failure_can_reload(page):
+    page.goto(
+        "https://pulse-ui.test/analytics/clients/abc-xyz?city=Иркутск&end=2026-09",
+        wait_until="networkidle",
+    )
+    page.route(
+        "**/api/clients/abc-xyz/options?*",
+        lambda route: route.fulfill(status=503, body="unavailable"),
+    )
+    city = page.get_by_role("combobox", name="Город", exact=True)
+    city.fill("Моск")
+    city.press("Enter")
+    page.locator("#segments-options-status").get_by_text(
+        "Типы не загрузились.", exact=False
+    ).wait_for()
+    assert page.get_by_role("button", name="Показать", exact=True).is_enabled()
+    assert page.locator("#segments-type option").all_text_contents() == ["Все типы"]
+
+
 def test_multiselect_keyboard_and_native_form_value(page):
     page.locator(".clients-filter-panel > summary").click()
     display = page.locator("#months-multiselect .multiselect-display")

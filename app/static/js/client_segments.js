@@ -1,10 +1,43 @@
 (() => {
     const root = document.getElementById('client-segments');
     if (!root) return;
-    root.querySelector('#segments-city').addEventListener('change', () => {
-        const type = root.querySelector('#segments-type');
-        type.value = '';
+    const city = root.querySelector('#segments-city');
+    const type = root.querySelector('#segments-type');
+    const submit = root.querySelector('button[type="submit"]');
+    const status = root.querySelector('#segments-options-status');
+    let optionsRequest;
+    city.addEventListener('change', async () => {
+        if (optionsRequest) optionsRequest.abort();
+        const request = new AbortController();
+        optionsRequest = request;
+        type.replaceChildren(new Option('Все типы', ''));
+        type.disabled = true;
+        submit.disabled = true;
         type.dispatchEvent(new Event('display-sync', { bubbles: true }));
+        status.textContent = 'Загружаем типы точки…';
+        status.hidden = false;
+        try {
+            const url = new URL('/api/clients/abc-xyz/options', window.location.origin);
+            url.searchParams.set('city', city.value);
+            const response = await fetch(url, { signal: request.signal, credentials: 'same-origin' });
+            if (!response.ok) throw new Error('Options unavailable');
+            const data = await response.json();
+            if (!Array.isArray(data.types) || !data.types.every(value => typeof value === 'string')) {
+                throw new Error('Invalid options');
+            }
+            if (optionsRequest !== request) return;
+            type.replaceChildren(new Option('Все типы', ''), ...data.types.map(value => new Option(value, value)));
+            status.hidden = true;
+        } catch (error) {
+            if (optionsRequest !== request) return;
+            status.textContent = 'Типы не загрузились. Нажмите «Показать», чтобы обновить страницу.';
+        } finally {
+            if (optionsRequest === request) {
+                type.disabled = false;
+                submit.disabled = false;
+                type.dispatchEvent(new Event('display-sync', { bubbles: true }));
+            }
+        }
     });
     root.querySelectorAll('form select').forEach(select => select.addEventListener('change', () => {
         root.querySelector('input[name="complete"]').checked = false;

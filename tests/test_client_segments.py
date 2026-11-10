@@ -147,6 +147,18 @@ def test_route_preserves_selected_type(admin_client, db_session):
     )
 
 
+def test_options_return_only_selected_city_types(admin_client, db_session):
+    add_sales(db_session, "Cafe", [20] * 6)
+    add_sales(db_session, "Shop", [20] * 6, city="Москва", sale_type="Розница")
+    assert admin_client.get("/api/clients/abc-xyz/options?city=СПБ").json() == {
+        "types": ["HoReCa"]
+    }
+    assert admin_client.get("/api/clients/abc-xyz/options?city=Москва").json() == {
+        "types": ["Розница"]
+    }
+    assert admin_client.get("/api/clients/abc-xyz/options").json() == {"types": []}
+
+
 def test_route_renders_filters_and_escaped_client_name(admin_client, db_session):
     add_sales(db_session, '<script>alert("x")</script>', [10] * 6)
     response = admin_client.get(
@@ -181,7 +193,11 @@ def test_city_access_is_preserved(client, db_session):
     response = client.get("/analytics/clients/abc-xyz?city=Москва&end=2026-10")
     assert response.status_code == 200
     assert "Allowed" in response.text and "Forbidden" not in response.text
+    assert client.get("/api/clients/abc-xyz/options?city=Москва").json() == {
+        "types": ["HoReCa"]
+    }
     user.role = "brand_ambassador"
     db_session.add(UserCity(user_id=user.id, city="СПБ"))
     db_session.commit()
     assert client.get("/analytics/clients/abc-xyz?city=Москва").status_code == 403
+    assert client.get("/api/clients/abc-xyz/options?city=Москва").status_code == 403
