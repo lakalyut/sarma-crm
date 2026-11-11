@@ -1028,6 +1028,19 @@ def test_client_name_review_previews_and_merges_whitespace_variant(page, db_sess
     group.get_by_role("button", name="Проверить объединение").click()
     page.get_by_role("heading", name="Проверка объединения клиентов").wait_for()
     assert page.get_by_text("Будет обновлено строк продаж", exact=False).is_visible()
-    page.get_by_role("button", name="Подтвердить объединение").click()
-    page.get_by_text("Объединение сохранено.", exact=False).wait_for()
-    assert page.get_by_text("Похожих названий", exact=False).is_visible()
+    with page.expect_response(
+        lambda response: response.request.method == "POST" and response.status == 303
+    ) as redirect:
+        page.get_by_role("button", name="Подтвердить объединение").click()
+    # Playwright can bypass the fixture's route interception on redirects.
+    # Open the result separately to avoid racing the original navigation.
+    result = page.context.new_page()
+    try:
+        result.goto(
+            "https://pulse-ui.test" + redirect.value.headers["location"],
+            wait_until="networkidle",
+        )
+        assert result.get_by_text("Объединение сохранено.", exact=False).is_visible()
+        assert result.get_by_text("Похожих названий", exact=False).is_visible()
+    finally:
+        result.close()
