@@ -46,6 +46,24 @@ def test_groups_case_whitespace_quotes_and_typos_but_not_branch_numbers(db_sessi
     assert all("Кафе Маак" not in group for group in variants)
 
 
+def test_address_variants_keep_branch_number(db_session):
+    city = "Владивосток"
+    name = "Papa`s Chilla"
+    first = f"{name} (Владивосток, ул. Светланская 83)"
+    second = f"{name} 2 (Владивосток, ул. Светланская, д. 83)"
+    db_session.add_all(
+        sale(variant, city)
+        for variant in (name, f"{name} 2", first, second, f"{name} (ТЦ)")
+    )
+    db_session.commit()
+
+    groups = get_review_groups(db_session, city)
+    assert [{row["name"] for row in group["rows"]} for group in groups] == [
+        {name, first},
+        {f"{name} 2", second},
+    ]
+
+
 def test_preview_conflict_merge_and_reimport(admin_client, admin_user, db_session):
     db_session.add_all(
         [

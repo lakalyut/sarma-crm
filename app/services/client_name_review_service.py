@@ -12,6 +12,10 @@ from ..utils.dates import month_sort_key
 
 _QUOTES = str.maketrans("", "", '"«»„“”')
 _NAME_LIMIT = 200
+_ADDRESS_SUFFIX = re.compile(r"^(.+?)\s*\(([^()]+)\)$")
+_ADDRESS_MARKER = re.compile(
+    r"(?:^|[\s,])(?:ул\.|улица\b|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b)"
+)
 
 
 def clean_spacing(name):
@@ -22,6 +26,17 @@ def comparison_name(name):
     return clean_spacing(
         unicodedata.normalize("NFC", name).translate(_QUOTES)
     ).casefold()
+
+
+def _address_base(key, city):
+    match = _ADDRESS_SUFFIX.fullmatch(key)
+    if match:
+        base, address = match.groups()
+        if _ADDRESS_MARKER.search(address) or (
+            address.startswith(city + ",") and re.search(r"\d", address)
+        ):
+            return base
+    return None
 
 
 def lock_client_names(db, city):
@@ -172,10 +187,22 @@ def get_review_groups(db, city):
                     reason = "Различаются регистром"
                 add_group(group, reason)
                 covered.update(pairs)
+    address_pairs = set()
+    city_key = comparison_name(city)
+    for key, variants in by_key.items():
+        base = _address_base(key, city_key)
+        for short_name in by_key.get(base, ()):
+            for full_name in variants:
+                pair = _pair(short_name, full_name)
+                if pair not in dismissed:
+                    add_group(pair, "Название с адресом и без адреса")
+                    address_pairs.add(pair)
+
     for first, second in _nearby_keys(by_key):
         for left in by_key[first]:
             for right in by_key[second]:
-                if _pair(left, right) not in dismissed:
+                pair = _pair(left, right)
+                if pair not in dismissed and pair not in address_pairs:
                     add_group([left, right], "Похожие названия")
     for item in names.values():
         item["types"] = sorted(item["types"])
