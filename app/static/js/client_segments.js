@@ -3,6 +3,19 @@
     if (!root) return;
     const city = root.querySelector('#segments-city');
     const type = root.querySelector('#segments-type');
+    const period = root.querySelector('#segments-period');
+    let pickerEvents;
+    function initPeriodPicker() {
+        pickerEvents?.abort();
+        pickerEvents = new AbortController();
+        initCheckboxMultiselect({
+            id: 'segments-months',
+            inputName: 'months',
+            emptyText: 'Все месяцы',
+            signal: pickerEvents.signal,
+        });
+    }
+    initPeriodPicker();
     const submit = root.querySelector('button[type="submit"]');
     const modeButtons = Array.from(root.querySelectorAll('button[data-mode]'));
     modeButtons.forEach(button => button.addEventListener('click', () => {
@@ -21,7 +34,9 @@
         submit.disabled = true;
         modeButtons.forEach(button => { button.disabled = true; });
         type.dispatchEvent(new Event('display-sync', { bubbles: true }));
-        status.textContent = 'Загружаем типы точки…';
+        pickerEvents.abort();
+        period.querySelector(':scope > :not(label)')?.remove();
+        status.textContent = 'Загружаем месяцы и типы точки…';
         status.hidden = false;
         try {
             const url = new URL('/api/clients/abc-xyz/options', window.location.origin);
@@ -29,15 +44,17 @@
             const response = await fetch(url, { signal: request.signal, credentials: 'same-origin' });
             if (!response.ok) throw new Error('Options unavailable');
             const data = await response.json();
-            if (!Array.isArray(data.types) || !data.types.every(value => typeof value === 'string')) {
+            if (!Array.isArray(data.types) || !data.types.every(value => typeof value === 'string') || typeof data.month_picker !== 'string') {
                 throw new Error('Invalid options');
             }
             if (optionsRequest !== request) return;
             type.replaceChildren(new Option('Все типы', ''), ...data.types.map(value => new Option(value, value)));
+            period.insertAdjacentHTML('beforeend', data.month_picker);
+            initPeriodPicker();
             status.hidden = true;
         } catch (error) {
             if (optionsRequest !== request) return;
-            status.textContent = 'Типы не загрузились. Нажмите «Показать», чтобы обновить страницу.';
+            status.textContent = 'Месяцы и типы точки не загрузились. Нажмите «Показать», чтобы обновить страницу.';
         } finally {
             if (optionsRequest === request) {
                 type.disabled = false;
@@ -47,9 +64,6 @@
             }
         }
     });
-    root.querySelectorAll('form select').forEach(select => select.addEventListener('change', () => {
-        root.querySelector('input[name="complete"]').checked = false;
-    }));
     root.querySelector('form').addEventListener('change', () => {
         root.querySelector('#segments-pending').hidden = false;
     });

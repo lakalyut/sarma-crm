@@ -1,8 +1,7 @@
-"""ABC по объёму города и XYZ по общему календарному окну."""
+"""ABC по объёму города и XYZ по выбранным месяцам."""
 
 import math
 from collections import defaultdict
-from datetime import date
 from statistics import mean, pstdev
 
 from sqlalchemy import case, func, or_
@@ -24,17 +23,16 @@ def build_client_segments(
     db,
     city,
     *,
-    length=6,
-    end=None,
-    complete=False,
-    today=None,
+    months,
     sale_type=None,
     mode="volume",
 ):
     if mode not in ("volume", "presence"):
         raise ValueError("Unknown XYZ mode")
-    today = today or date.today()
-    current = (today.year, today.month)
+    window = sorted(set(months))
+    length = len(window)
+    end = window[-1]
+    selected = set(window)
     valid_client = func.trim(Sale.client)
     positive = (
         (Sale.weight > 0)
@@ -55,14 +53,6 @@ def build_client_segments(
         .group_by(valid_client, Sale.month, Sale.type)
         .all()
     )
-    loaded = {
-        parsed
-        for row in groups
-        if (parsed := parse_month(row.month)) and parsed < current
-    }
-    end = end or max(loaded, default=shift_month(current, -1))
-    window = [shift_month(end, offset) for offset in range(1 - length, 1)]
-    missing = [month for month in window if month not in loaded]
     volumes = defaultdict(lambda: defaultdict(float))
     first_seen = {}
     returns = invalid_months = 0
@@ -75,7 +65,7 @@ def build_client_segments(
             continue
         if month > end:
             continue
-        if month in window:
+        if month in selected:
             returns += int(row.returns or 0)
         if not row.client or row.client.lower() == "nan":
             continue
@@ -92,14 +82,12 @@ def build_client_segments(
         reason = ""
         if total == 0:
             reason = "inactive"
-        elif missing:
-            reason = "missing"
+        elif length < 2:
+            reason = "single_month"
         elif invalid_months:
             reason = "invalid"
         elif first_seen[client] > window[0]:
             reason = "insufficient"
-        elif not complete:
-            reason = "unconfirmed"
         active_months = sum(value > 0 for value in monthly)
         regularity = active_months / length * 100 if not reason else None
         cv = (
@@ -153,10 +141,7 @@ def build_client_segments(
         "window": [month_value(month) for month in window],
         "end": month_value(end),
         "length": length,
-        "complete": complete,
         "mode": mode,
-        "end_options": [month_value(month) for month in sorted(loaded, reverse=True)],
-        "missing": [month_value(month) for month in missing],
         "returns": returns,
         "invalid_months": invalid_months,
     }

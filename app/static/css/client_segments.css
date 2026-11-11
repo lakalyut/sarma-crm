@@ -1,7 +1,6 @@
 .segment-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }
 .segment-tabs [aria-current="page"] { background: var(--primary-tint); color: var(--primary-text); }
 .segment-mode { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
-.segment-confirm { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0; }
 .segment-summary {
     margin: 16px 0 20px;
     padding: 16px;

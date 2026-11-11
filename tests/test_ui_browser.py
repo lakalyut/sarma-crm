@@ -141,6 +141,9 @@ def test_client_segments_search_keyboard_and_city_types(page, db_session):
     db_session.query(Sale).filter(Sale.city == "Москва", Sale.type == "Магазин").update(
         {"type": "Розница"}
     )
+    db_session.query(Sale).filter(
+        Sale.city == "Москва", Sale.month == "2026-07-01"
+    ).update({"month": "2026-06-01"})
     db_session.commit()
     page.goto(
         "https://pulse-ui.test/analytics/clients/abc-xyz?city=Иркутск&end=2026-09",
@@ -160,6 +163,8 @@ def test_client_segments_search_keyboard_and_city_types(page, db_session):
         "!document.querySelector('#segments-type').disabled && Array.from(document.querySelector('#segments-type').options).some(o=>o.value==='Розница')"
     )
     assert page.locator("#segments-type").input_value() == ""
+    assert page.locator('#segments-months input[value="2026-06-01"]').count() == 1
+    assert page.locator('#segments-months input[value="2026-07-01"]').count() == 0
     assert page.locator("#segments-type option").all_text_contents() == [
         "Все типы",
         "Кальянная",
@@ -196,7 +201,7 @@ def test_client_segments_city_options_failure_can_reload(page):
     city.fill("Моск")
     city.press("Enter")
     page.locator("#segments-options-status").get_by_text(
-        "Типы не загрузились.", exact=False
+        "Месяцы и типы точки не загрузились.", exact=False
     ).wait_for()
     assert page.get_by_role("button", name="Показать", exact=True).is_enabled()
     assert page.locator("#segments-type option").all_text_contents() == ["Все типы"]
@@ -219,12 +224,18 @@ def test_client_segments_switches_xyz_mode_with_filters(page, db_session):
         )
     db_session.commit()
     page.goto(
-        "https://pulse-ui.test/analytics/clients/abc-xyz?city=Иркутск&end=2026-09&sale_type=Кальянная&length=6&complete=true",
+        "https://pulse-ui.test/analytics/clients/abc-xyz?city=Иркутск&sale_type=Кальянная",
         wait_until="networkidle",
     )
     row = page.locator("tr[data-client]").filter(has_text=name)
     volume_class = row.locator("td").nth(1).inner_text()
     assert volume_class.endswith("Z")
+    page.get_by_role("button", name="Месяцы", exact=True).click()
+    for month in ("04", "07", "09"):
+        page.locator(
+            f'#segments-months label:has(input[value="2026-{month}-01"])'
+        ).click()
+    page.keyboard.press("Escape")
     page.get_by_role("button", name="Наличие закупок", exact=True).click()
     page.wait_for_url(
         lambda url: parse_qs(urlsplit(url).query).get("mode") == ["presence"],
@@ -232,12 +243,11 @@ def test_client_segments_switches_xyz_mode_with_filters(page, db_session):
     )
     query = parse_qs(urlsplit(page.url).query)
     assert query["sale_type"] == ["Кальянная"]
-    assert query["complete"] == ["true"]
-    assert query["length"] == ["6"]
-    assert query["end"] == ["2026-09"]
+    assert set(query["months"]) == {"2026-04-01", "2026-07-01", "2026-09-01"}
+    assert "complete" not in query
     row = page.locator("tr[data-client]").filter(has_text=name)
     assert row.locator("td").nth(1).inner_text() == volume_class[0] + "X"
-    assert row.locator('.segment-presence [data-present="true"]').count() == 6
+    assert row.locator('.segment-presence [data-present="true"]').count() == 3
     assert page.get_by_role(
         "columnheader", name="Регулярность", exact=True
     ).is_visible()
@@ -246,6 +256,7 @@ def test_client_segments_switches_xyz_mode_with_filters(page, db_session):
         lambda url: parse_qs(urlsplit(url).query).get("mode") == ["volume"],
         wait_until="networkidle",
     )
+    assert set(parse_qs(urlsplit(page.url).query)["months"]) == set(query["months"])
     assert (
         page.locator("tr[data-client]")
         .filter(has_text=name)

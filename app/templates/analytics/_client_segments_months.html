@@ -1,0 +1,20 @@
+{% from "includes/month_year_picker.html" import month_year_grid %}
+{% if all_months %}
+<div class="multiselect" id="segments-months">
+    <div class="multiselect-display">
+        <span class="multiselect-text">{{ selected_months|format_month_list if selected_months else 'Все месяцы' }}</span>
+        <span class="multiselect-arrow" aria-hidden="true">▾</span>
+    </div>
+    <div class="multiselect-dropdown">
+        <label class="month-checkbox month-checkbox-all">
+            <input type="checkbox" class="multiselect-select-all-checkbox">
+            <span>Выбрать все</span>
+        </label>
+        <div class="month-checkboxes">
+            {{ month_year_grid(all_months, selected_months, "months") }}
+        </div>
+    </div>
+</div>
+{% else %}
+<p class="segment-context">{{ 'Нет доступных месяцев' if selected_city else 'Сначала выберите город' }}</p>
+{% endif %}

@@ -1,5 +1,3 @@
-from datetime import date
-
 import pytest
 
 from app.models import Sale
@@ -21,14 +19,16 @@ def add_sales(db, client, weights, start=5, city="СПБ", sale_type="HoReCa"):
     db.commit()
 
 
-def report(db, **kwargs):
-    return build_client_segments(db, "СПБ", today=date(2026, 11, 9), **kwargs)
+def report(db, *, months=None, **kwargs):
+    if months is None:
+        months = [(2026, month) for month in range(5, 11)]
+    return build_client_segments(db, "СПБ", months=months, **kwargs)
 
 
 def test_abc_boundaries_and_dominant_client(db_session):
     for name, weight in [("A", 80), ("B", 15), ("C", 5)]:
         add_sales(db_session, name, [weight] * 6)
-    data = report(db_session, complete=True)
+    data = report(db_session)
     assert [row["abc"] for row in data["rows"]] == ["A", "B", "C"]
     assert [row["xyz"] for row in data["rows"]] == ["X"] * 3
     assert sum(cell["count"] for cell in data["matrix"].values()) == 3
@@ -43,7 +43,7 @@ def test_presence_thresholds_count_months_not_volume(db_session, active, expecte
     add_sales(db_session, "Client", [10] + [10] * (active - 1) + [0] * (6 - active))
     # Multiple lines in the same month still count as one purchase month.
     add_sales(db_session, "Client", [990], start=5)
-    row = report(db_session, complete=True, mode="presence")["rows"][0]
+    row = report(db_session, mode="presence")["rows"][0]
     assert row["active_months"] == active
     assert row["regularity"] == pytest.approx(active / 6 * 100)
     assert row["xyz"] == expected
@@ -54,27 +54,22 @@ def test_presence_preserves_abc_and_data_quality_rules(db_session):
     add_sales(db_session, "Variable", [1, 2, 3, 10, 50, 100])
     add_sales(db_session, "Old", [5], start=1)
     add_sales(db_session, "Recent", [10, 10], start=9)
-    volume = report(db_session, complete=True)
-    presence = report(db_session, complete=True, mode="presence")
+    volume = report(db_session)
+    presence = report(db_session, mode="presence")
     assert [(r["client"], r["abc"], r["share"]) for r in volume["rows"]] == [
         (r["client"], r["abc"], r["share"]) for r in presence["rows"]
     ]
     assert presence["rows"][0]["xyz"] == "X"
     assert volume["rows"][0]["xyz"] == "Z"
     assert presence["reasons"] == {"insufficient": 1, "inactive": 1}
-    assert report(db_session, mode="presence")["rows"][0]["reason"] == "unconfirmed"
-    db_session.query(Sale).filter(Sale.month == "2026-07-01").delete()
-    db_session.commit()
-    assert (
-        report(db_session, complete=True, mode="presence")["rows"][0]["reason"]
-        == "missing"
-    )
 
 
 @pytest.mark.parametrize("active,expected", [(10, "X"), (9, "Y"), (6, "Y"), (5, "Z")])
 def test_presence_twelve_month_window(db_session, active, expected):
+    months = []
     for index in range(12):
         year, month = divmod(2025 * 12 + 10 + index, 12)
+        months.append((year, month + 1))
         db_session.add(
             Sale(
                 city="СПБ",
@@ -85,38 +80,32 @@ def test_presence_twelve_month_window(db_session, active, expected):
             )
         )
     db_session.commit()
-    row = report(db_session, length=12, complete=True, mode="presence")["rows"][0]
+    row = report(db_session, months=months, mode="presence")["rows"][0]
     assert row["xyz"] == expected
     assert row["active_months"] == active
 
 
-def test_missing_client_months_are_zeros_but_missing_city_month_blocks_xyz(db_session):
+def test_missing_client_months_are_zeros(db_session):
     add_sales(db_session, "Steady", [10] * 6)
     add_sales(db_session, "Intermittent", [20, 0, 20, 0, 20, 0])
-    data = report(db_session, complete=True)
+    data = report(db_session)
     intermittent = next(row for row in data["rows"] if row["client"] == "Intermittent")
     assert intermittent["xyz"] == "Z"
     assert intermittent["cv"] == pytest.approx(100)
     assert intermittent["active_months"] == 3
-    db_session.query(Sale).filter(Sale.month == "2026-07-01").delete()
-    db_session.commit()
-    data = report(db_session, complete=True)
-    assert data["missing"] == ["2026-07"]
-    assert all(
-        row["xyz"] is None and row["reason"] == "missing" for row in data["rows"]
-    )
 
 
-def test_fullness_confirmation_short_history_and_inactive(db_session):
+def test_short_history_inactive_and_single_month(db_session):
     add_sales(db_session, "Steady", [10] * 6)
     add_sales(db_session, "Recent", [10, 10], start=9)
     add_sales(db_session, "Old", [5], start=1)
     data = report(db_session)
-    assert data["reasons"] == {"unconfirmed": 1, "insufficient": 1, "inactive": 1}
+    assert data["reasons"] == {"insufficient": 1, "inactive": 1}
     assert data["active_clients"] == 2
-    assert all(row["xyz"] is None for row in data["rows"])
-    data = report(db_session, complete=True)
     assert data["matrix"]["AX"]["count"] == 1
+    single = report(db_session, months=[(2026, 10)])
+    assert single["reasons"] == {"single_month": 2, "inactive": 1}
+    assert {row["abc"] for row in single["rows"] if row["volume"]} == {"A"}
 
 
 def test_mixed_month_formats_types_returns_and_current_month(db_session):
@@ -142,7 +131,7 @@ def test_mixed_month_formats_types_returns_and_current_month(db_session):
     )
     add_sales(db_session, "Other city", [900] * 6, city="Москва")
     db_session.commit()
-    data = report(db_session, complete=True)
+    data = report(db_session)
     assert data["end"] == "2026-10"
     assert data["total_volume"] == 70
     assert len(data["rows"]) == 1
@@ -154,7 +143,7 @@ def test_invalid_month_disables_xyz(db_session):
     add_sales(db_session, "Same", [10] * 6)
     db_session.add(Sale(city="СПБ", client="Same", month="bad-month", weight=10, qty=1))
     db_session.commit()
-    data = report(db_session, complete=True)
+    data = report(db_session)
     assert data["invalid_months"] == 1
     assert data["rows"][0]["reason"] == "invalid"
 
@@ -165,7 +154,7 @@ def test_type_filter_recalculates_classes_and_shares(db_session):
     add_sales(db_session, "Shop", [360] * 6, sale_type="Розница")
     all_rows = {row["client"]: row for row in report(db_session)["rows"]}
     assert all_rows["Cafe"]["abc"] == "B"
-    data = report(db_session, complete=True, sale_type="HoReCa")
+    data = report(db_session, sale_type="HoReCa")
     assert data["total_volume"] == 300
     assert [row["client"] for row in data["rows"]] == ["Cafe", "Small cafe"]
     assert [row["abc"] for row in data["rows"]] == ["A", "B"]
@@ -177,8 +166,7 @@ def test_type_without_sales_in_city_month_is_zero_not_missing(db_session):
     add_sales(db_session, "Cafe", [20, 0, 20, 0, 20, 0])
     db_session.query(Sale).filter(Sale.type == "HoReCa", Sale.weight == 0).delete()
     db_session.commit()
-    data = report(db_session, complete=True, sale_type="HoReCa")
-    assert data["missing"] == []
+    data = report(db_session, sale_type="HoReCa")
     assert data["rows"][0]["xyz"] == "Z"
     assert data["rows"][0]["monthly"] == [20, 0, 20, 0, 20, 0]
 
@@ -187,7 +175,7 @@ def test_route_preserves_selected_type(admin_client, db_session):
     add_sales(db_session, "Cafe", [20] * 6)
     add_sales(db_session, "Excluded shop", [900] * 6, sale_type="Розница")
     response = admin_client.get(
-        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&sale_type=HoReCa&complete=true"
+        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&sale_type=HoReCa"
     )
     assert response.status_code == 200
     assert '<option value="HoReCa" selected>' in response.text
@@ -200,13 +188,13 @@ def test_route_preserves_selected_type(admin_client, db_session):
         == 400
     )
     response = admin_client.get(
-        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&sale_type=HoReCa&complete=true&mode=presence"
+        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&sale_type=HoReCa&mode=presence"
     )
     assert response.status_code == 200
     assert 'data-mode="presence" aria-pressed="true"' in response.text
     assert 'name="mode" value="presence"' in response.text
     assert "Регулярность" in response.text
-    assert "Май — октябрь 2026 · HoReCa" in response.text
+    assert "Май 2026 – Октябрь 2026 · HoReCa" in response.text
     assert "<summary>Как считаем ABC и XYZ</summary>" in response.text
     assert "XYZ показывает долю месяцев с положительной отгрузкой" in response.text
     assert "Есть закупка" in response.text
@@ -219,20 +207,15 @@ def test_route_preserves_selected_type(admin_client, db_session):
 def test_options_return_only_selected_city_types(admin_client, db_session):
     add_sales(db_session, "Cafe", [20] * 6)
     add_sales(db_session, "Shop", [20] * 6, city="Москва", sale_type="Розница")
-    assert admin_client.get("/api/clients/abc-xyz/options?city=СПБ").json() == {
-        "types": ["HoReCa"]
-    }
-    assert admin_client.get("/api/clients/abc-xyz/options?city=Москва").json() == {
-        "types": ["Розница"]
-    }
-    assert admin_client.get("/api/clients/abc-xyz/options").json() == {"types": []}
+    for city, types in [("СПБ", ["HoReCa"]), ("Москва", ["Розница"]), ("", [])]:
+        options = admin_client.get(f"/api/clients/abc-xyz/options?city={city}").json()
+        assert options["types"] == types
+        assert ('name="months"' in options["month_picker"]) == bool(city)
 
 
 def test_route_renders_filters_and_escaped_client_name(admin_client, db_session):
     add_sales(db_session, '<script>alert("x")</script>', [10] * 6)
-    response = admin_client.get(
-        "/analytics/clients/abc-xyz?city=СПБ&end=2026-10&complete=true"
-    )
+    response = admin_client.get("/analytics/clients/abc-xyz?city=СПБ&end=2026-10")
     assert response.status_code == 200
     assert "&lt;script&gt;" in response.text
     assert 'data-segment="AX"' in response.text
@@ -263,11 +246,41 @@ def test_city_access_is_preserved(client, db_session):
     response = client.get("/analytics/clients/abc-xyz?city=Москва&end=2026-10")
     assert response.status_code == 200
     assert "Allowed" in response.text and "Forbidden" not in response.text
-    assert client.get("/api/clients/abc-xyz/options?city=Москва").json() == {
-        "types": ["HoReCa"]
-    }
+    assert client.get("/api/clients/abc-xyz/options?city=Москва").json()["types"] == [
+        "HoReCa"
+    ]
     user.role = "brand_ambassador"
     db_session.add(UserCity(user_id=user.id, city="СПБ"))
     db_session.commit()
     assert client.get("/analytics/clients/abc-xyz?city=Москва").status_code == 403
     assert client.get("/api/clients/abc-xyz/options?city=Москва").status_code == 403
+
+
+def test_route_uses_only_selected_loaded_months(admin_client, db_session):
+    add_sales(db_session, "Cafe", [10], start=5)
+    add_sales(db_session, "Cafe", [1000], start=7)
+    add_sales(db_session, "Cafe", [10], start=10)
+    add_sales(db_session, "Other city", [90], start=6, city="Москва")
+    db_session.add(Sale(city="СПБ", client="Cafe", month="Май 2026", weight=5, qty=1))
+    db_session.commit()
+
+    response = admin_client.get(
+        "/analytics/clients/abc-xyz",
+        params=[
+            ("city", "СПБ"),
+            ("mode", "presence"),
+            ("months", "2026-10-01"),
+            ("months", "2026-05-01"),
+            ("months", "2026-06-01"),
+            ("months", "Май 2026"),
+        ],
+    )
+    assert response.status_code == 200
+    html = response.text
+    assert 'name="complete"' not in html
+    assert 'name="months" value="2026-06-01"' not in html
+    assert html.count('name="months" value="2026-05-01"') == 1
+    assert 'data-class="AX"' in html
+    assert "2/2 мес." in html
+    assert "25,00 кг" in html
+    assert "1 025,00 кг" not in html

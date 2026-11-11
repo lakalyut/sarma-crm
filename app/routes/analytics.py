@@ -23,17 +23,36 @@ from ..services.ambassadors_service import (
 )
 from ..services.charts_service import get_charts_metrics_data
 from ..services.client_health_service import STATUS_ORDER, build_client_health
-from ..services.client_segments_service import build_client_segments
+from ..services.client_segments_service import (
+    build_client_segments,
+    month_value,
+    shift_month,
+)
 from ..services.clients_service import (
     get_client_detail_data,
     get_clients_summary_data,
 )
 from ..services.sale_filters import build_sale_filters
 from ..services.sales_options_service import get_cities, get_months, get_types
-from ..utils.dates import month_sort_key
+from ..templating import templates
+from ..utils.dates import month_sort_key, parse_month
 from ..utils.params import get_int_param
 
 router = APIRouter()
+
+
+def _segment_months(db: Session, city: str, today: date) -> list[tuple[int, int]]:
+    if not city:
+        return []
+    return sorted(
+        {
+            month
+            for raw in get_months(db, city=city)
+            if (month := parse_month(raw))
+            and (1, 1) <= month <= (today.year, today.month)
+        },
+        reverse=True,
+    )
 
 
 @router.get("/api/clients/abc-xyz/options")
@@ -44,33 +63,34 @@ def client_segment_options(
 ):
     if user.role == "ambassador":
         city = user.city or ""
-    return {"types": get_types(db, city=city) if city else []}
+    today = datetime.now(ZoneInfo("Asia/Irkutsk")).date()
+    return {
+        "types": get_types(db, city=city) if city else [],
+        "month_picker": templates.get_template(
+            "analytics/_client_segments_months.html"
+        ).render(
+            all_months=[
+                month_value(month) + "-01" for month in _segment_months(db, city, today)
+            ],
+            selected_months=[],
+            selected_city=city,
+        ),
+    }
 
 
 @router.get("/analytics/clients/abc-xyz")
 def client_segments(
     request: Request,
     city: str = "",
-    length: int = Query(default=6),
+    months: list[str] | None = Query(default=None),
+    length: int | None = None,
     end: str = "",
-    complete: bool = False,
     sale_type: str = "",
     mode: Literal["volume", "presence"] = "volume",
     db: Session = Depends(get_db),
     user: User = Depends(require_client_viewer),
 ):
-    if length not in (6, 12):
-        raise HTTPException(400, "Выберите период 6 или 12 месяцев")
     today = datetime.now(ZoneInfo("Asia/Irkutsk")).date()
-    end_month = None
-    if end:
-        try:
-            parsed = date.fromisoformat(end + "-01")
-        except ValueError as exc:
-            raise HTTPException(400, "Некорректный месяц окончания") from exc
-        if parsed >= today.replace(day=1):
-            raise HTTPException(400, "Выберите завершённый месяц")
-        end_month = (parsed.year, parsed.month)
     cities = get_cities(db)
     if user.role == "ambassador":
         city = user.city or ""
@@ -80,18 +100,40 @@ def client_segments(
     sale_types = get_types(db, city=city) if city else []
     if sale_type and sale_type not in sale_types:
         raise HTTPException(400, "Выберите тип точки из списка выбранного города")
+    available = _segment_months(db, city, today)
+    period_requested = bool(months or end or length is not None)
+    selected = available
+    if months:
+        requested = {parse_month(month) for month in months}
+        selected = [month for month in available if month in requested]
+    elif end or length is not None:
+        # Старые ссылки задают календарное окно, из которого берём загруженные месяцы.
+        if length not in (None, 6, 12):
+            raise HTTPException(400, "Выберите период 6 или 12 месяцев")
+        if end:
+            try:
+                parsed = date.fromisoformat(end + "-01")
+            except ValueError as exc:
+                raise HTTPException(400, "Некорректный месяц окончания") from exc
+            if parsed >= today.replace(day=1):
+                raise HTTPException(400, "Выберите завершённый месяц")
+            end_month = (parsed.year, parsed.month)
+        else:
+            last_closed = shift_month((today.year, today.month), -1)
+            end_month = next(
+                (month for month in available if month <= last_closed), last_closed
+            )
+        start_month = shift_month(end_month, 1 - (length or 6))
+        selected = [month for month in available if start_month <= month <= end_month]
     report = (
         build_client_segments(
             db,
             city,
-            length=length,
-            end=end_month,
-            complete=complete,
-            today=today,
+            months=selected,
             sale_type=sale_type,
             mode=mode,
         )
-        if city
+        if selected
         else None
     )
     return render(
@@ -103,6 +145,11 @@ def client_segments(
             "cities": cities,
             "sale_types": sale_types,
             "selected_type": sale_type,
+            "all_months": [month_value(month) + "-01" for month in available],
+            "selected_months": [
+                month_value(month) + "-01" for month in selected if period_requested
+            ],
+            "period_months": [month_value(month) + "-01" for month in selected],
             "mode": mode,
             "report": report,
             **_layout_context(user),

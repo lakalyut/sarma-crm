@@ -140,7 +140,7 @@ function initCheckboxMultiselect(config) {
 
     document.addEventListener("click", function() {
         setOpen(false);
-    });
+    }, { signal: config.signal });
 
     const pager = list.querySelector(".mp-pager");
     if (pager) {
