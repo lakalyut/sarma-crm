@@ -17,6 +17,7 @@ from ..services.client_name_review_service import (
     assign_missing_client_type,
     dismiss_names,
     get_client_type_gaps,
+    get_review_cities,
     get_review_groups,
     get_review_point_types,
     merge_names,
@@ -29,8 +30,8 @@ _PAGE_SIZE = 50
 
 
 def _render_review(request, db, city, page=1, **context):
-    cities = get_all_cities(db)
-    city = city if city in cities else ""
+    cities = get_review_cities(db)
+    city = city if city in cities or (city and city in get_all_cities(db)) else ""
     groups = get_review_groups(db, city) if city else []
     type_gaps = get_client_type_gaps(db, city) if city else []
     pages = max(1, (len(groups) + _PAGE_SIZE - 1) // _PAGE_SIZE)

@@ -107,6 +107,33 @@ def test_payment_notes_with_same_address(db_session):
     assert get_review_groups(db_session, city) == []
 
 
+def test_high_similarity_and_city_filter(admin_client, db_session):
+    first = "Кальянная Северный берег обслуживание клиентов"
+    second = "Кальянная Севирный берег обслуживанеи клиентов"
+    db_session.add_all(
+        [
+            sale(first, "Казань"),
+            sale(second, "Казань"),
+            sale(first + " 2", "Казань"),
+            sale(second + " 3", "Казань"),
+            sale("Отдельный клиент", "Омск"),
+            Sale(city="Пермь", client="Точка без типа", type="nan"),
+        ]
+    )
+    db_session.commit()
+    page = admin_client.get(URL, params={"city": "Казань"})
+    assert 'value="Казань" selected' in page.text
+    assert 'value="Пермь"' in page.text
+    assert 'value="Омск"' not in page.text
+    groups = get_review_groups(db_session, "Казань")
+    assert [{row["name"] for row in group["rows"]} for group in groups] == [
+        {first, second}
+    ]
+    assert groups[0]["reason"].startswith("Сходство названий")
+    dismiss_names(db_session, "Казань", [first, second])
+    assert 'value="Казань"' not in admin_client.get(URL).text
+
+
 def test_preview_conflict_merge_and_reimport(admin_client, admin_user, db_session):
     db_session.add_all(
         [

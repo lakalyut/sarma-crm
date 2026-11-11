@@ -3,7 +3,8 @@
 import re
 import unicodedata
 from collections import defaultdict
-from itertools import combinations
+from difflib import SequenceMatcher
+from itertools import chain, combinations, groupby
 
 from sqlalchemy import func, or_, text, update
 
@@ -83,12 +84,51 @@ def _missing_sale_type():
     return or_(Sale.type.is_(None), func.lower(func.trim(normalized)).in_(("", "nan")))
 
 
+def _named_client():
+    return func.lower(func.trim(Sale.client)).notin_(("", "nan"))
+
+
+def get_review_cities(db):
+    cities = {
+        city
+        for (city,) in db.query(Sale.city)
+        .filter(_named_client(), _missing_sale_type())
+        .distinct()
+        if city and city.strip()
+    }
+    dismissed = defaultdict(set)
+    for city, first, second in db.query(
+        ClientNameDismissal.city,
+        ClientNameDismissal.first_name,
+        ClientNameDismissal.second_name,
+    ):
+        dismissed[city].add((first, second))
+    names = (
+        db.query(Sale.city, Sale.client)
+        .filter(Sale.city.isnot(None), _named_client(), Sale.city.notin_(cities))
+        .union(db.query(Visit.city, Visit.client).filter(Visit.city.notin_(cities)))
+        .order_by(Sale.city)
+        .yield_per(1000)
+    )
+    for city, rows in groupby(names, key=lambda row: row[0]):
+        clients = {
+            name
+            for _, name in rows
+            if name.strip() and name.strip().casefold() != "nan"
+        }
+        if city.strip() and next(
+            iter_name_matches(clients, dismissed[city], city), None
+        ):
+            cities.add(city)
+    return sorted(cities)
+
+
 def get_client_type_gaps(db, city):
     missing = (
         db.query(Sale.client, func.count(Sale.id))
         .filter(
             Sale.city == city,
-            func.lower(func.trim(Sale.client)).notin_(("", "nan")),
+            _named_client(),
             _missing_sale_type(),
         )
         .group_by(Sale.client)
@@ -214,6 +254,26 @@ def _nearby_keys(keys):
                 yield key, other
 
 
+def _high_similarity_keys(keys):
+    """Index shared fragments before comparing the full normalized names."""
+    index = defaultdict(list)
+    for key in sorted(keys, key=lambda value: (len(value), value)):
+        size = len(key)
+        if not 12 <= size <= _NAME_LIMIT:
+            continue
+        digits = tuple(re.findall(r"\d+", key))
+        fragments = {key[i : i + 5] for i in range(size - 4)}
+        candidates = set()
+        for fragment in fragments:
+            for length in range((size * 19 + 20) // 21, size + 1):
+                candidates.update(index.get((digits, length, fragment), ()))
+            index[digits, size, fragment].append(key)
+        for other in sorted(candidates):
+            matcher = SequenceMatcher(None, key, other, autojunk=False)
+            if matcher.quick_ratio() >= 0.95 and (score := matcher.ratio()) >= 0.95:
+                yield key, other, f"Сходство названий {score:.1%}".replace(".", ",")
+
+
 def _one_edit(first, second):
     if abs(len(first) - len(second)) > 1:
         return False
@@ -235,27 +295,10 @@ def _one_edit(first, second):
     return shorter[i:] == longer[i + 1 :]
 
 
-def get_review_groups(db, city):
-    names = _names_in_city(db, city)
-    dismissed = _dismissed_pairs(db, city)
+def iter_name_matches(names, dismissed, city):
     by_key = defaultdict(list)
     for name in sorted(names):
         by_key[comparison_name(name)].append(name)
-    groups = []
-
-    def add_group(variants, reason):
-        rows = sorted(
-            (names[name] for name in variants),
-            key=lambda row: (-row["sales"], -row["visits"], row["name"]),
-        )
-        groups.append(
-            {
-                "reason": reason,
-                "rows": rows,
-                "canonical": clean_spacing(rows[0]["name"]),
-            }
-        )
-
     for variants in by_key.values():
         covered = set()
         for i, first in enumerate(variants[:-1]):
@@ -273,7 +316,7 @@ def get_review_groups(db, city):
                         reason = "Различаются регистром и пробелами"
                 else:
                     reason = "Различаются регистром"
-                add_group(group, reason)
+                yield group, reason
                 covered.update(pairs)
     address_pairs = set()
     city_key = comparison_name(city)
@@ -283,7 +326,7 @@ def get_review_groups(db, city):
             for full_name in variants:
                 pair = _pair(short_name, full_name)
                 if pair not in dismissed:
-                    add_group(pair, "Название с адресом и без адреса")
+                    yield pair, "Название с адресом и без адреса"
                     address_pairs.add(pair)
 
     names_by_payment_base = defaultdict(list)
@@ -299,7 +342,7 @@ def get_review_groups(db, city):
                 and pair not in dismissed
                 and pair not in address_pairs
             ):
-                add_group(pair, "Различаются пометками (Н) / (НАЛ)")
+                yield pair, "Различаются пометками (Н) / (НАЛ)"
                 address_pairs.add(pair)
 
     inline_addresses = {}
@@ -314,10 +357,18 @@ def get_review_groups(db, city):
                 for right in by_key[second]:
                     pair = _pair(left, right)
                     if pair not in dismissed and pair not in address_pairs:
-                        add_group(pair, "Один адрес записан по-разному")
+                        yield pair, "Один адрес записан по-разному"
                         address_pairs.add(pair)
 
-    for first, second in _nearby_keys(by_key):
+    nearby = (
+        (first, second, "Похожие названия") for first, second in _nearby_keys(by_key)
+    )
+    compared = set()
+    for first, second, reason in chain(_high_similarity_keys(by_key), nearby):
+        key_pair = _pair(first, second)
+        if key_pair in compared:
+            continue
+        compared.add(key_pair)
         first_address = inline_addresses.get(first)
         second_address = inline_addresses.get(second)
         if (
@@ -331,7 +382,24 @@ def get_review_groups(db, city):
             for right in by_key[second]:
                 pair = _pair(left, right)
                 if pair not in dismissed and pair not in address_pairs:
-                    add_group([left, right], "Похожие названия")
+                    yield [left, right], reason
+
+
+def get_review_groups(db, city):
+    names = _names_in_city(db, city)
+    groups = []
+    for variants, reason in iter_name_matches(names, _dismissed_pairs(db, city), city):
+        rows = sorted(
+            (names[name] for name in variants),
+            key=lambda row: (-row["sales"], -row["visits"], row["name"]),
+        )
+        groups.append(
+            {
+                "reason": reason,
+                "rows": rows,
+                "canonical": clean_spacing(rows[0]["name"]),
+            }
+        )
     for item in names.values():
         item["types"] = sorted(item["types"])
         item["months"] = sorted(item["months"], key=month_sort_key)
