@@ -143,7 +143,7 @@ def test_assign_city_point_type_to_only_missing_sales(admin_client, db_session):
     db_session.add_all(
         [
             Sale(city=CITY, client=NAME, type=point_type)
-            for point_type in (" NaN ", None, "", "HoReCa")
+            for point_type in (" NaN ", None, "", "\u00a0nan\t", "\u200b", "HoReCa")
         ]
         + [
             Sale(city=CITY, client="Другая точка", type="nan"),
@@ -171,7 +171,7 @@ def test_assign_city_point_type_to_only_missing_sales(admin_client, db_session):
         URL + "/point-type", data={**data, "point_type": "Розница"}
     )
     assert response.status_code == 200
-    assert "Обновлено строк продаж — 3." in response.text
+    assert "Обновлено строк продаж — 5." in response.text
     assert "Клиенты без типа точки · 1" in response.text
     assert (
         db_session.query(Sale).filter_by(city=CITY, client=NAME, type="HoReCa").count()
@@ -179,7 +179,7 @@ def test_assign_city_point_type_to_only_missing_sales(admin_client, db_session):
     )
     assert (
         db_session.query(Sale).filter_by(city=CITY, client=NAME, type="Розница").count()
-        == 3
+        == 5
     )
     assert (
         db_session.query(Sale).filter_by(city=other_city, client=NAME).one().type

@@ -57,7 +57,10 @@ def get_client_aliases(db, city):
 
 
 def _missing_sale_type():
-    return or_(Sale.type.is_(None), func.lower(func.trim(Sale.type)).in_(("", "nan")))
+    normalized = Sale.type
+    for whitespace in ("\t", "\r", "\n", "\u00a0", "\u202f", "\u200b", "\ufeff"):
+        normalized = func.replace(normalized, whitespace, " ")
+    return or_(Sale.type.is_(None), func.lower(func.trim(normalized)).in_(("", "nan")))
 
 
 def get_client_type_gaps(db, city):

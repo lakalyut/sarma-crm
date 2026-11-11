@@ -25,9 +25,12 @@
     <p class="message ok" role="status">{{ 'Тип уже заполнен.' if assigned == 0 else 'Тип назначен. Обновлено строк продаж — ' ~ assigned ~ '.' }}</p>
 {% endif %}
 
-{% if type_gaps %}
+{% if selected_city %}
 <details class="filters-card" open style="margin-bottom: 16px;">
     <summary>Клиенты без типа точки · {{ type_gaps|length }}</summary>
+    {% if not type_gaps %}
+    <p class="message">В продажах города {{ selected_city }} не найдено клиентов без типа точки.</p>
+    {% else %}
     {% if not point_types %}
     <p class="message">В продажах этого города пока нет заполненных типов точек.</p>
     {% endif %}
@@ -60,7 +63,10 @@
             </tbody>
         </table>
     </div>
+    {% endif %}
 </details>
+{% else %}
+<p class="message">Выберите город и нажмите «Показать», чтобы проверить названия и типы точек.</p>
 {% endif %}
 
 {% if selected_city and not groups %}
