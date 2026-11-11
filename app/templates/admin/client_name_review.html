@@ -76,6 +76,7 @@
 {% if selected_city and not groups %}
     <p class="message">Похожих названий в городе {{ selected_city }} не найдено.</p>
 {% elif groups %}
+    <a class="btn btn-secondary" href="/admin/clients/review/bulk?{{ {'city': selected_city}|urlencode }}">Массовая сверка</a>
     <p class="page-subtitle">Групп для проверки — {{ group_count }}. Выберите варианты внутри группы.</p>
     {% for group in groups %}
     <form method="post" class="filters-card" style="margin-bottom: 16px;">

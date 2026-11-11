@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Массовая сверка клиентов</h1>
+<p class="page-subtitle">{{ city }}</p>
+{% if groups %}
+<p>Групп к объединению — {{ groups|length }}. Будет обновлено строк продаж — {{ sales }}, визитов — {{ visits }}.</p>
+<div class="sheet-scroller">
+    <table class="sheet-table">
+        <thead><tr><th>Итоговое имя</th><th>Варианты для замены</th><th>Строки продаж</th><th>Визиты</th></tr></thead>
+        <tbody>
+            {% for group in groups %}
+            <tr>
+                <td>{{ group.canonical }}</td>
+                <td><ul>{% for name in group.sources %}<li><code style="white-space: pre-wrap;">{{ name }}</code></li>{% endfor %}</ul></td>
+                <td>{{ group.sales }}</td>
+                <td>{{ group.visits }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<form method="post" class="filters">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="city" value="{{ city }}">
+    <input type="hidden" name="snapshot" value="{{ snapshot }}">
+    <button type="submit" class="btn-primary">Подтвердить все объединения</button>
+    <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a>
+</form>
+{% else %}
+<p class="message">Групп для массового объединения не найдено.</p>
+<a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a>
+{% endif %}
+{% endblock %}

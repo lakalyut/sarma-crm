@@ -1,3 +1,4 @@
+import re
 from urllib.parse import quote
 
 import pandas as pd
@@ -132,6 +133,50 @@ def test_high_similarity_and_city_filter(admin_client, db_session):
     assert groups[0]["reason"].startswith("Сходство названий")
     dismiss_names(db_session, "Казань", [first, second])
     assert 'value="Казань"' not in admin_client.get(URL).text
+
+
+def test_bulk_review_merges_only_previewed_exact_groups(admin_client, db_session):
+    original = "Papa’s Chilla"
+    alternative = " «PAPA’S  CHILLA» "
+    branch = "Papa’s Chilla 2"
+    rejected = ("Розница Плюс", "РОЗНИЦА ПЛЮС")
+    db_session.add_all(
+        sale(name)
+        for name in (original, original, alternative, branch, NAME, SPACED, *rejected)
+    )
+    db_session.add(sale(alternative, "Москва"))
+    db_session.commit()
+    dismiss_names(db_session, CITY, rejected)
+
+    bulk_url = URL + "/bulk"
+
+    def get_snapshot():
+        response = admin_client.get(bulk_url, params={"city": CITY})
+        assert "Групп к объединению — 2" in response.text
+        assert branch not in response.text
+        assert rejected[0] not in response.text
+        return re.search(r'name="snapshot" value="([a-f0-9]+)"', response.text)[1]
+
+    data = {"csrf_token": CSRF_TOKEN, "city": CITY, "snapshot": get_snapshot()}
+    db_session.add(sale(alternative))
+    db_session.commit()
+    assert admin_client.post(bulk_url, data=data).status_code == 400
+    assert db_session.query(ClientNameAlias).count() == 0
+    assert (
+        admin_client.post(
+            bulk_url, data={**data, "snapshot": get_snapshot()}
+        ).status_code
+        == 200
+    )
+    assert db_session.query(Sale).filter_by(city=CITY, client=original).count() == 4
+    assert db_session.query(Sale).filter_by(city=CITY, client=NAME).count() == 2
+    assert db_session.query(Sale).filter_by(city=CITY, client=branch).count() == 1
+    assert (
+        db_session.query(Sale).filter_by(city="Москва", client=alternative).count() == 1
+    )
+    assert (
+        db_session.get(ClientNameAlias, (CITY, alternative)).canonical_name == original
+    )
 
 
 def test_preview_conflict_merge_and_reimport(admin_client, admin_user, db_session):

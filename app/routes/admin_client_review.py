@@ -20,7 +20,9 @@ from ..services.client_name_review_service import (
     get_review_cities,
     get_review_groups,
     get_review_point_types,
+    merge_exact_names,
     merge_names,
+    preview_bulk_merge,
     preview_merge,
 )
 
@@ -147,5 +149,56 @@ def assign_client_point_type(
         )
     return RedirectResponse(
         f"{_REVIEW_URL}?{urlencode({'city': city, 'assigned': count})}",
+        status_code=HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/bulk")
+def bulk_client_review(
+    request: Request,
+    city: str,
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    groups, snapshot = preview_bulk_merge(db, city)
+    return render(
+        request,
+        "admin/client_name_bulk_preview.html",
+        {
+            "title": "Массовая сверка клиентов — Пульс",
+            "city": city,
+            "groups": groups,
+            "snapshot": snapshot,
+            "sales": sum(group["sales"] for group in groups),
+            "visits": sum(group["visits"] for group in groups),
+        },
+    )
+
+
+@router.post("/bulk")
+def confirm_bulk_client_review(
+    request: Request,
+    city: str = Form(...),
+    snapshot: str = Form(...),
+    db: Session = Depends(get_db),
+    admin=Depends(require_admin),
+):
+    try:
+        groups = merge_exact_names(db, city, snapshot)
+    except ValueError as exc:
+        db.rollback()
+        response = _render_review(request, db, city, error=str(exc))
+        response.status_code = 400
+        return response
+    result = {key: sum(group[key] for group in groups) for key in ("sales", "visits")}
+    log_action(
+        "client_names_bulk_merged",
+        user_id=admin.id,
+        city=city,
+        groups=len(groups),
+        **result,
+    )
+    return RedirectResponse(
+        f"{_REVIEW_URL}?{urlencode({'city': city, **result})}",
         status_code=HTTP_303_SEE_OTHER,
     )

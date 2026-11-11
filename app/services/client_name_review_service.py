@@ -1,5 +1,7 @@
 """Review names in sales and visits without loading individual records."""
 
+import hashlib
+import json
 import re
 import unicodedata
 from collections import defaultdict
@@ -11,7 +13,7 @@ from sqlalchemy import func, or_, text, update
 from ..models import ClientNameAlias, ClientNameDismissal, Sale, Visit
 from ..utils.dates import month_sort_key
 
-_QUOTES = str.maketrans("", "", '"«»„“”')
+_QUOTES = str.maketrans("", "", "\"«»„“”'’‘`")
 _NAME_LIMIT = 200
 _ADDRESS_SUFFIX = re.compile(r"^(.+?)\s*\(([^()]+)\)$")
 _ADDRESS_MARKER = re.compile(
@@ -459,8 +461,12 @@ def merge_names(db, city, variants, canonical, *, expected_counts):
     plan = preview_merge(db, city, variants, canonical)
     if (plan["sales"], plan["visits"]) != expected_counts:
         raise ValueError("Число строк изменилось. Проверьте обновлённый список.")
-    sources = plan["sources"]
-    canonical = plan["canonical"]
+    _apply_merge(db, city, plan["sources"], plan["canonical"])
+    db.commit()
+    return plan
+
+
+def _apply_merge(db, city, sources, canonical):
     aliases = (
         db.query(ClientNameAlias)
         .filter(
@@ -485,8 +491,66 @@ def merge_names(db, city, variants, canonical, *, expected_counts):
             .where(model.city == city, model.client.in_(sources))
             .values(client=canonical)
         )
+
+
+def preview_bulk_merge(db, city):
+    names = _names_in_city(db, city) if city else {}
+    aliases = get_client_aliases(db, city) if names else {}
+    dismissed = _dismissed_pairs(db, city) if names else set()
+    by_key = defaultdict(list)
+    for name in sorted(names):
+        if key := comparison_name(name):
+            by_key[key].append(name)
+    groups = []
+    for variants in by_key.values():
+        if len(variants) < 2 or dismissed.intersection(combinations(variants, 2)):
+            continue
+        if any(name in aliases and aliases[name] not in variants for name in variants):
+            continue
+        preferred = sorted(
+            variants,
+            key=lambda name: (
+                -names[name]["sales"],
+                -names[name]["visits"],
+                name != clean_spacing(name),
+                name,
+            ),
+        )
+        canonical = next(
+            (
+                cleaned
+                for name in preferred
+                if (cleaned := clean_spacing(name)) not in aliases
+                and len(cleaned) <= _NAME_LIMIT
+                and all(ord(char) >= 32 for char in cleaned)
+            ),
+            None,
+        )
+        if canonical is None:
+            continue
+        sources = [name for name in variants if name != canonical]
+        groups.append(
+            {
+                "canonical": canonical,
+                "sources": sources,
+                "sales": sum(names[name]["sales"] for name in sources),
+                "visits": sum(names[name]["visits"] for name in sources),
+            }
+        )
+    snapshot = json.dumps([city, groups], ensure_ascii=False, sort_keys=True)
+    return groups, hashlib.sha256(snapshot.encode()).hexdigest()
+
+
+def merge_exact_names(db, city, expected_snapshot):
+    lock_client_names(db, city)
+    groups, snapshot = preview_bulk_merge(db, city)
+    if not groups or snapshot != expected_snapshot:
+        raise ValueError("Список совпадений изменился. Откройте предпросмотр заново.")
+    for group in groups:
+        _apply_merge(db, city, group["sources"], group["canonical"])
+        db.flush()
     db.commit()
-    return plan
+    return groups
 
 
 def _carry_dismissals(db, city, sources, canonical):
