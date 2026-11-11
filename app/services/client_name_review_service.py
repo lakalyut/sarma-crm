@@ -16,6 +16,12 @@ _ADDRESS_SUFFIX = re.compile(r"^(.+?)\s*\(([^()]+)\)$")
 _ADDRESS_MARKER = re.compile(
     r"(?:^|[\s,])(?:ул\.|улица\b|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b)"
 )
+_INLINE_ADDRESS = re.compile(
+    r"(?P<name>.+?)[,;]\s*(?:ул\.?\s+|улица\s+)?"
+    r"(?P<street>[^\W\d_][^\d,;()]*?)\s*[, ]\s*(?:д\.?\s*)?"
+    r"(?P<house>\d+\s*[а-яёa-z]?)"
+    r"(?:[ ,]+(?:корп(?:ус)?\.?|к\.?)\s*(?P<building>\d+[а-яёa-z]?))?"
+)
 
 
 def clean_spacing(name):
@@ -37,6 +43,19 @@ def _address_base(key, city):
         ):
             return base
     return None
+
+
+def _inline_address_key(key):
+    match = _INLINE_ADDRESS.fullmatch(key)
+    if not match:
+        return None
+    name = re.sub(r"\s*([()])\s*", r"\1", match["name"]).strip()
+    return (
+        name,
+        match["street"].strip(),
+        match["house"].replace(" ", ""),
+        match["building"],
+    )
 
 
 def lock_client_names(db, city):
@@ -266,7 +285,31 @@ def get_review_groups(db, city):
                     add_group(pair, "Название с адресом и без адреса")
                     address_pairs.add(pair)
 
+    inline_addresses = {}
+    keys_by_address = defaultdict(list)
+    for key in by_key:
+        if address := _inline_address_key(key):
+            inline_addresses[key] = address
+            keys_by_address[address].append(key)
+    for keys in keys_by_address.values():
+        for first, second in combinations(keys, 2):
+            for left in by_key[first]:
+                for right in by_key[second]:
+                    pair = _pair(left, right)
+                    if pair not in dismissed and pair not in address_pairs:
+                        add_group(pair, "Один адрес записан по-разному")
+                        address_pairs.add(pair)
+
     for first, second in _nearby_keys(by_key):
+        first_address = inline_addresses.get(first)
+        second_address = inline_addresses.get(second)
+        if (
+            first_address
+            and second_address
+            and first_address[0] == second_address[0]
+            and first_address != second_address
+        ):
+            continue
         for left in by_key[first]:
             for right in by_key[second]:
                 pair = _pair(left, right)

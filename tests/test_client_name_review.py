@@ -64,6 +64,31 @@ def test_address_variants_keep_branch_number(db_session):
     ]
 
 
+def test_inline_address_formatting_in_kazan(db_session):
+    city = "Казань"
+    askar = "Аскар Трилион(сервис), Татарстан 43а"
+    askar_variant = "Аскар Трилион (сервис); Татарстан, 43А"
+    feel = 'Заведение "Feel house"; Курынова, 6, к1'
+    feel_variant = 'Заведение "Feel house"; ул. Курынова 6 корп 1'
+    db_session.add_all(
+        sale(name, city)
+        for name in (
+            askar,
+            askar_variant,
+            askar.replace("43а", "43б"),
+            feel,
+            feel_variant,
+            feel.replace("к1", "к2"),
+        )
+    )
+    db_session.commit()
+    groups = get_review_groups(db_session, city)
+    assert [{row["name"] for row in group["rows"]} for group in groups] == [
+        {askar, askar_variant},
+        {feel, feel_variant},
+    ]
+
+
 def test_preview_conflict_merge_and_reimport(admin_client, admin_user, db_session):
     db_session.add_all(
         [
