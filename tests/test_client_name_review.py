@@ -89,6 +89,24 @@ def test_inline_address_formatting_in_kazan(db_session):
     ]
 
 
+def test_payment_notes_with_same_address(db_session):
+    city = "СПБ"
+    first = "42 Lounge (пр. Просвещения, 33, корпус 1)- (Н)"
+    second = "42 Lounge (пр. Просвещения, 33, корпус 1)- (НАЛ)"
+    db_session.add_all(
+        sale(name, city)
+        for name in (first, second, first.replace("корпус 1", "корпус 2"))
+    )
+    db_session.commit()
+    groups = get_review_groups(db_session, city)
+    assert [{row["name"] for row in group["rows"]} for group in groups] == [
+        {first, second}
+    ]
+    assert groups[0]["reason"] == "Различаются пометками (Н) / (НАЛ)"
+    dismiss_names(db_session, city, [first, second])
+    assert get_review_groups(db_session, city) == []
+
+
 def test_preview_conflict_merge_and_reimport(admin_client, admin_user, db_session):
     db_session.add_all(
         [

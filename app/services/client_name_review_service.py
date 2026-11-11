@@ -14,8 +14,9 @@ _QUOTES = str.maketrans("", "", '"«»„“”')
 _NAME_LIMIT = 200
 _ADDRESS_SUFFIX = re.compile(r"^(.+?)\s*\(([^()]+)\)$")
 _ADDRESS_MARKER = re.compile(
-    r"(?:^|[\s,])(?:ул\.|улица\b|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b)"
+    r"(?:^|[\s,(])(?:ул\.|улица\b|пр\.|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b)"
 )
+_PAYMENT_SUFFIX = re.compile(r"\s*[-–—]?\s*\((?:н|нал)\)$")
 _INLINE_ADDRESS = re.compile(
     r"(?P<name>.+?)[,;]\s*(?:ул\.?\s+|улица\s+)?"
     r"(?P<street>[^\W\d_][^\d,;()]*?)\s*[, ]\s*(?:д\.?\s*)?"
@@ -284,6 +285,22 @@ def get_review_groups(db, city):
                 if pair not in dismissed:
                     add_group(pair, "Название с адресом и без адреса")
                     address_pairs.add(pair)
+
+    names_by_payment_base = defaultdict(list)
+    for key, variants in by_key.items():
+        base = _PAYMENT_SUFFIX.sub("", key).strip()
+        if _ADDRESS_MARKER.search(base) and re.search(r"\d", base):
+            names_by_payment_base[base].extend(variants)
+    for variants in names_by_payment_base.values():
+        for first, second in combinations(variants, 2):
+            pair = _pair(first, second)
+            if (
+                comparison_name(first) != comparison_name(second)
+                and pair not in dismissed
+                and pair not in address_pairs
+            ):
+                add_group(pair, "Различаются пометками (Н) / (НАЛ)")
+                address_pairs.add(pair)
 
     inline_addresses = {}
     keys_by_address = defaultdict(list)
