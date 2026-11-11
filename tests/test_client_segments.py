@@ -206,6 +206,9 @@ def test_route_preserves_selected_type(admin_client, db_session):
     assert 'data-mode="presence" aria-pressed="true"' in response.text
     assert 'name="mode" value="presence"' in response.text
     assert "Регулярность" in response.text
+    assert "Май — октябрь 2026 · HoReCa" in response.text
+    assert "<summary>Как считаем ABC и XYZ</summary>" in response.text
+    assert "XYZ показывает долю месяцев с положительной отгрузкой" in response.text
     assert "Есть закупка" in response.text
     assert "Excluded shop" not in response.text
     assert (
@@ -235,6 +238,7 @@ def test_route_renders_filters_and_escaped_client_name(admin_client, db_session)
     assert 'data-segment="AX"' in response.text
     assert "client_segments.js" in response.text
     assert "client_segments.css" in response.text
+    assert "XYZ показывает колебания месячного объёма" in response.text
     assert admin_client.get("/analytics/clients/abc-xyz?length=3").status_code == 400
     assert admin_client.get("/analytics/clients/abc-xyz?end=oops").status_code == 400
     assert admin_client.get("/analytics/clients/abc-xyz?end=2999-01").status_code == 400
