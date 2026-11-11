@@ -57,21 +57,55 @@
     if (!search) return;
     const rows = Array.from(root.querySelectorAll('tr[data-client]'));
     const buttons = Array.from(root.querySelectorAll('button[data-segment]'));
+    const card = root.querySelector('#segment-client-card');
+    const details = root.querySelector('#segment-client-details');
+    const count = root.querySelector('#segments-count');
+    const empty = root.querySelector('#segments-empty');
     let selected = '';
+    let currentClient;
+
+    function matchesSegment(row, segment) {
+        if (segment === 'a-gaps') return row.dataset.aGaps === 'true';
+        if (segment === 'last-gap') return row.dataset.lastGap === 'true';
+        return !segment || row.dataset.class === segment;
+    }
+
+    function selectClient(row) {
+        currentClient?.querySelector('.segment-client').setAttribute('aria-pressed', 'false');
+        currentClient = row;
+        card.hidden = !row;
+        details.replaceChildren();
+        if (row) {
+            row.querySelector('.segment-client').setAttribute('aria-pressed', 'true');
+            details.append(row.querySelector('template').content.cloneNode(true));
+        }
+    }
+
     function filter() {
         const query = search.value.trim().toLocaleLowerCase('ru');
-        let count = 0;
-        rows.forEach(row => {
-            row.hidden = Boolean((selected && row.dataset.class !== selected) || !row.dataset.client.toLocaleLowerCase('ru').includes(query));
-            if (!row.hidden) count += 1;
+        const visible = rows.filter(row => {
+            row.hidden = !matchesSegment(row, selected) || !row.dataset.client.toLocaleLowerCase('ru').includes(query);
+            return !row.hidden;
         });
         buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.segment === selected)));
-        root.querySelector('#segments-count').textContent = `Клиентов показано ${count} из ${rows.length}`;
-        root.querySelector('#segments-empty').hidden = count > 0;
+        count.textContent = `Клиентов показано ${visible.length} из ${rows.length}`;
+        empty.hidden = visible.length > 0;
+        if (!visible.includes(currentClient)) selectClient(visible[0]);
     }
-    buttons.forEach(button => button.addEventListener('click', () => {
-        selected = button.dataset.segment;
-        filter();
+
+    buttons.forEach(button => {
+        const filterCount = button.querySelector('[data-filter-count]');
+        if (filterCount && !button.disabled) {
+            filterCount.textContent = `· ${rows.filter(row => matchesSegment(row, button.dataset.segment)).length}`;
+        }
+        button.addEventListener('click', () => {
+            selected = selected === button.dataset.segment ? '' : button.dataset.segment;
+            filter();
+        });
+    });
+    rows.forEach(row => row.querySelector('.segment-client').addEventListener('click', () => {
+        selectClient(row);
+        if (window.matchMedia('(max-width: 900px)').matches) card.focus();
     }));
     search.addEventListener('input', filter);
     filter();

@@ -256,6 +256,51 @@ def test_client_segments_switches_xyz_mode_with_filters(page, db_session):
     )
 
 
+def test_client_segments_working_list_and_client_card(page, db_session):
+    from app.models import Sale
+
+    for name, month, weight in [
+        ("Крупный клиент с пропусками", "2026-04-01", 1000),
+        ("Магазин Маяк", "2026-05-01", 1),
+        ("Магазин Маяк", "2026-06-01", 1),
+        ("Ранее активный", "2026-03-01", 1),
+    ]:
+        db_session.add(
+            Sale(
+                city="Иркутск",
+                client=name,
+                month=month,
+                type="Магазин",
+                weight=weight,
+                qty=1,
+            )
+        )
+    db_session.commit()
+    page.goto(
+        "https://pulse-ui.test/analytics/clients/abc-xyz?city=Иркутск&end=2026-09&complete=true&mode=presence",
+        wait_until="networkidle",
+    )
+    card = page.locator("#segment-client-card")
+    assert card.get_by_role("heading").inner_text() == "Крупный клиент с пропусками"
+    page.get_by_role("button", name="Магазин Маяк", exact=True).click()
+    assert card.get_by_role("heading").inner_text() == "Магазин Маяк"
+    assert card.evaluate("element => document.activeElement === element")
+    page.get_by_role("button", name="A с пропусками", exact=False).click()
+    assert page.locator("tr[data-client]:visible").count() == 1
+    assert card.get_by_role("heading").inner_text() == "Крупный клиент с пропусками"
+    page.get_by_role(
+        "button", name="Без закупки в последнем месяце", exact=False
+    ).click()
+    assert page.locator("tr[data-client]:visible").count() == 2
+    page.locator(".segment-matrix-panel summary").click()
+    page.locator('button[data-segment="AZ"]').click()
+    assert page.locator("tr[data-client]:visible").count() == 1
+    page.locator("#segments-search").fill("Нет совпадений")
+    assert not card.is_visible()
+    assert page.locator("#segments-empty").is_visible()
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+
+
 def test_multiselect_keyboard_and_native_form_value(page):
     page.locator(".clients-filter-panel > summary").click()
     display = page.locator("#months-multiselect .multiselect-display")

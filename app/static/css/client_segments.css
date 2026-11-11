@@ -4,7 +4,7 @@
 .segment-confirm { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0; }
 .segment-context { color: var(--text-muted); margin: 16px 0; }
 .segment-totals { display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0; }
-.segment-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; }
+.segment-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 280px); gap: 16px; align-items: start; }
 .segment-layout h2 { font-size: 18px; margin: 0 0 12px; }
 .segment-matrix { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .segment-cell { display: flex; flex-direction: column; gap: 8px; padding: 14px 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-main); text-align: left; cursor: pointer; font: inherit; }
@@ -19,9 +19,13 @@
 #client-segments .sheet-table td { vertical-align: top; }
 #client-segments .sheet-table { table-layout: auto; }
 #segments-count { color: var(--text-muted); margin: 12px 0; }
-.segment-client summary { color: var(--primary-text); cursor: pointer; }
-.segment-client[open] { min-width: 260px; }
-.segment-client p { margin: 10px 0; white-space: normal; }
+.segment-quick-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.segment-matrix-panel { margin-top: 16px; }
+.segment-matrix-panel summary { cursor: pointer; color: var(--primary-text); margin-bottom: 8px; }
+.segment-client { color: var(--primary-text); background: transparent; text-align: left; padding: 4px 8px; border-radius: var(--radius-xs); }
+.segment-client-card { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; }
+.segment-client-card h2 { overflow-wrap: anywhere; }
+.segment-card-totals { font-variant-numeric: tabular-nums; }
 .segment-months { display: grid; gap: 8px; margin: 12px 0; min-width: 180px; }
 .segment-months div { display: flex; justify-content: space-between; gap: 12px; }
 .segment-months span { color: var(--text-muted); }
