@@ -5,7 +5,7 @@ import unicodedata
 from collections import defaultdict
 from itertools import combinations
 
-from sqlalchemy import func, text, update
+from sqlalchemy import func, or_, text, update
 
 from ..models import ClientNameAlias, ClientNameDismissal, Sale, Visit
 from ..utils.dates import month_sort_key
@@ -54,6 +54,71 @@ def get_client_aliases(db, city):
         .filter(ClientNameAlias.city == city)
         .all()
     )
+
+
+def _missing_sale_type():
+    return or_(Sale.type.is_(None), func.lower(func.trim(Sale.type)).in_(("", "nan")))
+
+
+def get_client_type_gaps(db, city):
+    missing = (
+        db.query(Sale.client, func.count(Sale.id))
+        .filter(
+            Sale.city == city,
+            func.lower(func.trim(Sale.client)).notin_(("", "nan")),
+            _missing_sale_type(),
+        )
+        .group_by(Sale.client)
+        .order_by(Sale.client)
+        .all()
+    )
+    if not missing:
+        return []
+
+    known_types = defaultdict(set)
+    for client, point_type in (
+        db.query(Sale.client, Sale.type)
+        .filter(Sale.city == city, ~_missing_sale_type())
+        .distinct()
+    ):
+        known_types[client].add(point_type)
+    return [
+        {
+            "name": client,
+            "count": count,
+            "suggested_type": (
+                next(iter(known_types[client]))
+                if len(known_types[client]) == 1
+                else None
+            ),
+        }
+        for client, count in missing
+    ]
+
+
+def get_review_point_types(db, city):
+    return [
+        point_type
+        for (point_type,) in db.query(Sale.type)
+        .filter(Sale.city == city, ~_missing_sale_type())
+        .distinct()
+        .order_by(Sale.type)
+    ]
+
+
+def assign_missing_client_type(db, city, client, point_type):
+    lock_client_names(db, city)
+    if not city or point_type not in get_review_point_types(db, city):
+        raise ValueError("Выберите тип точки из списка этого города.")
+    if not client.strip() or client.strip().casefold() == "nan":
+        raise ValueError("Выберите клиента с указанным названием.")
+    result = db.execute(
+        update(Sale)
+        .where(Sale.city == city, Sale.client == client, _missing_sale_type())
+        .values(type=point_type)
+    )
+    db.commit()
+    return result.rowcount
 
 
 def resolve_client_name(db, city, name):

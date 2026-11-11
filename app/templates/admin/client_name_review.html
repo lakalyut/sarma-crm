@@ -21,6 +21,47 @@
     <p class="message ok" role="status">Объединение сохранено. Обновлено строк продаж — {{ sales }}, визитов — {{ visits }}.</p>
 {% endif %}
 {% if dismissed %}<p class="message ok" role="status">Выбранные названия отмечены как разные клиенты.</p>{% endif %}
+{% if assigned is defined and assigned is not none %}
+    <p class="message ok" role="status">{{ 'Тип уже заполнен.' if assigned == 0 else 'Тип назначен. Обновлено строк продаж — ' ~ assigned ~ '.' }}</p>
+{% endif %}
+
+{% if type_gaps %}
+<details class="filters-card" open style="margin-bottom: 16px;">
+    <summary>Клиенты без типа точки · {{ type_gaps|length }}</summary>
+    {% if not point_types %}
+    <p class="message">В продажах этого города пока нет заполненных типов точек.</p>
+    {% endif %}
+    <div class="sheet-scroller">
+        <table class="sheet-table">
+            <thead><tr><th>Клиент</th><th>Строк без типа</th>{% if point_types %}<th>Назначение типа</th>{% endif %}</tr></thead>
+            <tbody>
+                {% for row in type_gaps %}
+                <tr>
+                    <td>{{ row.name }}</td>
+                    <td>{{ row.count }}</td>
+                    {% if point_types %}
+                    <td>
+                        <form method="post" action="/admin/clients/review/point-type" class="filters">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="city" value="{{ selected_city }}">
+                            <input type="hidden" name="client" value="{{ row.name|urlencode }}">
+                            <select name="point_type" required aria-label="Тип точки для {{ row.name }}">
+                                <option value="">Выберите тип</option>
+                                {% for point_type in point_types %}
+                                <option value="{{ point_type }}"{% if point_type == row.suggested_type %} selected{% endif %}>{{ point_type }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn-secondary btn-small">Назначить</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</details>
+{% endif %}
 
 {% if selected_city and not groups %}
     <p class="message">Похожих названий в городе {{ selected_city }} не найдено.</p>

@@ -14,8 +14,11 @@ from ..observability import log_action
 from ..render import render
 from ..services.cities_service import get_all_cities
 from ..services.client_name_review_service import (
+    assign_missing_client_type,
     dismiss_names,
+    get_client_type_gaps,
     get_review_groups,
+    get_review_point_types,
     merge_names,
     preview_merge,
 )
@@ -29,6 +32,7 @@ def _render_review(request, db, city, page=1, **context):
     cities = get_all_cities(db)
     city = city if city in cities else ""
     groups = get_review_groups(db, city) if city else []
+    type_gaps = get_client_type_gaps(db, city) if city else []
     pages = max(1, (len(groups) + _PAGE_SIZE - 1) // _PAGE_SIZE)
     page = min(max(page, 1), pages)
     start = (page - 1) * _PAGE_SIZE
@@ -41,6 +45,8 @@ def _render_review(request, db, city, page=1, **context):
             "selected_city": city,
             "groups": groups[start : start + _PAGE_SIZE],
             "group_count": len(groups),
+            "type_gaps": type_gaps,
+            "point_types": get_review_point_types(db, city) if type_gaps else [],
             "page": page,
             "pages": pages,
             **context,
@@ -56,11 +62,19 @@ def client_name_review(
     sales: int | None = None,
     visits: int | None = None,
     dismissed: bool = False,
+    assigned: int | None = None,
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
     return _render_review(
-        request, db, city, page, sales=sales, visits=visits, dismissed=dismissed
+        request,
+        db,
+        city,
+        page,
+        sales=sales,
+        visits=visits,
+        dismissed=dismissed,
+        assigned=assigned,
     )
 
 
@@ -106,5 +120,31 @@ def review_client_names(
         return response
     return RedirectResponse(
         f"{_REVIEW_URL}?{urlencode({'city': city, **result})}",
+        status_code=HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/point-type")
+def assign_client_point_type(
+    request: Request,
+    city: str = Form(...),
+    client: str = Form(...),
+    point_type: str = Form(...),
+    db: Session = Depends(get_db),
+    admin=Depends(require_admin),
+):
+    try:
+        count = assign_missing_client_type(db, city, unquote(client), point_type)
+    except ValueError as exc:
+        db.rollback()
+        response = _render_review(request, db, city, error=str(exc))
+        response.status_code = 400
+        return response
+    if count:
+        log_action(
+            "client_point_type_assigned", user_id=admin.id, city=city, sales=count
+        )
+    return RedirectResponse(
+        f"{_REVIEW_URL}?{urlencode({'city': city, 'assigned': count})}",
         status_code=HTTP_303_SEE_OTHER,
     )

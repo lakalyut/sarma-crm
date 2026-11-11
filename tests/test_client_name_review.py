@@ -136,3 +136,52 @@ def test_dismissal_persists_when_another_variant_is_merged(db_session):
     assert (
         db_session.get(ClientNameAlias, (CITY, SPACED)).canonical_name == "Кафе «Маяк»"
     )
+
+
+def test_assign_city_point_type_to_only_missing_sales(admin_client, db_session):
+    other_city = "Москва"
+    db_session.add_all(
+        [
+            Sale(city=CITY, client=NAME, type=point_type)
+            for point_type in (" NaN ", None, "", "HoReCa")
+        ]
+        + [
+            Sale(city=CITY, client="Другая точка", type="nan"),
+            Sale(city=CITY, client="Магазин", type="Розница"),
+            Sale(city=other_city, client=NAME, type="nan"),
+            Sale(city=other_city, client="Точка", type="Тип другого города"),
+        ]
+    )
+    db_session.commit()
+
+    page = admin_client.get(URL, params={"city": CITY})
+    assert "Клиенты без типа точки · 2" in page.text
+    assert '<option value="HoReCa" selected>' in page.text
+    assert '<option value="Розница">' in page.text
+    assert "Тип другого города" not in page.text
+    data = {"csrf_token": CSRF_TOKEN, "city": CITY, "client": quote(NAME)}
+    assert (
+        admin_client.post(
+            URL + "/point-type", data={**data, "point_type": "Тип другого города"}
+        ).status_code
+        == 400
+    )
+
+    response = admin_client.post(
+        URL + "/point-type", data={**data, "point_type": "Розница"}
+    )
+    assert response.status_code == 200
+    assert "Обновлено строк продаж — 3." in response.text
+    assert "Клиенты без типа точки · 1" in response.text
+    assert (
+        db_session.query(Sale).filter_by(city=CITY, client=NAME, type="HoReCa").count()
+        == 1
+    )
+    assert (
+        db_session.query(Sale).filter_by(city=CITY, client=NAME, type="Розница").count()
+        == 3
+    )
+    assert (
+        db_session.query(Sale).filter_by(city=other_city, client=NAME).one().type
+        == "nan"
+    )
