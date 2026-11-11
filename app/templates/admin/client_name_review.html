@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ревизия клиентов</h1>
+<p class="page-subtitle">Найдите варианты написания одного клиента в продажах и визитах. Проверьте совпадение и выберите итоговое название.</p>
+
+<form method="get" class="filters">
+    <div class="field filter-field">
+        <label for="client-review-city">Город</label>
+        <select id="client-review-city" name="city" class="js-custom-select" data-searchable>
+            <option value="">Выберите город</option>
+            {% for city in cities %}
+                <option value="{{ city }}"{% if city == selected_city %} selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn-secondary">Показать</button>
+</form>
+
+{% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
+{% if sales is defined and sales is not none and visits is not none %}
+    <p class="message ok" role="status">Объединение сохранено. Обновлено строк продаж — {{ sales }}, визитов — {{ visits }}.</p>
+{% endif %}
+{% if dismissed %}<p class="message ok" role="status">Выбранные названия отмечены как разные клиенты.</p>{% endif %}
+
+{% if selected_city and not groups %}
+    <p class="message">Похожих названий в городе {{ selected_city }} не найдено.</p>
+{% elif groups %}
+    <p class="page-subtitle">Групп для проверки — {{ group_count }}. Выберите варианты внутри группы.</p>
+    {% for group in groups %}
+    <form method="post" class="filters-card" style="margin-bottom: 16px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="city" value="{{ selected_city }}">
+        <h2>{{ group.reason }}</h2>
+        <div class="sheet-scroller">
+            <table class="sheet-table">
+                <thead>
+                    <tr><th>Название</th><th>Типы точек</th><th>Месяцы продаж</th><th>Строки продаж</th><th>Объём, кг</th><th>Визиты</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in group.rows %}
+                    <tr>
+                        <td><label><input type="checkbox" name="variants" value="{{ row.name|urlencode }}"><code style="white-space: pre-wrap;">«{{ row.name }}»</code></label></td>
+                        <td>{{ row.types|join(', ') or '—' }}</td>
+                        <td title="{{ row.months|map('format_month')|join(', ') }}">{{ row.months|format_month_list or '—' }}</td>
+                        <td>{{ row.sales }}</td>
+                        <td>{{ row.volume|format_ru_number(2) }}</td>
+                        <td>{{ row.visits }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="filters" style="margin-top: 12px;">
+            <div class="field filter-field">
+                <label for="canonical-{{ loop.index }}">Итоговое название</label>
+                <input id="canonical-{{ loop.index }}" name="canonical" value="{{ group.canonical }}" maxlength="200">
+            </div>
+            <button type="submit" name="operation" value="preview" class="btn-secondary">Проверить объединение</button>
+            <button type="submit" name="operation" value="dismiss" class="btn-secondary">Разные клиенты</button>
+        </div>
+    </form>
+    {% endfor %}
+    {% if pages > 1 %}
+    <nav aria-label="Страницы ревизии" class="filters">
+        {% if page > 1 %}<a class="btn-secondary" href="?{{ {'city': selected_city, 'page': page - 1}|urlencode }}">Назад</a>{% endif %}
+        <span>{{ page }} из {{ pages }}</span>
+        {% if page < pages %}<a class="btn-secondary" href="?{{ {'city': selected_city, 'page': page + 1}|urlencode }}">Далее</a>{% endif %}
+    </nav>
+    {% endif %}
+{% endif %}
+{% endblock %}

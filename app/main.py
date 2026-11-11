@@ -17,6 +17,7 @@ from .database import Base, SessionLocal, engine
 from .logging_config import configure_logging
 from .observability import RequestMetricsMiddleware
 from .routes.admin_abc import router as admin_abc_router
+from .routes.admin_client_review import router as admin_client_review_router
 from .routes.admin_imports import router as admin_imports_router
 from .routes.admin_nomenclature import router as admin_nomenclature_router
 from .routes.admin_regions import router as admin_regions_router
@@ -86,6 +87,7 @@ app.include_router(admin_visits_router)
 app.include_router(admin_unmatched_router)
 app.include_router(admin_nomenclature_router)
 app.include_router(admin_type_review_router)
+app.include_router(admin_client_review_router)
 app.include_router(misc_router)
 app.include_router(home_router)
 app.include_router(products_router)

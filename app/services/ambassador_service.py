@@ -25,6 +25,7 @@ from ..models import AbcSegment, Product, ProductAbcRating, Visit, VisitProduct
 from ..observability import log_action
 from . import sales_options_service
 from .abc_service import guess_default_segment
+from .client_name_review_service import lock_client_names, resolve_client_name
 
 # «Цель визита» — быстрые варианты (чипы над текстовым полем формы визита).
 # Список редактируется здесь; амбассадор может вписать и свою цель текстом.
@@ -284,6 +285,9 @@ def create_visit(
     ):
         raise ValueError("Вы можете записывать визиты только в своём городе")
 
+    if not dry_run:
+        lock_client_names(db, city)
+    client = resolve_client_name(db, city, client)
     fields = _validate_visit_payload(
         db,
         city=city,
@@ -349,6 +353,8 @@ def update_visit(
     клиент/тип точки (в пределах города визита), анкета, список ароматов и,
     опционально, дата (`visit_date` — `date`; час/минуты в `created_at`
     сохраняются)."""
+    lock_client_names(db, visit.city)
+    client = resolve_client_name(db, visit.city, client)
     fields = _validate_visit_payload(
         db,
         city=visit.city,

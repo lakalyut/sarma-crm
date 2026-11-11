@@ -86,6 +86,22 @@ class CityRegion(Base):
     region = relationship("Region")
 
 
+class ClientNameAlias(Base):
+    __tablename__ = "client_name_aliases"
+
+    city = Column(String, primary_key=True)
+    source_name = Column(String, primary_key=True)
+    canonical_name = Column(String, nullable=False)
+
+
+class ClientNameDismissal(Base):
+    __tablename__ = "client_name_dismissals"
+
+    city = Column(String, primary_key=True)
+    first_name = Column(String, primary_key=True)
+    second_name = Column(String, primary_key=True)
+
+
 class Sale(Base):
     __tablename__ = "sales"
 

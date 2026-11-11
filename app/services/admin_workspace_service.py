@@ -47,6 +47,7 @@ ADMIN_GROUPS = [
                 "title": "Ревизия типов точек",
                 "counter": "types",
             },
+            {"url": "/admin/clients/review", "title": "Ревизия клиентов"},
         ],
     },
 ]

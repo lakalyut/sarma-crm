@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..models import Product, Sale
 from ..observability import import_phase, log_action
 from ..product_parser import ProductMatcher, build_canonical_name, extract_weight
+from .client_name_review_service import get_client_aliases, lock_client_names
 from .event_log_service import log_import
 
 IMPORT_COLUMNS = ["Месяц", "Тип", "Клиент", "Номенклатура", "SKU", "Количество", "Вес"]
@@ -30,6 +31,8 @@ def import_sales(
     months = set()
     rows = iter(df[IMPORT_COLUMNS].itertuples(index=False, name=None))
     try:
+        lock_client_names(db, city)
+        aliases = get_client_aliases(db, city)
         while chunk := list(islice(rows, IMPORT_BATCH_SIZE)):
             batch = []
             with import_phase("match_and_build_rows"):
@@ -37,13 +40,14 @@ def import_sales(
                     raw_name = str(raw_name)
                     product, _ = matcher.match(raw_name)
                     month = str(month)
+                    client = str(client)
                     months.add(month)
                     batch.append(
                         {
                             "city": city,
                             "month": month,
                             "type": str(sale_type),
-                            "client": str(client),
+                            "client": aliases.get(client, client),
                             "raw_name": raw_name,
                             "raw_sku": str(raw_sku),
                             "qty": float(qty),

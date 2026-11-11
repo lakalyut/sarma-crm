@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Проверка объединения клиентов</h1>
+<p class="page-subtitle">{{ city }}</p>
+<p>Итоговое название — <strong>{{ plan.canonical }}</strong></p>
+<ul>
+    {% for name in plan.sources %}
+    <li><code style="white-space: pre-wrap;">«{{ name }}»</code></li>
+    {% endfor %}
+</ul>
+<p>Будет обновлено строк продаж — <strong>{{ plan.sales }}</strong>, визитов — <strong>{{ plan.visits }}</strong>.</p>
+<p>При следующих загрузках эти варианты будут приводиться к итоговому названию.</p>
+<form method="post" action="/admin/clients/review" class="filters">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="city" value="{{ city }}">
+    <input type="hidden" name="canonical" value="{{ plan.canonical }}">
+    <input type="hidden" name="expected_sales" value="{{ plan.sales }}">
+    <input type="hidden" name="expected_visits" value="{{ plan.visits }}">
+    {% for name in plan.variants %}
+    <input type="hidden" name="variants" value="{{ name|urlencode }}">
+    {% endfor %}
+    <button type="submit" name="operation" value="merge" class="btn-primary">Подтвердить объединение</button>
+    <a href="/admin/clients/review?{{ {'city': city}|urlencode }}" class="btn-secondary">Вернуться к ревизии</a>
+</form>
+{% endblock %}

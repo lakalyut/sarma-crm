@@ -2,13 +2,23 @@
 
 import json
 
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from ..auth_models import User, UserCity
-from ..models import CityRegion, EventLog, Region, Sale, Visit
+from ..models import (
+    CityRegion,
+    ClientNameAlias,
+    ClientNameDismissal,
+    EventLog,
+    Region,
+    Sale,
+    Visit,
+)
+from .client_name_review_service import lock_client_names
 
 CITY_MODELS = (Sale, Visit, User, CityRegion, EventLog, UserCity)
+CLIENT_REVIEW_MODELS = (ClientNameAlias, ClientNameDismissal)
 
 
 class EmptyCityConflict(ValueError):
@@ -92,6 +102,7 @@ def delete_empty_city(db: Session, city: str) -> None:
     """Remove only an exact, unused city key and its administrative metadata."""
     # Do not strip or normalize: a whitespace variant may be the unwanted city.
     try:
+        lock_client_names(db, city)
         for model, reason in (
             (Sale, "продажи"),
             (Visit, "визиты"),
@@ -107,7 +118,7 @@ def delete_empty_city(db: Session, city: str) -> None:
             raise ValueError(
                 "Город не найден. Обновите страницу и выберите город заново."
             )
-        for model in (CityRegion, EventLog):
+        for model in (CityRegion, EventLog, *CLIENT_REVIEW_MODELS):
             db.query(model).filter(model.city == city).delete(
                 synchronize_session="fetch"
             )
@@ -115,6 +126,37 @@ def delete_empty_city(db: Session, city: str) -> None:
     except Exception:
         db.rollback()
         raise
+
+
+def _move_client_review(db: Session, cities: set[str], new_name: str) -> None:
+    for model, key_fields in (
+        (ClientNameAlias, ("source_name",)),
+        (ClientNameDismissal, ("first_name", "second_name")),
+    ):
+        records = (
+            db.query(model)
+            .filter(model.city.in_(cities))
+            .order_by((model.city == new_name).desc(), model.city)
+        )
+        seen = {}
+        for row in records:
+            key = tuple(getattr(row, field) for field in key_fields)
+            canonical = getattr(row, "canonical_name", None)
+            if key in seen:
+                if seen[key] != canonical:
+                    raise ValueError(
+                        "Варианты города по-разному сопоставляют одно название клиента."
+                    )
+                db.delete(row)
+            else:
+                seen[key] = canonical
+        db.flush()
+        db.execute(
+            update(model)
+            .where(model.city.in_(cities), model.city != new_name)
+            .values(city=new_name)
+            .execution_options(synchronize_session=False)
+        )
 
 
 def rename_city(
@@ -163,6 +205,10 @@ def rename_city(
         )
 
     try:
+        review_cities = set(names) | {new_name}
+        for city in sorted(review_cities):
+            lock_client_names(db, city)
+        _move_client_review(db, review_cities, new_name)
         # The string key is unique here; coalesce duplicate equivalent assignments
         # before updating their names. Prefer the existing destination assignment.
         keeper = next((row for row in assignments if row.city in target_names), None)

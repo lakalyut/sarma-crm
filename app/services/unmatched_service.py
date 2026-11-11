@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Product, Sale
 from ..product_parser import build_canonical_name, extract_weight
+from .client_name_review_service import lock_client_names, resolve_client_name
 
 
 def product_label(p: Product) -> str:
@@ -62,10 +63,15 @@ def update_sale_fields(
     qty,
     weight,
 ) -> None:
-    sale.city = city.strip()
+    city = city.strip()
+    for name in sorted({sale.city or "", city}):
+        lock_client_names(db, name)
+    sale.city = city
     sale.month = month.strip()
     sale.type = sale_type.strip()
-    sale.client = client.strip()
+    sale.client = resolve_client_name(db, city, client)
+    if sale.client == client:
+        sale.client = resolve_client_name(db, city, client.strip())
     sale.qty = _num(qty)
     sale.weight = _num(weight)
     db.commit()

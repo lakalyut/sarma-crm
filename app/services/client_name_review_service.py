@@ -1,0 +1,304 @@
+"""Review names in sales and visits without loading individual records."""
+
+import re
+import unicodedata
+from collections import defaultdict
+from itertools import combinations
+
+from sqlalchemy import func, text, update
+
+from ..models import ClientNameAlias, ClientNameDismissal, Sale, Visit
+from ..utils.dates import month_sort_key
+
+_QUOTES = str.maketrans("", "", '"«»„“”')
+_NAME_LIMIT = 200
+
+
+def clean_spacing(name):
+    return " ".join(name.split())
+
+
+def comparison_name(name):
+    return clean_spacing(
+        unicodedata.normalize("NFC", name).translate(_QUOTES)
+    ).casefold()
+
+
+def lock_client_names(db, city):
+    """Keep imports and name changes for the same city in transaction order."""
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": f"pulse:client-names:{city}"},
+        )
+
+
+def get_client_aliases(db, city):
+    return dict(
+        db.query(ClientNameAlias.source_name, ClientNameAlias.canonical_name)
+        .filter(ClientNameAlias.city == city)
+        .all()
+    )
+
+
+def resolve_client_name(db, city, name):
+    alias = db.get(ClientNameAlias, (city, name))
+    return alias.canonical_name if alias else name
+
+
+def _pair(first, second):
+    return tuple(sorted((first, second)))
+
+
+def _dismissed_pairs(db, city):
+    return set(
+        db.query(ClientNameDismissal.first_name, ClientNameDismissal.second_name)
+        .filter(ClientNameDismissal.city == city)
+        .all()
+    )
+
+
+def _names_in_city(db, city):
+    names = {}
+    for model, count_key, type_column in (
+        (Sale, "sales", Sale.type),
+        (Visit, "visits", Visit.sale_type),
+    ):
+        columns = [model.client, type_column, func.count(model.id)]
+        grouping = [model.client, type_column]
+        if model is Sale:
+            columns += [Sale.month, func.sum(Sale.weight)]
+            grouping.append(Sale.month)
+        for name, point_type, count, *sale in (
+            db.query(*columns)
+            .filter(model.city == city, model.client.isnot(None))
+            .group_by(*grouping)
+        ):
+            if not name.strip() or name.strip().casefold() == "nan":
+                continue
+            item = names.setdefault(
+                name,
+                dict(name=name, sales=0, visits=0, types=set(), months=set(), volume=0),
+            )
+            item[count_key] += count
+            if point_type:
+                item["types"].add(point_type)
+            if sale:
+                month, volume = sale
+                if month:
+                    item["months"].add(month)
+                item["volume"] += volume or 0
+    return names
+
+
+def _nearby_keys(keys):
+    """Generate candidates for one edit, adjacent swap or a missing space."""
+    index = defaultdict(list)
+    for key in sorted(keys):
+        if not 6 <= len(key) <= _NAME_LIMIT:
+            continue
+        digits = tuple(re.findall(r"\d+", key))
+        compact = key.replace(" ", "")
+        signatures = {("edit", key), ("space", compact)}
+        signatures.update(("edit", key[:i] + key[i + 1 :]) for i in range(len(key)))
+        matches = set()
+        for signature in signatures:
+            bucket = index[digits, signature]
+            matches.update(bucket)
+            bucket.append(key)
+        for other in sorted(matches):
+            if compact == other.replace(" ", "") or _one_edit(key, other):
+                yield key, other
+
+
+def _one_edit(first, second):
+    if abs(len(first) - len(second)) > 1:
+        return False
+    if len(first) == len(second):
+        differences = [
+            i for i, (a, b) in enumerate(zip(first, second, strict=True)) if a != b
+        ]
+        if len(differences) == 1:
+            return True
+        if len(differences) != 2:
+            return False
+        i, j = differences
+        return j == i + 1 and first[i] == second[j] and first[j] == second[i]
+    shorter, longer = sorted((first, second), key=len)
+    i = next(
+        (i for i, (a, b) in enumerate(zip(shorter, longer, strict=False)) if a != b),
+        len(shorter),
+    )
+    return shorter[i:] == longer[i + 1 :]
+
+
+def get_review_groups(db, city):
+    names = _names_in_city(db, city)
+    dismissed = _dismissed_pairs(db, city)
+    by_key = defaultdict(list)
+    for name in sorted(names):
+        by_key[comparison_name(name)].append(name)
+    groups = []
+
+    def add_group(variants, reason):
+        rows = sorted(
+            (names[name] for name in variants),
+            key=lambda row: (-row["sales"], -row["visits"], row["name"]),
+        )
+        groups.append(
+            {
+                "reason": reason,
+                "rows": rows,
+                "canonical": clean_spacing(rows[0]["name"]),
+            }
+        )
+
+    for variants in by_key.values():
+        covered = set()
+        for i, first in enumerate(variants[:-1]):
+            group = [first]
+            for other in variants[i + 1 :]:
+                if all(_pair(other, name) not in dismissed for name in group):
+                    group.append(other)
+            pairs = set(combinations(group, 2))
+            if pairs - covered:
+                if len({clean_spacing(name).casefold() for name in group}) > 1:
+                    reason = "Различаются кавычками или оформлением"
+                elif len({name.casefold() for name in group}) > 1:
+                    reason = "Различаются пробелами"
+                    if len({clean_spacing(name) for name in group}) > 1:
+                        reason = "Различаются регистром и пробелами"
+                else:
+                    reason = "Различаются регистром"
+                add_group(group, reason)
+                covered.update(pairs)
+    for first, second in _nearby_keys(by_key):
+        for left in by_key[first]:
+            for right in by_key[second]:
+                if _pair(left, right) not in dismissed:
+                    add_group([left, right], "Похожие названия")
+    for item in names.values():
+        item["types"] = sorted(item["types"])
+        item["months"] = sorted(item["months"], key=month_sort_key)
+    return groups
+
+
+def _count_names(db, model, city, names):
+    return (
+        db.query(model.client, func.count(model.id))
+        .filter(model.city == city, model.client.in_(names))
+        .group_by(model.client)
+        .all()
+    )
+
+
+def preview_merge(db, city, variants, canonical):
+    canonical = clean_spacing(canonical)
+    variants = sorted(set(variants))
+    if (
+        not city
+        or len(variants) < 2
+        or not canonical
+        or len(canonical) > _NAME_LIMIT
+        or any(ord(char) < 32 for char in canonical)
+    ):
+        raise ValueError("Выберите минимум два варианта и укажите итоговое название.")
+    sales = dict(_count_names(db, Sale, city, [*variants, canonical]))
+    visits = dict(_count_names(db, Visit, city, [*variants, canonical]))
+    present = sales.keys() | visits.keys()
+    if not set(variants) <= present:
+        raise ValueError("Названия уже изменились. Обновите список и повторите выбор.")
+    if canonical not in variants and canonical in present:
+        raise ValueError(
+            "Итоговое название уже используется. Включите его в объединение."
+        )
+    aliases = get_client_aliases(db, city)
+    if canonical in aliases:
+        raise ValueError(
+            "Это название уже связано с другим клиентом. Укажите актуальное название."
+        )
+    if any(aliases[name] not in present for name in variants if name in aliases):
+        raise ValueError("Один из вариантов уже связан с другим клиентом.")
+    if _dismissed_pairs(db, city).intersection(combinations(variants, 2)):
+        raise ValueError("Некоторые варианты уже отмечены как разные клиенты.")
+    sources = [name for name in variants if name != canonical]
+    return {
+        "canonical": canonical,
+        "variants": variants,
+        "sources": sources,
+        "sales": sum(sales.get(name, 0) for name in sources),
+        "visits": sum(visits.get(name, 0) for name in sources),
+    }
+
+
+def merge_names(db, city, variants, canonical, *, expected_counts):
+    lock_client_names(db, city)
+    plan = preview_merge(db, city, variants, canonical)
+    if (plan["sales"], plan["visits"]) != expected_counts:
+        raise ValueError("Число строк изменилось. Проверьте обновлённый список.")
+    sources = plan["sources"]
+    canonical = plan["canonical"]
+    aliases = (
+        db.query(ClientNameAlias)
+        .filter(
+            ClientNameAlias.city == city,
+            ClientNameAlias.source_name.in_(sources)
+            | ClientNameAlias.canonical_name.in_(sources),
+        )
+        .all()
+    )
+    existing = {alias.source_name for alias in aliases}
+    for alias in aliases:
+        alias.canonical_name = canonical
+    db.add_all(
+        ClientNameAlias(city=city, source_name=name, canonical_name=canonical)
+        for name in sources
+        if name not in existing
+    )
+    _carry_dismissals(db, city, sources, canonical)
+    for model in (Sale, Visit):
+        db.execute(
+            update(model)
+            .where(model.city == city, model.client.in_(sources))
+            .values(client=canonical)
+        )
+    db.commit()
+    return plan
+
+
+def _carry_dismissals(db, city, sources, canonical):
+    existing = _dismissed_pairs(db, city)
+    source_names = set(sources)
+    updated = {
+        _pair(
+            canonical if first in source_names else first,
+            canonical if second in source_names else second,
+        )
+        for first, second in existing
+        if first in source_names or second in source_names
+    }
+    db.add_all(
+        ClientNameDismissal(city=city, first_name=first, second_name=second)
+        for first, second in updated - existing
+        if first != second
+    )
+
+
+def dismiss_names(db, city, variants):
+    lock_client_names(db, city)
+    variants = sorted(set(variants))
+    if not city or len(variants) < 2:
+        raise ValueError("Выберите минимум два разных названия.")
+    present = (
+        dict(_count_names(db, Sale, city, variants)).keys()
+        | dict(_count_names(db, Visit, city, variants)).keys()
+    )
+    if not set(variants) <= present:
+        raise ValueError("Названия уже изменились. Обновите список и повторите выбор.")
+    dismissed = _dismissed_pairs(db, city)
+    db.add_all(
+        ClientNameDismissal(city=city, first_name=first, second_name=second)
+        for first, second in combinations(variants, 2)
+        if (first, second) not in dismissed
+    )
+    db.commit()

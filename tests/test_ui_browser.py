@@ -1002,3 +1002,32 @@ def test_web_navigation_skips_modified_clicks_and_shows_loading(page):
         content_type="text/html", body="<html><body>Пользователи</body></html>"
     )
     page.wait_for_url("**/admin/users")
+
+
+def test_client_name_review_previews_and_merges_whitespace_variant(page, db_session):
+    from app.models import Sale
+
+    db_session.add(
+        Sale(
+            city="Иркутск",
+            client=" Магазин  Маяк ",
+            type="Магазин",
+            month="2026-09-01",
+            weight=2,
+        )
+    )
+    db_session.commit()
+    page.goto(
+        "https://pulse-ui.test/admin/clients/review?city=Иркутск",
+        wait_until="networkidle",
+    )
+    group = page.locator("form").filter(has_text="Различаются пробелами")
+    assert group.count() == 1
+    group.get_by_role("checkbox").first.check()
+    group.get_by_role("checkbox").last.check()
+    group.get_by_role("button", name="Проверить объединение").click()
+    page.get_by_role("heading", name="Проверка объединения клиентов").wait_for()
+    assert page.get_by_text("Будет обновлено строк продаж", exact=False).is_visible()
+    page.get_by_role("button", name="Подтвердить объединение").click()
+    page.get_by_text("Объединение сохранено.", exact=False).wait_for()
+    assert page.get_by_text("Похожих названий", exact=False).is_visible()
