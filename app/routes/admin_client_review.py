@@ -20,8 +20,8 @@ from ..services.client_name_review_service import (
     get_review_cities,
     get_review_groups,
     get_review_point_types,
-    merge_exact_names,
     merge_names,
+    merge_selected_names,
     preview_bulk_merge,
     preview_merge,
 )
@@ -153,15 +153,13 @@ def assign_client_point_type(
     )
 
 
-@router.get("/bulk")
-def bulk_client_review(
-    request: Request,
-    city: str,
-    db: Session = Depends(get_db),
-    _admin=Depends(require_admin),
+def _render_bulk_review(
+    request, db, city, *, selected=None, expected_snapshot=None, error=None
 ):
     groups, snapshot = preview_bulk_merge(db, city)
-    return render(
+    if expected_snapshot is not None and expected_snapshot != snapshot:
+        selected = set()
+    response = render(
         request,
         "admin/client_name_bulk_preview.html",
         {
@@ -169,10 +167,23 @@ def bulk_client_review(
             "city": city,
             "groups": groups,
             "snapshot": snapshot,
-            "sales": sum(group["sales"] for group in groups),
-            "visits": sum(group["visits"] for group in groups),
+            "selected": selected,
+            "error": error,
         },
     )
+    if error:
+        response.status_code = 400
+    return response
+
+
+@router.get("/bulk")
+def bulk_client_review(
+    request: Request,
+    city: str,
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    return _render_bulk_review(request, db, city)
 
 
 @router.post("/bulk")
@@ -180,16 +191,22 @@ def confirm_bulk_client_review(
     request: Request,
     city: str = Form(...),
     snapshot: str = Form(...),
+    selected: list[int] = Form(default=[]),
     db: Session = Depends(get_db),
     admin=Depends(require_admin),
 ):
     try:
-        groups = merge_exact_names(db, city, snapshot)
+        groups = merge_selected_names(db, city, snapshot, selected)
     except ValueError as exc:
         db.rollback()
-        response = _render_review(request, db, city, error=str(exc))
-        response.status_code = 400
-        return response
+        return _render_bulk_review(
+            request,
+            db,
+            city,
+            selected=set(selected),
+            expected_snapshot=snapshot,
+            error=str(exc),
+        )
     result = {key: sum(group[key] for group in groups) for key in ("sales", "visits")}
     log_action(
         "client_names_bulk_merged",

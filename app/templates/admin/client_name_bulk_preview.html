@@ -2,33 +2,53 @@
 {% block content %}
 <h1>Массовая сверка клиентов</h1>
 <p class="page-subtitle">{{ city }}</p>
-<p>Сверяем написание названий и варианты записи одного адреса. Похожие названия можно проверить в ручной ревизии.</p>
+{% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
 {% if groups %}
-<p>Групп к объединению — {{ groups|length }}. Будет обновлено строк продаж — {{ sales }}, визитов — {{ visits }}.</p>
-<div class="sheet-scroller">
-    <table class="sheet-table">
-        <thead><tr><th>Итоговое имя</th><th>Варианты для замены</th><th>Строки продаж</th><th>Визиты</th></tr></thead>
-        <tbody>
-            {% for group in groups %}
-            <tr>
-                <td>{{ group.canonical }}</td>
-                <td><ul>{% for name in group.sources %}<li><code style="white-space: pre-wrap;">{{ name }}</code></li>{% endfor %}</ul></td>
-                <td>{{ group.sales }}</td>
-                <td>{{ group.visits }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-<form method="post" class="filters">
+<p>Снимите отметки с групп, которые хотите пропустить. Если одно название встречается в нескольких выбранных группах, оставьте одну из них.</p>
+<form method="post" id="bulk-client-review">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="city" value="{{ city }}">
     <input type="hidden" name="snapshot" value="{{ snapshot }}">
-    <button type="submit" class="btn-primary">Подтвердить все объединения</button>
-    <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a>
+    <p id="bulk-client-selection" role="status">Групп для проверки — {{ groups|length }}.</p>
+    <div class="sheet-scroller">
+        <table class="sheet-table">
+            <thead><tr><th>Объединить</th><th>Итоговое имя</th><th>Варианты для замены</th><th>Строки продаж</th><th>Визиты</th></tr></thead>
+            <tbody>
+                {% for group in groups %}
+                <tr>
+                    <td><input type="checkbox" name="selected" value="{{ loop.index0 }}" aria-label="Объединить группу {{ loop.index }}: {{ group.canonical }}" data-sales="{{ group.sales }}" data-visits="{{ group.visits }}"{% if selected is none or loop.index0 in selected %} checked{% endif %}></td>
+                    <td><strong>{{ group.canonical }}</strong><br><span class="muted">{{ group.reason }}</span></td>
+                    <td><ul>{% for name in group.sources %}<li><code style="white-space: pre-wrap;">{{ name }}</code></li>{% endfor %}</ul></td>
+                    <td>{{ group.sales }}</td>
+                    <td>{{ group.visits }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="filters" style="margin-top: 12px;">
+        <button type="submit" class="btn-primary">Объединить выбранные группы</button>
+        <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a>
+    </div>
 </form>
+<script>
+(() => {
+    const form = document.getElementById("bulk-client-review");
+    const status = document.getElementById("bulk-client-selection");
+    const button = form.querySelector('button[type="submit"]');
+    function updateSelection() {
+        const selected = Array.from(form.querySelectorAll('input[name="selected"]:checked'));
+        const sales = selected.reduce((sum, input) => sum + Number(input.dataset.sales), 0);
+        const visits = selected.reduce((sum, input) => sum + Number(input.dataset.visits), 0);
+        status.textContent = `Выбрано групп — ${selected.length}. Строк продаж — ${sales}, визитов — ${visits}.`;
+        button.disabled = selected.length === 0;
+    }
+    form.addEventListener("change", updateSelection);
+    updateSelection();
+})();
+</script>
 {% else %}
-<p class="message">Групп для массового объединения не найдено.</p>
+<p class="message">Групп для объединения не найдено.</p>
 <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a>
 {% endif %}
 {% endblock %}

@@ -20,6 +20,7 @@ _ADDRESS_MARKER = re.compile(
     r"(?:^|[\s,(])(?:ул\.|улица\b|пр\.|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b)"
 )
 _PAYMENT_SUFFIX = re.compile(r"\s*[-–—]?\s*\((?:н|нал)\)$")
+_CLIENT_NOTE_SUFFIX = re.compile(r"\s*\(к\*\)$")
 _INLINE_ADDRESS = re.compile(
     r"(?P<name>.+?)[,;]\s*(?:ул\.?\s+|улица\s+)?"
     r"(?P<street>[^\W\d_][^\d,;()]*?)\s*[, ]\s*(?:д\.?\s*)?"
@@ -60,6 +61,13 @@ def _inline_address_key(key):
         match["house"].replace(" ", ""),
         match["building"],
     )
+
+
+def _without_client_note(key):
+    base = _CLIENT_NOTE_SUFFIX.sub("", key)
+    if _ADDRESS_MARKER.search(base) and re.search(r"\d+[а-яёa-z]?\)?$", base):
+        return base
+    return key
 
 
 def lock_client_names(db, city):
@@ -347,6 +355,20 @@ def iter_name_matches(names, dismissed, city):
                 yield pair, "Различаются пометками (Н) / (НАЛ)"
                 address_pairs.add(pair)
 
+    notes_by_base = defaultdict(list)
+    for key, variants in by_key.items():
+        notes_by_base[_without_client_note(key)].extend(variants)
+    for variants in notes_by_base.values():
+        for first, second in combinations(variants, 2):
+            pair = _pair(first, second)
+            if (
+                comparison_name(first) != comparison_name(second)
+                and pair not in dismissed
+                and pair not in address_pairs
+            ):
+                yield pair, "Различаются пометкой (К*)"
+                address_pairs.add(pair)
+
     inline_addresses = {}
     keys_by_address = defaultdict(list)
     for key in by_key:
@@ -494,63 +516,75 @@ def _apply_merge(db, city, sources, canonical):
 
 
 def preview_bulk_merge(db, city):
-    names = _names_in_city(db, city) if city else {}
-    aliases = get_client_aliases(db, city) if names else {}
-    dismissed = _dismissed_pairs(db, city) if names else set()
-    by_key = defaultdict(list)
-    for name in sorted(names):
-        if key := comparison_name(name):
-            by_key[_inline_address_key(key) or key].append(name)
     groups = []
-    for variants in by_key.values():
-        if len(variants) < 2 or dismissed.intersection(combinations(variants, 2)):
-            continue
-        if any(name in aliases and aliases[name] not in variants for name in variants):
-            continue
-        preferred = sorted(
-            variants,
-            key=lambda name: (
-                -names[name]["sales"],
-                -names[name]["visits"],
-                name != clean_spacing(name),
-                name,
+    for group in get_review_groups(db, city) if city else []:
+        rows = group["rows"]
+        preferred = min(
+            rows,
+            key=lambda row: (
+                _without_client_note(comparison_name(row["name"]))
+                != comparison_name(row["name"]),
+                -row["sales"],
+                -row["visits"],
+                row["name"] != clean_spacing(row["name"]),
+                row["name"],
             ),
         )
-        canonical = next(
-            (
-                cleaned
-                for name in preferred
-                if (cleaned := clean_spacing(name)) not in aliases
-                and len(cleaned) <= _NAME_LIMIT
-                and all(ord(char) >= 32 for char in cleaned)
-            ),
-            None,
-        )
-        if canonical is None:
-            continue
-        sources = [name for name in variants if name != canonical]
+        canonical = clean_spacing(preferred["name"])
+        sources = [row for row in rows if row["name"] != canonical]
         groups.append(
             {
+                "reason": group["reason"],
                 "canonical": canonical,
-                "sources": sources,
-                "sales": sum(names[name]["sales"] for name in sources),
-                "visits": sum(names[name]["visits"] for name in sources),
+                "variants": sorted(row["name"] for row in rows),
+                "sources": [row["name"] for row in sources],
+                "sales": sum(row["sales"] for row in sources),
+                "visits": sum(row["visits"] for row in sources),
             }
         )
     snapshot = json.dumps([city, groups], ensure_ascii=False, sort_keys=True)
     return groups, hashlib.sha256(snapshot.encode()).hexdigest()
 
 
-def merge_exact_names(db, city, expected_snapshot):
+def merge_selected_names(db, city, expected_snapshot, selected_indices):
     lock_client_names(db, city)
     groups, snapshot = preview_bulk_merge(db, city)
-    if not groups or snapshot != expected_snapshot:
-        raise ValueError("Список совпадений изменился. Откройте предпросмотр заново.")
-    for group in groups:
+    if snapshot != expected_snapshot:
+        raise ValueError(
+            "Список совпадений изменился. Проверьте обновлённый предпросмотр."
+        )
+    if not selected_indices:
+        raise ValueError("Отметьте хотя бы одну группу.")
+    indices = set(selected_indices)
+    if min(indices) < 0 or max(indices) >= len(groups):
+        raise ValueError("Выберите группы из текущего предпросмотра.")
+
+    selected = []
+    used_names = set()
+    excluded = [
+        set(group["variants"]) for i, group in enumerate(groups) if i not in indices
+    ]
+    for i in sorted(indices):
+        group = groups[i]
+        variants = set(group["variants"]) | {group["canonical"]}
+        if used_names.intersection(variants):
+            raise ValueError(
+                f"«{group['canonical']}» пересекается с другой выбранной группой. "
+                "Оставьте одну из пересекающихся групп и повторите сохранение."
+            )
+        if any(names <= variants for names in excluded):
+            raise ValueError(
+                f"«{group['canonical']}» включает названия из исключённой группы. "
+                "Снимите отметку и с этой группы."
+            )
+        used_names.update(variants)
+        selected.append(preview_merge(db, city, group["variants"], group["canonical"]))
+
+    for group in selected:
         _apply_merge(db, city, group["sources"], group["canonical"])
         db.flush()
     db.commit()
-    return groups
+    return selected
 
 
 def _carry_dismissals(db, city, sources, canonical):

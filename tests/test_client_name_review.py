@@ -90,13 +90,18 @@ def test_inline_address_formatting_in_kazan(admin_client, db_session):
     ]
     bulk_url = URL + "/bulk"
     preview = admin_client.get(bulk_url, params={"city": city})
-    assert "Групп к объединению — 2" in preview.text
+    assert "Групп для проверки — 2" in preview.text
     assert "43б" not in preview.text
     assert "к2" not in preview.text
     snapshot = re.search(r'name="snapshot" value="([a-f0-9]+)"', preview.text)[1]
     response = admin_client.post(
         bulk_url,
-        data={"city": city, "snapshot": snapshot, "csrf_token": CSRF_TOKEN},
+        data={
+            "city": city,
+            "snapshot": snapshot,
+            "csrf_token": CSRF_TOKEN,
+            "selected": [0, 1],
+        },
     )
     assert response.status_code == 200
     assert "Обновлено строк продаж — 2" in response.text
@@ -148,6 +153,34 @@ def test_high_similarity_and_city_filter(admin_client, db_session):
     assert 'value="Казань"' not in admin_client.get(URL).text
 
 
+def test_bulk_review_recognizes_client_note_after_address(admin_client, db_session):
+    city = "Казань"
+    name = 'ООО "КАЕФ"; Заведение "KAEF"; Набережные Челны, пр-т Чулман 1В'
+    annotated = name.replace('"KAEF"', '" KAEF"') + " (К*)"
+    db_session.add_all(
+        sale(variant, city)
+        for variant in (name, annotated, annotated, name.replace("1В", "2В") + " (К*)")
+    )
+    db_session.commit()
+
+    preview = admin_client.get(URL + "/bulk", params={"city": city})
+    assert "Групп для проверки — 1" in preview.text
+    assert 'data-sales="2"' in preview.text
+    assert "2В" not in preview.text
+    snapshot = re.search(r'name="snapshot" value="([a-f0-9]+)"', preview.text)[1]
+    response = admin_client.post(
+        URL + "/bulk",
+        data={
+            "city": city,
+            "snapshot": snapshot,
+            "csrf_token": CSRF_TOKEN,
+            "selected": [0],
+        },
+    )
+    assert response.status_code == 200
+    assert db_session.query(Sale).filter_by(city=city, client=name).count() == 3
+
+
 def test_bulk_review_merges_only_previewed_exact_groups(admin_client, db_session):
     original = "Papa’s Chilla"
     alternative = " «PAPA’S  CHILLA» "
@@ -165,12 +198,17 @@ def test_bulk_review_merges_only_previewed_exact_groups(admin_client, db_session
 
     def get_snapshot():
         response = admin_client.get(bulk_url, params={"city": CITY})
-        assert "Групп к объединению — 2" in response.text
+        assert "Групп для проверки — 2" in response.text
         assert branch not in response.text
         assert rejected[0] not in response.text
         return re.search(r'name="snapshot" value="([a-f0-9]+)"', response.text)[1]
 
-    data = {"csrf_token": CSRF_TOKEN, "city": CITY, "snapshot": get_snapshot()}
+    data = {
+        "csrf_token": CSRF_TOKEN,
+        "city": CITY,
+        "snapshot": get_snapshot(),
+        "selected": [0, 1],
+    }
     db_session.add(sale(alternative))
     db_session.commit()
     assert admin_client.post(bulk_url, data=data).status_code == 400
@@ -313,3 +351,32 @@ def test_assign_city_point_type_to_only_missing_sales(admin_client, db_session):
         db_session.query(Sale).filter_by(city=other_city, client=NAME).one().type
         == "nan"
     )
+
+
+def test_bulk_review_applies_selected_manual_pairs_only(admin_client, db_session):
+    pairs = [("Кафе Маяк", "Кафе Мояк"), ("Бар Северный", "Бар Северной")]
+    db_session.add_all(sale(name) for pair in pairs for name in pair)
+    db_session.commit()
+    groups = get_review_groups(db_session, CITY)
+    chosen = next(
+        i
+        for i, group in enumerate(groups)
+        if {row["name"] for row in group["rows"]} == set(pairs[0])
+    )
+    bulk_url = URL + "/bulk"
+    preview = admin_client.get(bulk_url, params={"city": CITY})
+    assert preview.text.count('type="checkbox" name="selected"') == len(groups) == 2
+    snapshot = re.search(r'name="snapshot" value="([a-f0-9]+)"', preview.text)[1]
+    response = admin_client.post(
+        bulk_url,
+        data={
+            "city": CITY,
+            "snapshot": snapshot,
+            "csrf_token": CSRF_TOKEN,
+            "selected": [chosen],
+        },
+    )
+    assert response.status_code == 200
+    assert db_session.query(ClientNameAlias).count() == 1
+    for name in pairs[1]:
+        assert db_session.query(Sale).filter_by(city=CITY, client=name).count() == 1
