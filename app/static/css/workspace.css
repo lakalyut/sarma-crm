@@ -8,6 +8,17 @@
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius-lg); padding: 24px;
 }
+/* Вертикальные отступы задаёт контейнер, чтобы поля, карточки и кнопки не склеивались. */
+.section-stack {
+    display: grid;
+    gap: 16px;
+    min-inline-size: 0;
+}
+.section-stack[hidden] { display: none; }
+.section-stack > * { margin-block: 0; min-inline-size: 0; }
+.section-stack > .field { margin-block: 0; }
+.section-stack .filters-actions { gap: 8px 12px; flex-wrap: wrap; white-space: normal; }
+
 /* Только фильтры GET: карточки операций, редактирования и удаления сохраняются. */
 .filters-card:has(> form[method="get" i]) {
     padding: 0; border: 0; background: transparent; margin: 24px 0;

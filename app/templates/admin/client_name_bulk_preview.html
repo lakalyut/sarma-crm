@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Массовая сверка клиентов</h1>
+<div class="section-stack">
 <p class="page-subtitle">{{ city }}</p>
 {% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
 {% if groups %}
 <p>Снимите отметки с групп, которые хотите пропустить. Группы с пометкой «Проверить вручную» можно отметить после проверки.</p>
-<form method="post" id="bulk-client-review">
+<form method="post" id="bulk-client-review" class="section-stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="city" value="{{ city }}">
     <input type="hidden" name="snapshot" value="{{ snapshot }}">
@@ -26,7 +27,7 @@
             </tbody>
         </table>
     </div>
-    <div class="filters" style="margin-top: 12px;">
+    <div class="filters-actions">
         <button type="submit" class="btn-primary">Объединить выбранные группы</button>
         <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a>
     </div>
@@ -49,6 +50,8 @@
 </script>
 {% else %}
 <p class="message">Групп для объединения не найдено.</p>
-<a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a>
+<div class="filters-actions"><a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': city}|urlencode }}">Вернуться к ручной ревизии</a></div>
 {% endif %}
+</div>
+
 {% endblock %}

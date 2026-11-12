@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Типы точек по городу</h1>
+<div class="section-stack">
 <p class="page-subtitle">Выберите категории для исходных типов. Соответствия применятся к продажам города и следующим импортам.</p>
 
 <div class="filters-actions">
@@ -26,12 +27,12 @@
     <div class="message ok">Соответствия сохранены. Обновлено строк продаж: {{ updated }}.</div>
 {% endif %}
 {% if rows %}
-    <form method="post">
+    <form method="post" class="section-stack">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="city" value="{{ selected_city }}">
         <div class="sheet-wrapper">
             <div class="sheet-scroller">
-                <table class="sheet-table">
+                <table class="sheet-table point-type-mapping-table">
                     <thead>
                         <tr><th>Исходный тип</th><th>Строки продаж</th><th>Категория</th></tr>
                     </thead>
@@ -62,4 +63,6 @@
 {% elif selected_city and selected_city in cities %}
     <div class="message">В городе пока нет загруженных типов точек.</div>
 {% endif %}
+</div>
+
 {% endblock %}

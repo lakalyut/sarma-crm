@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Ревизия клиентов</h1>
+<div class="section-stack">
 <p class="page-subtitle">Найдите варианты написания одного клиента в продажах и визитах. Проверьте совпадение и выберите итоговое название.</p>
-<div class="filters-actions client-review-actions">
+<div class="filters-actions">
     <a class="btn btn-secondary" href="/admin/clients/review/manual?{{ {'city': selected_city}|urlencode }}">Ручное объединение</a>
     {% if groups %}
     <a class="btn btn-secondary" href="/admin/clients/review/bulk?{{ {'city': selected_city}|urlencode }}">Массовая сверка</a>
@@ -10,7 +11,7 @@
 </div>
 
 {% if cities %}
-<form method="get" class="admin-history-filter client-merge-city">
+<form method="get" class="admin-history-filter">
     <div class="field filter-field">
         <label for="client-review-city">Город</label>
         <select id="client-review-city" name="city" class="js-custom-select" data-searchable>
@@ -38,7 +39,7 @@
 {% endif %}
 
 {% if selected_city %}
-<details class="filters-card" open style="margin-bottom: 16px;">
+<details class="filters-card" open>
     <summary>Клиенты без типа точки · {{ type_gaps|length }}</summary>
     {% if not type_gaps %}
     <p class="message">В продажах города {{ selected_city }} не найдено клиентов без типа точки.</p>
@@ -86,7 +87,7 @@
 {% elif groups %}
     <p class="page-subtitle">Групп для проверки — {{ group_count }}. Выберите варианты внутри группы.</p>
     {% for group in groups %}
-    <form method="post" class="filters-card" style="margin-bottom: 16px;">
+    <form method="post" class="filters-card section-stack">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="city" value="{{ selected_city }}">
         <h2>{{ group.reason }}</h2>
@@ -109,13 +110,15 @@
                 </tbody>
             </table>
         </div>
-        <div class="filters" style="margin-top: 12px;">
+        <div class="admin-history-filter">
             <div class="field filter-field">
                 <label for="canonical-{{ loop.index }}">Итоговое название</label>
                 <input type="text" id="canonical-{{ loop.index }}" name="canonical" value="{{ group.canonical }}" maxlength="200">
             </div>
-            <button type="submit" name="operation" value="preview" class="btn-secondary">Проверить объединение</button>
-            <button type="submit" name="operation" value="dismiss" class="btn-secondary">Разные клиенты</button>
+            <div class="filters-actions">
+                <button type="submit" name="operation" value="preview" class="btn-secondary">Проверить объединение</button>
+                <button type="submit" name="operation" value="dismiss" class="btn-secondary">Разные клиенты</button>
+            </div>
         </div>
     </form>
     {% endfor %}
@@ -127,4 +130,6 @@
     </nav>
     {% endif %}
 {% endif %}
+</div>
+
 {% endblock %}

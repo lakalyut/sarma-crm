@@ -1121,3 +1121,24 @@ def test_import_prompts_for_point_type_without_reselecting_file(page):
     page.get_by_role("button", name="Сохранить соответствия").click()
     page.get_by_text("Обновлено строк продаж: 4", exact=False).wait_for()
     assert category.input_value() == "Другое"
+
+
+@pytest.mark.parametrize("width", [320, 390, 768, 1440])
+def test_point_type_mapping_keeps_actions_clear_of_panels(page, width):
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(
+        "https://pulse-ui.test/admin/point-types/review/mapping?city=Иркутск",
+        wait_until="networkidle",
+    )
+
+    back = page.get_by_role("link", name="К ревизии типов точек").bounding_box()
+    filters = page.locator("form[method=get]").bounding_box()
+    table = page.locator(".sheet-wrapper").bounding_box()
+    save = page.get_by_role("button", name="Сохранить соответствия").bounding_box()
+    assert filters["y"] - (back["y"] + back["height"]) == pytest.approx(16, abs=2)
+    assert table["y"] - (filters["y"] + filters["height"]) == pytest.approx(16, abs=2)
+    assert save["y"] - (table["y"] + table["height"]) == pytest.approx(16, abs=2)
+
+    category = page.get_by_label("Категория для Кальянная", exact=True).bounding_box()
+    assert category["x"] + category["width"] <= table["x"] + table["width"]
+    assert page.evaluate("document.documentElement.scrollWidth") <= width

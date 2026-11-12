@@ -2,8 +2,9 @@
 {% block content %}
 <h1>Импорт XLSX → Нормализация → БД</h1>
 
+<div class="section-stack">
 <div class="filters-card">
-<form id="xlsx-import" method="post" enctype="multipart/form-data">
+<form id="xlsx-import" class="section-stack" method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="field filter-field filter-field-region-search">
         <label for="import-city">Город</label>
@@ -36,11 +37,11 @@
             <span class="file-upload-name" id="file-upload-name">Файл не выбран</span>
         </div>
     </div>
-    <section id="import-type-mapping" data-categories="{{ point_types|tojson }}" {% if not unmapped_types %}hidden{% endif %}>
+    <section id="import-type-mapping" class="section-stack" data-categories="{{ point_types|tojson }}" {% if not unmapped_types %}hidden{% endif %}>
         <h2>Категории типов точек</h2>
         <p>Выберите категорию для каждого типа из файла. Соответствия сохранятся для этого города.</p>
         {% if unmapped_types %}<p>Выберите файл ещё раз, затем нажмите «Импортировать».</p>{% endif %}
-        <div id="import-type-fields">
+        <div id="import-type-fields" class="section-stack">
             {% for row in unmapped_types %}
                 <div class="field">
                     <label for="import-type-{{ loop.index0 }}">{{ row.label }} · строк: {{ row.count }}</label>
@@ -64,6 +65,7 @@
     <div class="message error">{{ error }}</div>
 {% endif %}
 {% include "includes/messages.html" %}
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

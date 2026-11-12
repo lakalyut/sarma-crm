@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Ревизия типов точек</h1>
+<div class="section-stack">
 <div class="filters-actions">
     <a class="btn btn-primary" href="/admin/point-types/review/mapping{% if selected_city %}?city={{ selected_city|urlencode }}{% endif %}">Сопоставить типы по городу</a>
 </div>
 
 <h2>Расхождения по клиентам</h2>
 
-<div class="page-subtitle" style="margin-bottom: 12px;">
+<div class="page-subtitle">
     Клиенты, у которых «Тип точки» (<code>HoReCa</code>/<code>Розница</code>/...) отличается от месяца
     к месяцу — обычно там, где регион не присылает тип в исходных данных и он проставляется
     вручную по эвристике (средний вес заказа). Эталона здесь нет — выбор «правильного» типа
@@ -16,7 +17,7 @@
     данные из XLSX не трогаются.
 </div>
 
-<form method="get" action="/admin/point-types/review" class="filters" style="margin-bottom: 16px;">
+<form method="get" action="/admin/point-types/review" class="admin-history-filter">
     <div class="field filter-field">
         <label for="review-city">Город</label>
         <select id="review-city" name="city" class="js-custom-select">
@@ -26,7 +27,7 @@
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="btn-secondary">Показать</button>
+    <div class="filters-actions"><button type="submit" class="btn-secondary">Показать</button></div>
 </form>
 
 {% if resynced is not none %}
@@ -88,4 +89,6 @@
         </div>
     </div>
 {% endif %}
+</div>
+
 {% endblock %}

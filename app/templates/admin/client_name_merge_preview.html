@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Проверка объединения клиентов</h1>
+<div class="section-stack">
 <p class="page-subtitle">{{ city }}</p>
-<section class="card client-merge-panel client-merge-preview">
+<section class="card client-merge-panel client-merge-preview section-stack">
     <p class="page-subtitle">Итоговое название</p>
     <h2>{{ plan.canonical }}</h2>
     <ul class="client-merge-selected" aria-label="Названия, которые будут заменены">
@@ -15,7 +16,7 @@
         <div><strong>{{ plan.visits }}</strong><span class="muted">Визиты</span></div>
     </div>
     <p class="page-subtitle">При следующих загрузках эти варианты будут приводиться к итоговому названию.</p>
-<form method="post" action="/admin/clients/review" class="filters">
+<form method="post" action="/admin/clients/review" class="filters-actions">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="city" value="{{ city }}">
     {% if manual %}<input type="hidden" name="manual" value="true">{% endif %}
@@ -33,4 +34,6 @@
     {% endif %}
 </form>
 </section>
+</div>
+
 {% endblock %}

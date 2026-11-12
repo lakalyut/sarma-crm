@@ -2,7 +2,8 @@
 {% block content %}
 <h1>Ревизия номенклатуры</h1>
 
-<div class="page-subtitle" style="margin-bottom: 12px;">
+<div class="section-stack">
+<div class="page-subtitle">
     Сопоставленные продажи, у которых копия названия товара (<code>sku</code>) разошлась
     с актуальным справочником — обычно после правки товара. Пересинхронизация
     пересчитывает <code>sku</code>/<code>name</code> из товара; сырые данные из XLSX не трогаются.
@@ -15,7 +16,7 @@
 {% if not groups %}
     <div class="message ok">Все сопоставленные продажи совпадают со справочником 🎉</div>
 {% else %}
-    <div class="message error" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+    <div class="message error filters-actions">
         <span>Товаров с расхождениями: <b>{{ groups|length }}</b>, строк продаж: <b>{{ total }}</b>.</span>
         <form method="post" action="/admin/nomenclature/review/resync-all" style="margin:0;"
               onsubmit="return confirm('Пересинхронизировать все {{ total }} строк?');">
@@ -56,4 +57,6 @@
         </div>
     </div>
 {% endif %}
+</div>
+
 {% endblock %}

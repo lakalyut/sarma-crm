@@ -6,7 +6,8 @@
         <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': selected_city}|urlencode }}">К ревизии клиентов</a>
     </div>
 </div>
-<form method="get" class="filters-card admin-history-filter client-merge-city">
+<div class="section-stack">
+<form method="get" class="filters-card admin-history-filter">
     <div class="field filter-field">
         <label for="manual-review-city">Город</label>
         <select id="manual-review-city" name="city" class="js-custom-select" data-searchable required>
@@ -50,7 +51,7 @@
             </div>
             <p id="manual-client-empty" class="page-subtitle" hidden>По этому запросу клиенты не найдены.</p>
         </section>
-        <section class="card client-merge-panel client-merge-selection" aria-labelledby="manual-selection-title">
+        <section class="card client-merge-panel client-merge-selection section-stack" aria-labelledby="manual-selection-title">
             <h2 id="manual-selection-title">Выбранные клиенты</h2>
             <p id="manual-client-count" class="page-subtitle" role="status">Отметьте минимум двух клиентов.</p>
             <ul id="manual-client-selected" class="client-merge-selected"></ul>
@@ -132,4 +133,6 @@
 {% elif selected_city %}
 <p class="message">В этом городе нет клиентов для объединения.</p>
 {% endif %}
+</div>
+
 {% endblock %}

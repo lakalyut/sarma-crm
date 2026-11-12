@@ -2,6 +2,7 @@
 {% block content %}
 <h1>Несопоставленные номенклатуры</h1>
 
+<div class="section-stack">
 {% include "includes/messages.html" %}
 
 {% if not items %}
@@ -98,4 +99,6 @@
     });
     </script>
 {% endif %}
+</div>
+
 {% endblock %}
