@@ -39,7 +39,7 @@
             </div>
             <div class="client-merge-list">
                 {% for row in clients %}
-                <label class="client-merge-row" data-client-row>
+                <label class="client-merge-row" data-client-row data-latest-shipment="{{ row.latest_shipment }}">
                     <input type="checkbox" name="variants" value="{{ row.name|urlencode }}"{% if selected is defined and row.name in selected %} checked{% endif %}>
                     <span>
                         <strong data-client-name>{{ row.name }}</strong>
@@ -71,10 +71,12 @@
     const button = form.querySelector('button[type="submit"]');
     const selection = document.getElementById("manual-client-selected");
     const canonical = document.getElementById("manual-client-canonical");
+    let editedName = Boolean(canonical.value.trim());
     const rows = Array.from(form.querySelectorAll("[data-client-row]"), row => ({
         row,
         checkbox: row.querySelector("input"),
-        name: row.querySelector("[data-client-name]").textContent
+        name: row.querySelector("[data-client-name]").textContent,
+        latestShipment: Number(row.dataset.latestShipment)
     }));
     function updateFilter() {
         const query = search.value.trim().toLocaleLowerCase("ru");
@@ -87,6 +89,14 @@
     }
     function updateSelection() {
         const selected = rows.filter(item => item.checkbox.checked);
+        if (!editedName) {
+            const preferred = selected.reduce((best, item) => {
+                if (!best || item.latestShipment > best.latestShipment) return item;
+                if (item.latestShipment === best.latestShipment && item.name.trim() === canonical.value) return item;
+                return best;
+            }, null);
+            canonical.value = preferred ? preferred.name.trim() : "";
+        }
         status.textContent = selected.length
             ? "Выбрано клиентов — " + selected.length
             : "Отметьте минимум двух клиентов.";
@@ -110,11 +120,9 @@
         button.disabled = selected.length < 2;
     }
     search.addEventListener("input", updateFilter);
+    canonical.addEventListener("input", () => { editedName = true; });
     form.addEventListener("change", event => {
         if (!event.target.matches('input[name="variants"]')) return;
-        if (event.target.checked && !canonical.value.trim()) {
-            canonical.value = event.target.closest("[data-client-row]").querySelector("[data-client-name]").textContent.trim();
-        }
         updateSelection();
     });
     updateFilter();

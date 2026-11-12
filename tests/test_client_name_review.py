@@ -9,6 +9,7 @@ from app.services.client_name_review_service import (
     dismiss_names,
     get_review_groups,
     merge_names,
+    preview_bulk_merge,
 )
 from app.services.import_service import IMPORT_COLUMNS, import_sales
 from tests.conftest import CSRF_TOKEN
@@ -501,3 +502,20 @@ def test_manual_review_can_merge_arbitrary_clients_in_one_city(
         db_session.get(ClientNameAlias, (city, second)).canonical_name
         == data["canonical"]
     )
+
+
+def test_revision_prefers_name_from_latest_shipment(db_session):
+    older = "Кафе Маяк"
+    latest = "КАФЕ МАЯК"
+    db_session.add_all(
+        [sale(older), sale(older), sale(older)]
+        + [
+            Sale(city=CITY, client=latest, month="2026-06-01", qty=1),
+            Sale(city=CITY, client=older, month="Июль 2026", qty=-1, weight=-10),
+        ]
+    )
+    db_session.commit()
+
+    assert get_review_groups(db_session, CITY)[0]["canonical"] == latest
+    groups, _ = preview_bulk_merge(db_session, CITY)
+    assert groups[0]["canonical"] == latest

@@ -8,10 +8,10 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 from itertools import chain, combinations, groupby
 
-from sqlalchemy import func, or_, text, update
+from sqlalchemy import case, func, or_, text, update
 
 from ..models import ClientNameAlias, ClientNameDismissal, Sale, Visit
-from ..utils.dates import month_sort_key
+from ..utils.dates import month_sort_key, parse_month
 from .client_health_service import STATUS_LABELS, build_client_health
 
 _QUOTES = str.maketrans("", "", "\"«»„“”'’‘`")
@@ -237,7 +237,11 @@ def _names_in_city(db, city):
         columns = [model.client, type_column, func.count(model.id)]
         grouping = [model.client, type_column]
         if model is Sale:
-            columns += [Sale.month, func.sum(Sale.weight)]
+            columns += [
+                Sale.month,
+                func.sum(Sale.weight),
+                func.max(case((or_(Sale.weight > 0, Sale.qty > 0), 1), else_=0)),
+            ]
             grouping.append(Sale.month)
         for name, point_type, count, *sale in (
             db.query(*columns)
@@ -248,15 +252,27 @@ def _names_in_city(db, city):
                 continue
             item = names.setdefault(
                 name,
-                dict(name=name, sales=0, visits=0, types=set(), months=set(), volume=0),
+                dict(
+                    name=name,
+                    sales=0,
+                    visits=0,
+                    types=set(),
+                    months=set(),
+                    volume=0,
+                    latest_shipment=0,
+                ),
             )
             item[count_key] += count
             if point_type:
                 item["types"].add(point_type)
             if sale:
-                month, volume = sale
+                month, volume, has_shipment = sale
                 if month:
                     item["months"].add(month)
+                    if has_shipment and (period := parse_month(month)):
+                        item["latest_shipment"] = max(
+                            item["latest_shipment"], period[0] * 12 + period[1]
+                        )
                 item["volume"] += volume or 0
     return names
 
@@ -265,6 +281,22 @@ def get_manual_review_clients(db, city):
     return sorted(
         _names_in_city(db, city).values(), key=lambda row: row["name"].casefold()
     )
+
+
+def _suggested_name(rows):
+    preferred = min(
+        rows,
+        key=lambda row: (
+            -row["latest_shipment"],
+            _without_client_note(comparison_name(row["name"]))
+            != comparison_name(row["name"]),
+            -row["sales"],
+            -row["visits"],
+            row["name"] != clean_spacing(row["name"]),
+            row["name"],
+        ),
+    )
+    return clean_spacing(preferred["name"])
 
 
 def _nearby_keys(keys):
@@ -510,7 +542,7 @@ def get_review_groups(db, city):
             {
                 "reason": reason,
                 "rows": rows,
-                "canonical": clean_spacing(rows[0]["name"]),
+                "canonical": _suggested_name(rows),
             }
         )
     for item in names.values():
@@ -608,18 +640,7 @@ def preview_bulk_merge(db, city):
     groups = []
     for group in get_review_groups(db, city) if city else []:
         rows = group["rows"]
-        preferred = min(
-            rows,
-            key=lambda row: (
-                _without_client_note(comparison_name(row["name"]))
-                != comparison_name(row["name"]),
-                -row["sales"],
-                -row["visits"],
-                row["name"] != clean_spacing(row["name"]),
-                row["name"],
-            ),
-        )
-        canonical = clean_spacing(preferred["name"])
+        canonical = group["canonical"]
         sources = [row for row in rows if row["name"] != canonical]
         groups.append(
             {

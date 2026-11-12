@@ -1049,7 +1049,19 @@ def test_client_name_review_previews_and_merges_whitespace_variant(page, db_sess
         result.close()
 
 
-def test_manual_client_merge_keeps_selection_when_editing_preview(page):
+def test_manual_client_merge_keeps_selection_when_editing_preview(page, db_session):
+    from app.models import Sale
+
+    db_session.add(
+        Sale(
+            city="Иркутск",
+            client="Клуб с длинным названием — Северный берег",
+            type="Кальянная",
+            month="2026-10-01",
+            weight=2,
+        )
+    )
+    db_session.commit()
     page.goto(
         "https://pulse-ui.test/admin/clients/review/manual?city=Иркутск",
         wait_until="networkidle",
@@ -1066,4 +1078,7 @@ def test_manual_client_merge_keeps_selection_when_editing_preview(page):
     page.get_by_role("button", name="Изменить выбор").click()
     page.get_by_role("heading", name="Ручное объединение клиентов").wait_for()
     assert page.locator("#manual-client-selected li").count() == 2
-    assert page.get_by_label("Итоговое название").input_value() == "Магазин Маяк"
+    assert (
+        page.get_by_label("Итоговое название").input_value()
+        == "Клуб с длинным названием — Северный берег"
+    )
