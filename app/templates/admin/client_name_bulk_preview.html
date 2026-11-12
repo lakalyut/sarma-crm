@@ -4,7 +4,7 @@
 <p class="page-subtitle">{{ city }}</p>
 {% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
 {% if groups %}
-<p>Снимите отметки с групп, которые хотите пропустить. Если одно название встречается в нескольких выбранных группах, оставьте одну из них.</p>
+<p>Снимите отметки с групп, которые хотите пропустить. Для пересекающихся групп выберите один вариант вручную.</p>
 <form method="post" id="bulk-client-review">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="city" value="{{ city }}">
@@ -16,8 +16,8 @@
             <tbody>
                 {% for group in groups %}
                 <tr>
-                    <td><input type="checkbox" name="selected" value="{{ loop.index0 }}" aria-label="Объединить группу {{ loop.index }}: {{ group.canonical }}" data-sales="{{ group.sales }}" data-visits="{{ group.visits }}"{% if selected is none or loop.index0 in selected %} checked{% endif %}></td>
-                    <td><strong>{{ group.canonical }}</strong><br><span class="muted">{{ group.reason }}</span></td>
+                    <td><input type="checkbox" name="selected" value="{{ loop.index0 }}" aria-label="Объединить группу {{ loop.index }}: {{ group.canonical }}" data-sales="{{ group.sales }}" data-visits="{{ group.visits }}"{% if loop.index0 in selected %} checked{% endif %}></td>
+                    <td><strong>{{ group.canonical }}</strong><br><span class="muted">{{ group.reason }}</span>{% if loop.index0 in overlapping %}<br><span class="muted">Пересекается с другой группой</span>{% endif %}</td>
                     <td><ul>{% for name in group.sources %}<li><code style="white-space: pre-wrap;">{{ name }}</code></li>{% endfor %}</ul></td>
                     <td>{{ group.sales }}</td>
                     <td>{{ group.visits }}</td>

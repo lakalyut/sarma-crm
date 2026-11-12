@@ -380,3 +380,24 @@ def test_bulk_review_applies_selected_manual_pairs_only(admin_client, db_session
     assert db_session.query(ClientNameAlias).count() == 1
     for name in pairs[1]:
         assert db_session.query(Sale).filter_by(city=CITY, client=name).count() == 1
+
+
+def test_bulk_review_leaves_overlapping_groups_unchecked(admin_client, db_session):
+    db_session.add_all(
+        sale(name)
+        for name in (
+            "Кафе Маяк",
+            "Кафе Мояк",
+            "Кафе Маяч",
+            "Бар Северный",
+            "Бар Северной",
+        )
+    )
+    db_session.commit()
+
+    page = admin_client.get(URL + "/bulk", params={"city": CITY})
+    assert page.status_code == 200
+    checkboxes = re.findall(r'<input type="checkbox" name="selected"[^>]*>', page.text)
+    assert len(checkboxes) == 3
+    assert sum(checkbox.endswith(" checked>") for checkbox in checkboxes) == 1
+    assert page.text.count("Пересекается с другой группой") == 2

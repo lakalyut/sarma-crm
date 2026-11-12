@@ -1,5 +1,6 @@
 """Administrator review of possible duplicate client names."""
 
+from collections import Counter
 from typing import Literal
 from urllib.parse import unquote, urlencode
 
@@ -157,8 +158,17 @@ def _render_bulk_review(
     request, db, city, *, selected=None, expected_snapshot=None, error=None
 ):
     groups, snapshot = preview_bulk_merge(db, city)
+    names_by_group = [set(group["variants"]) | {group["canonical"]} for group in groups]
+    occurrences = Counter(name for names in names_by_group for name in names)
+    overlapping = {
+        index
+        for index, names in enumerate(names_by_group)
+        if any(occurrences[name] > 1 for name in names)
+    }
     if expected_snapshot is not None and expected_snapshot != snapshot:
         selected = set()
+    elif selected is None:
+        selected = set(range(len(groups))) - overlapping
     response = render(
         request,
         "admin/client_name_bulk_preview.html",
@@ -168,6 +178,7 @@ def _render_bulk_review(
             "groups": groups,
             "snapshot": snapshot,
             "selected": selected,
+            "overlapping": overlapping,
             "error": error,
         },
     )
