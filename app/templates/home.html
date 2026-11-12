@@ -66,6 +66,33 @@
     </div>
 </div>
 
+<section class="home-card" aria-labelledby="home-point-types-title">
+    <div class="home-card-head">
+        <h2 class="home-card-title" id="home-point-types-title">Клиенты по типам точек</h2>
+    </div>
+    <table class="sheet-table home-point-types-table">
+        <thead>
+            <tr>
+                <th scope="col">Тип точки</th>
+                <th scope="col" class="num">Клиенты</th>
+                <th scope="col" class="num">Вес, кг</th>
+                <th scope="col" class="num">Доля веса</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in clients_by_type %}
+                <tr>
+                    <td>{{ row.point_type }}</td>
+                    <td class="num">{{ row.clients|format_ru_number }}</td>
+                    <td class="num">{{ row.weight|format_ru_number(2) }}</td>
+                    <td class="num">{{ (row.share|format_ru_number(1) ~ ' %') if row.share is not none else '—' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="home-point-types-note">Клиент учитывается один раз в каждом типе, где были его продажи.</p>
+</section>
+
 <div class="home-card">
     <div class="home-card-head">
         <div class="home-card-title">Динамика веса по месяцам {{ year }}</div>

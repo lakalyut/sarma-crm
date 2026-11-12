@@ -16,7 +16,7 @@ ABC на этой странице — НОВЫЙ, отдельный от ру�
 
 from collections import defaultdict
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from ..models import Product, Sale
@@ -88,6 +88,28 @@ def _totals(db: Session, filters: list) -> dict:
         "weight": float(row.weight or 0),
         "clients": int(row.clients or 0),
     }
+
+
+def _clients_by_type(db: Session, filters: list, total_weight: float) -> list[dict]:
+    sale_type = func.trim(Sale.type)
+    point_type = case((func.lower(sale_type).in_(("", "nan")), None), else_=sale_type)
+    weight = func.coalesce(func.sum(Sale.weight), 0.0)
+    rows = (
+        db.query(point_type, func.count(func.distinct(Sale.client)), weight)
+        .filter(*filters)
+        .group_by(point_type)
+        .order_by(weight.desc(), point_type.asc())
+        .all()
+    )
+    return [
+        {
+            "point_type": name or "Без типа",
+            "clients": count,
+            "weight": float(group_weight),
+            "share": float(group_weight) / total_weight * 100 if total_weight else None,
+        }
+        for name, count, group_weight in rows
+    ]
 
 
 def _avg_flavors_per_client(db: Session, filters: list, clients_count: int) -> float:
@@ -330,6 +352,7 @@ def get_home_overview(db: Session, year: int | None) -> dict:
         "year": year,
         "has_data": True,
         "metrics": metrics,
+        "clients_by_type": _clients_by_type(db, cur_filters, cur_totals["weight"]),
         "chart": chart,
         "year_months": year_months,
         "top_cities": top_cities,

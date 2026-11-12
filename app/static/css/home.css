@@ -156,3 +156,34 @@
 .home-show-more[hidden] {
         display: none;
     }
+
+#home-point-types-title { margin: 0; }
+
+table.sheet-table.home-point-types-table {
+        min-width: 0;
+    }
+
+table.home-point-types-table th,
+table.home-point-types-table td {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+table.home-point-types-table .num {
+        text-align: right;
+        width: 20%;
+    }
+
+.home-point-types-note {
+        margin: 12px 0 0;
+        color: var(--text-muted);
+        font-size: 12px;
+    }
+
+@media (max-width: 520px) {
+    table.home-point-types-table th,
+    table.home-point-types-table td {
+        padding-inline: 4px;
+    }
+    table.home-point-types-table .num { width: 22%; }
+}

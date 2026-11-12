@@ -432,3 +432,31 @@ def test_product_abc_page_renders(admin_client, db_session):
     assert resp.status_code == 200
     assert "Мята" in resp.text
     assert "Иркутск" in resp.text
+
+
+def test_home_clients_by_type_deduplicates_clients_and_uses_year_weight(
+    admin_client, db_session
+):
+    from app.services.home_service import get_home_overview
+
+    _sale(db_session, "Иркутск", "2026-01-01", 20, client="Кафе А")
+    _sale(db_session, "Иркутск", "2026-02-01", 30, client="Кафе А")
+    _sale(db_session, "Иркутск", "2026-02-01", 25, client="Кафе А", sale_type="Retail")
+    _sale(db_session, "Иркутск", "2026-02-01", 15, client="Магазин", sale_type="Retail")
+    _sale(db_session, "Москва", "2026-02-01", 5, client="Точка А", sale_type=None)
+    _sale(db_session, "Москва", "2026-02-01", 5, client="Точка А", sale_type="nan")
+    _sale(db_session, "Иркутск", "2025-02-01", 100, client="Архив")
+
+    overview = get_home_overview(db_session, year=2026)
+    assert overview["metrics"]["clients"] == 3
+    assert overview["clients_by_type"] == [
+        {"point_type": "HoReCa", "clients": 1, "weight": 50, "share": 50},
+        {"point_type": "Retail", "clients": 2, "weight": 40, "share": 40},
+        {"point_type": "Без типа", "clients": 1, "weight": 10, "share": 10},
+    ]
+
+    response = admin_client.get("/?year=2026")
+    assert response.status_code == 200
+    assert "Клиенты по типам точек" in response.text
+    assert "50,00" in response.text
+    assert "50,0 %" in response.text
