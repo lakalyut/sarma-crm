@@ -3,7 +3,8 @@
 <h1>Импорт XLSX → Нормализация → БД</h1>
 
 <div class="filters-card">
-<form method="post" enctype="multipart/form-data">
+<form id="xlsx-import" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="field filter-field filter-field-region-search">
         <label for="import-city">Город</label>
         <input
@@ -11,6 +12,7 @@
             name="city"
             id="import-city"
             required
+            value="{{ selected_city|default('') }}"
             autocomplete="off"
             placeholder="Выберите из списка или введите новый"
         >
@@ -31,13 +33,32 @@
                 <input type="file" name="file" accept=".xlsx" required hidden>
             </label>
 
-            <button type="submit">Импортировать</button>
-
             <span class="file-upload-name" id="file-upload-name">Файл не выбран</span>
         </div>
     </div>
+    <section id="import-type-mapping" data-categories="{{ point_types|tojson }}" {% if not unmapped_types %}hidden{% endif %}>
+        <h2>Категории типов точек</h2>
+        <p>Выберите категорию для каждого типа из файла. Соответствия сохранятся для этого города.</p>
+        {% if unmapped_types %}<p>Выберите файл ещё раз, затем нажмите «Импортировать».</p>{% endif %}
+        <div id="import-type-fields">
+            {% for row in unmapped_types %}
+                <div class="field">
+                    <label for="import-type-{{ loop.index0 }}">{{ row.label }} · строк: {{ row.count }}</label>
+                    <input type="hidden" name="source" value="{{ row.source }}">
+                    <select name="target" id="import-type-{{ loop.index0 }}" required>
+                        <option value="">Выберите категорию</option>
+                        {% for category in point_types %}<option>{{ category }}</option>{% endfor %}
+                    </select>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+    <div class="filters-actions">
+        <button type="submit" id="import-submit" class="btn-primary">Импортировать</button>
+    </div>
 </form>
 </div>
+<div id="import-result" role="status" hidden></div>
 
 {% if error %}
     <div class="message error">{{ error }}</div>
@@ -97,6 +118,93 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     updateHint();
+
+    const form = document.getElementById("xlsx-import");
+    const submit = document.getElementById("import-submit");
+    const mapping = document.getElementById("import-type-mapping");
+    const fields = document.getElementById("import-type-fields");
+    const result = document.getElementById("import-result");
+    const categories = JSON.parse(mapping.dataset.categories);
+
+    function clearMapping() {
+        mapping.hidden = true;
+        fields.replaceChildren();
+        submit.textContent = "Импортировать";
+    }
+
+    cityInput.addEventListener("input", clearMapping);
+    dropdown.addEventListener("click", clearMapping);
+    input.addEventListener("change", clearMapping);
+
+    function showMapping(rows, previousChoices) {
+        fields.replaceChildren();
+        rows.forEach((row, index) => {
+            const field = document.createElement("div");
+            field.className = "field";
+            const select = document.createElement("select");
+            select.id = "import-type-" + index;
+            select.name = "target";
+            select.required = true;
+            select.add(new Option("Выберите категорию", ""));
+            categories.forEach(category => select.add(new Option(category, category)));
+            select.value = previousChoices.get(row.source) || "";
+
+            const label = document.createElement("label");
+            label.htmlFor = select.id;
+            label.textContent = row.label + " · строк: " + row.count;
+            const source = document.createElement("input");
+            source.type = "hidden";
+            source.name = "source";
+            source.value = row.source;
+            field.append(label, source, select);
+            fields.append(field);
+        });
+        mapping.hidden = false;
+        submit.textContent = "Сохранить и импортировать";
+        fields.querySelector("select")?.focus();
+    }
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (submit.disabled) return;
+
+        const payload = new FormData(form);
+        const targets = payload.getAll("target");
+        const previousChoices = new Map(
+            payload.getAll("source").map((source, index) => [source, targets[index]])
+        );
+        const submitLabel = submit.textContent;
+        submit.textContent = "Загружаем…";
+        submit.disabled = input.disabled = cityInput.disabled = true;
+        dropdown.style.display = "none";
+        result.hidden = true;
+        let data;
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                headers: {Accept: "application/json"},
+                body: payload,
+            });
+            data = await response.json();
+        } catch {
+            data = {error: "Не удалось получить результат импорта. Проверьте историю загрузок."};
+        } finally {
+            submit.textContent = submitLabel;
+            submit.disabled = input.disabled = cityInput.disabled = false;
+        }
+        if (data.unmapped_types) {
+            showMapping(data.unmapped_types, previousChoices);
+            return;
+        }
+        result.className = data.error ? "message error" : "message ok";
+        result.textContent = data.error || data.message;
+        result.hidden = false;
+        if (data.message) {
+            input.value = "";
+            label.textContent = "Файл не выбран";
+            clearMapping();
+        }
+    });
 });
 </script>
 

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Типы точек по городу</h1>
+<p class="page-subtitle">Выберите категории для исходных типов. Соответствия применятся к продажам города и следующим импортам.</p>
+
+<div class="filters-actions">
+    <a class="btn btn-secondary" href="/admin/point-types/review">К ревизии типов точек</a>
+</div>
+<form method="get" class="filters-card admin-history-filter">
+    <div class="field filter-field">
+        <label for="mapping-city">Город</label>
+        <select id="mapping-city" name="city" class="js-custom-select" required>
+            <option value="">Выберите город</option>
+            {% for city in cities %}
+                <option value="{{ city }}"{% if city == selected_city %} selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filters-actions">
+        <button type="submit" class="btn-primary">Показать типы</button>
+    </div>
+</form>
+
+{% if error %}<div class="message error">{{ error }}</div>{% endif %}
+{% if updated >= 0 %}
+    <div class="message ok">Соответствия сохранены. Обновлено строк продаж: {{ updated }}.</div>
+{% endif %}
+{% if rows %}
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="city" value="{{ selected_city }}">
+        <div class="sheet-wrapper">
+            <div class="sheet-scroller">
+                <table class="sheet-table">
+                    <thead>
+                        <tr><th>Исходный тип</th><th>Строки продаж</th><th>Категория</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <td>{{ row.label }}</td>
+                                <td>{{ row.count }}</td>
+                                <td>
+                                    <input type="hidden" name="source" value="{{ row.source }}">
+                                    <select name="target" aria-label="Категория для {{ row.label }}">
+                                        {% if not row.target %}<option value="">Выберите категорию</option>{% endif %}
+                                        {% for category in point_types %}
+                                            <option value="{{ category }}"{% if category == row.target %} selected{% endif %}>{{ category }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="filters-actions">
+            <button type="submit" class="btn-primary">Сохранить соответствия</button>
+        </div>
+    </form>
+{% elif selected_city and selected_city in cities %}
+    <div class="message">В городе пока нет загруженных типов точек.</div>
+{% endif %}
+{% endblock %}

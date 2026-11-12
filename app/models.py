@@ -102,6 +102,14 @@ class ClientNameDismissal(Base):
     second_name = Column(String, primary_key=True)
 
 
+class CityPointTypeMapping(Base):
+    __tablename__ = "city_point_type_mappings"
+
+    city = Column(String, primary_key=True)
+    source_type = Column(String, primary_key=True)
+    target_type = Column(String, nullable=False)
+
+
 class Sale(Base):
     __tablename__ = "sales"
 
@@ -110,6 +118,7 @@ class Sale(Base):
     city = Column(String)
     month = Column(String)
     type = Column(String)
+    raw_point_type = Column(String)
     client = Column(String)
 
     raw_name = Column(String)

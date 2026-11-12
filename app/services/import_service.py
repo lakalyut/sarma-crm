@@ -11,13 +11,29 @@ from ..observability import import_phase, log_action
 from ..product_parser import ProductMatcher, build_canonical_name, extract_weight
 from .client_name_review_service import get_client_aliases, lock_client_names
 from .event_log_service import log_import
+from .point_type_mapping_service import (
+    POINT_TYPES,
+    get_point_type_mappings,
+    save_point_type_mappings,
+    source_point_type,
+)
 
 IMPORT_COLUMNS = ["Месяц", "Тип", "Клиент", "Номенклатура", "SKU", "Количество", "Вес"]
 IMPORT_BATCH_SIZE = 1000
 
 
+class UnmappedPointTypes(ValueError):
+    def __init__(self, counts: dict[str, int]):
+        self.counts = counts
+
+
 def import_sales(
-    db: Session, df: pd.DataFrame, city: str, user_id: int
+    db: Session,
+    df: pd.DataFrame,
+    city: str,
+    user_id: int,
+    *,
+    type_choices: dict[str, str] | None = None,
 ) -> tuple[int, int]:
     with import_phase("prepare_columns"):
         df["Количество"] = pd.to_numeric(df["Количество"], errors="coerce").fillna(0)
@@ -32,6 +48,27 @@ def import_sales(
     rows = iter(df[IMPORT_COLUMNS].itertuples(index=False, name=None))
     try:
         lock_client_names(db, city)
+        mappings = get_point_type_mappings(db, city)
+        counts = df["Тип"].map(source_point_type).value_counts().to_dict()
+        unresolved = {
+            source: int(count)
+            for source, count in counts.items()
+            if source not in mappings and source not in POINT_TYPES
+        }
+        choices = {
+            source: target
+            for source, target in (type_choices or {}).items()
+            if source in unresolved and target in POINT_TYPES
+        }
+        missing = {
+            source: count
+            for source, count in unresolved.items()
+            if source not in choices
+        }
+        if missing:
+            raise UnmappedPointTypes(unresolved)
+        save_point_type_mappings(db, city, choices, mappings)
+        mappings.update(choices)
         aliases = get_client_aliases(db, city)
         while chunk := list(islice(rows, IMPORT_BATCH_SIZE)):
             batch = []
@@ -41,12 +78,14 @@ def import_sales(
                     product, _ = matcher.match(raw_name)
                     month = str(month)
                     client = str(client)
+                    source_type = source_point_type(sale_type)
                     months.add(month)
                     batch.append(
                         {
                             "city": city,
                             "month": month,
-                            "type": str(sale_type),
+                            "type": mappings.get(source_type, source_type),
+                            "raw_point_type": str(sale_type),
                             "client": aliases.get(client, client),
                             "raw_name": raw_name,
                             "raw_sku": str(raw_sku),

@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Ревизия типов точек</h1>
+<div class="filters-actions">
+    <a class="btn btn-primary" href="/admin/point-types/review/mapping{% if selected_city %}?city={{ selected_city|urlencode }}{% endif %}">Сопоставить типы по городу</a>
+</div>
+
+<h2>Расхождения по клиентам</h2>
 
 <div class="page-subtitle" style="margin-bottom: 12px;">
     Клиенты, у которых «Тип точки» (<code>HoReCa</code>/<code>Розница</code>/...) отличается от месяца

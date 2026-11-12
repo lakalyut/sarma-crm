@@ -31,6 +31,15 @@ def guess_default_segment(
 
     sale_type_lower = (sale_type or "").lower()
 
+    if sale_type_lower == "retail":
+        retail = next(
+            (segment for segment in segments if segment.name.lower() == "retail"),
+            None,
+        )
+        if retail:
+            return retail
+        sale_type_lower = "розница"
+
     for segment in segments:
         name_lower = segment.name.lower()
         if name_lower in sale_type_lower or sale_type_lower in name_lower:

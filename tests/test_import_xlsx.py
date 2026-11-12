@@ -194,3 +194,69 @@ def test_import_rejects_oversized_file(admin_client, db_session):
     assert "слишком большой" in resp.text
     assert "лимит 20 МБ" in resp.text
     assert db_session.query(Sale).count() == 0
+
+
+def test_point_type_mapping_updates_history_and_is_reused(admin_client, db_session):
+    city = "Казань"
+    historical = Sale(city=city, client="Маяк", type="Магазин")
+    other = Sale(city="Иркутск", client="Маяк", type="Магазин")
+    db_session.add_all([historical, other])
+    db_session.commit()
+
+    row = {
+        "Месяц": "2026-01-01",
+        "Тип": "Магазин",
+        "Клиент": "Маяк",
+        "Номенклатура": "Товар",
+        "SKU": "Тест",
+        "Количество": 1,
+        "Вес": 1,
+    }
+
+    def upload(rows, **choices):
+        return admin_client.post(
+            "/import-xlsx",
+            data={"city": city, "csrf_token": CSRF_TOKEN, **choices},
+            files={"file": ("import.xlsx", build_xlsx(rows), XLSX_MIME)},
+            headers={"Accept": "application/json"},
+        )
+
+    rows = [row, {**row, "Тип": None}]
+    pending = upload(rows, source="Магазин", target="Retail")
+    assert pending.status_code == 409
+    assert {item["source"] for item in pending.json()["unmapped_types"]} == {
+        "Магазин",
+        "",
+    }
+    assert db_session.query(Sale).count() == 2
+    assert db_session.query(EventLog).count() == 0
+
+    success = upload(rows, source=["Магазин", ""], target=["Retail", "Другое"])
+    assert "Импортировано строк: 2" in success.json()["message"]
+    db_session.refresh(historical)
+    db_session.refresh(other)
+    assert historical.type == "Retail"
+    assert historical.raw_point_type == "Магазин"
+    assert other.type == "Магазин"
+    assert db_session.query(Sale).filter_by(city=city, type="Другое").count() == 1
+    assert "Импортировано строк: 1" in upload([row]).json()["message"]
+
+    mapping = "/admin/point-types/review/mapping"
+    response = admin_client.get(mapping, params={"city": city})
+    assert response.status_code == 200
+    assert "Магазин" in response.text
+    response = admin_client.post(
+        mapping,
+        data={
+            "city": city,
+            "csrf_token": CSRF_TOKEN,
+            "source": "Магазин",
+            "target": "HoReCa",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert "updated=3" in response.headers["location"]
+    assert db_session.query(Sale).filter_by(city=city, type="HoReCa").count() == 3
+    assert "Импортировано строк: 1" in upload([row]).json()["message"]
+    assert db_session.query(Sale).filter_by(city=city, type="HoReCa").count() == 4

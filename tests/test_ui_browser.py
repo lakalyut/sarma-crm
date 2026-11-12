@@ -1082,3 +1082,42 @@ def test_manual_client_merge_keeps_selection_when_editing_preview(page, db_sessi
         page.get_by_label("Итоговое название").input_value()
         == "Клуб с длинным названием — Северный берег"
     )
+
+
+def test_import_prompts_for_point_type_without_reselecting_file(page):
+    from tests.test_import_xlsx import XLSX_MIME, build_xlsx
+
+    report = build_xlsx(
+        [
+            {
+                "Месяц": "2026-09-01",
+                "Тип": "Кальянная",
+                "Клиент": "Тест импорта",
+                "Номенклатура": "Товар",
+                "SKU": "Тест",
+                "Количество": 1,
+                "Вес": 1,
+            }
+        ]
+    )
+    page.goto("https://pulse-ui.test/import-xlsx", wait_until="networkidle")
+    page.get_by_role("combobox", name="Город").fill("Иркутск")
+    page.get_by_role("option", name="Иркутск", exact=True).click()
+    page.locator("input[type=file]").set_input_files(
+        {"name": "report.xlsx", "mimeType": XLSX_MIME, "buffer": report.getvalue()}
+    )
+    page.get_by_role("button", name="Импортировать", exact=True).click()
+    page.get_by_label("Кальянная · строк: 1").select_option("HoReCa")
+    page.get_by_role("button", name="Сохранить и импортировать").click()
+    page.get_by_text("Импортировано строк: 1", exact=False).wait_for()
+
+    page.goto(
+        "https://pulse-ui.test/admin/point-types/review/mapping?city=Иркутск",
+        wait_until="networkidle",
+    )
+    category = page.get_by_label("Категория для Кальянная", exact=True)
+    assert category.input_value() == "HoReCa"
+    category.select_option("Другое")
+    page.get_by_role("button", name="Сохранить соответствия").click()
+    page.get_by_text("Обновлено строк продаж: 4", exact=False).wait_for()
+    assert category.input_value() == "Другое"
