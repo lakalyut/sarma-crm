@@ -102,6 +102,13 @@ class ClientNameDismissal(Base):
     second_name = Column(String, primary_key=True)
 
 
+class PointType(Base):
+    __tablename__ = "point_types"
+
+    name_key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+
+
 class CityPointTypeMapping(Base):
     __tablename__ = "city_point_type_mappings"
 

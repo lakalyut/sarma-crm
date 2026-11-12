@@ -1107,31 +1107,39 @@ def test_import_prompts_for_point_type_without_reselecting_file(page):
         {"name": "report.xlsx", "mimeType": XLSX_MIME, "buffer": report.getvalue()}
     )
     page.get_by_role("button", name="Импортировать", exact=True).click()
-    page.get_by_label("Кальянная · строк: 1").select_option("HoReCa")
+    page.get_by_role("combobox", name="Кальянная · строк: 1").click()
+    page.get_by_role("option", name="HoReCa", exact=True).click()
     page.get_by_role("button", name="Сохранить и импортировать").click()
     page.get_by_text("Импортировано строк: 1", exact=False).wait_for()
 
     page.goto(
-        "https://pulse-ui.test/admin/point-types/review/mapping?city=Иркутск",
+        "https://pulse-ui.test/admin/point-types?city=Иркутск",
         wait_until="networkidle",
     )
-    category = page.get_by_label("Категория для Кальянная", exact=True)
-    assert category.input_value() == "HoReCa"
-    category.select_option("Другое")
+    page.get_by_role("navigation", name="Управление").get_by_role(
+        "link", name="Типы точек"
+    ).wait_for()
+    page.get_by_label("Название типа").fill("Дистрибьютор")
+    page.get_by_role("button", name="Создать тип").click()
+    page.get_by_text("Тип точки добавлен.").wait_for()
+    category = page.get_by_role("combobox", name="Категория для Кальянная")
+    assert category.inner_text() == "HoReCa"
+    category.click()
+    page.get_by_role("option", name="Дистрибьютор", exact=True).click()
     page.get_by_role("button", name="Сохранить соответствия").click()
     page.get_by_text("Обновлено строк продаж: 4", exact=False).wait_for()
-    assert category.input_value() == "Другое"
+    assert category.inner_text() == "Дистрибьютор"
 
 
 @pytest.mark.parametrize("width", [320, 390, 768, 1440])
 def test_point_type_mapping_keeps_actions_clear_of_panels(page, width):
     page.set_viewport_size({"width": width, "height": 900})
     page.goto(
-        "https://pulse-ui.test/admin/point-types/review/mapping?city=Иркутск",
+        "https://pulse-ui.test/admin/point-types?city=Иркутск",
         wait_until="networkidle",
     )
 
-    back = page.get_by_role("link", name="К ревизии типов точек").bounding_box()
+    back = page.locator(".section-stack > .filters-actions").first.bounding_box()
     filters = page.locator("form[method=get]").bounding_box()
     table = page.locator(".sheet-wrapper").bounding_box()
     save = page.get_by_role("button", name="Сохранить соответствия").bounding_box()
@@ -1139,6 +1147,8 @@ def test_point_type_mapping_keeps_actions_clear_of_panels(page, width):
     assert table["y"] - (filters["y"] + filters["height"]) == pytest.approx(16, abs=2)
     assert save["y"] - (table["y"] + table["height"]) == pytest.approx(16, abs=2)
 
-    category = page.get_by_label("Категория для Кальянная", exact=True).bounding_box()
+    category = page.get_by_role(
+        "combobox", name="Категория для Кальянная"
+    ).bounding_box()
     assert category["x"] + category["width"] <= table["x"] + table["width"]
     assert page.evaluate("document.documentElement.scrollWidth") <= width

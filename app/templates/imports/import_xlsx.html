@@ -37,7 +37,7 @@
             <span class="file-upload-name" id="file-upload-name">Файл не выбран</span>
         </div>
     </div>
-    <section id="import-type-mapping" class="section-stack" data-categories="{{ point_types|tojson }}" {% if not unmapped_types %}hidden{% endif %}>
+    <section id="import-type-mapping" class="section-stack" {% if not unmapped_types %}hidden{% endif %}>
         <h2>Категории типов точек</h2>
         <p>Выберите категорию для каждого типа из файла. Соответствия сохранятся для этого города.</p>
         {% if unmapped_types %}<p>Выберите файл ещё раз, затем нажмите «Импортировать».</p>{% endif %}
@@ -46,7 +46,7 @@
                 <div class="field">
                     <label for="import-type-{{ loop.index0 }}">{{ row.label }} · строк: {{ row.count }}</label>
                     <input type="hidden" name="source" value="{{ row.source }}">
-                    <select name="target" id="import-type-{{ loop.index0 }}" required>
+                    <select name="target" class="js-custom-select" id="import-type-{{ loop.index0 }}" required>
                         <option value="">Выберите категорию</option>
                         {% for category in point_types %}<option>{{ category }}</option>{% endfor %}
                     </select>
@@ -126,7 +126,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const mapping = document.getElementById("import-type-mapping");
     const fields = document.getElementById("import-type-fields");
     const result = document.getElementById("import-result");
-    const categories = JSON.parse(mapping.dataset.categories);
 
     function clearMapping() {
         mapping.hidden = true;
@@ -138,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
     dropdown.addEventListener("click", clearMapping);
     input.addEventListener("change", clearMapping);
 
-    function showMapping(rows, previousChoices) {
+    function showMapping(rows, categories, previousChoices) {
         fields.replaceChildren();
         rows.forEach((row, index) => {
             const field = document.createElement("div");
@@ -146,6 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const select = document.createElement("select");
             select.id = "import-type-" + index;
             select.name = "target";
+            select.className = "js-custom-select";
             select.required = true;
             select.add(new Option("Выберите категорию", ""));
             categories.forEach(category => select.add(new Option(category, category)));
@@ -163,8 +163,19 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         mapping.hidden = false;
         submit.textContent = "Сохранить и импортировать";
-        fields.querySelector("select")?.focus();
+        initCustomSelects(fields);
+        fields.querySelector(".custom-select-display")?.focus();
     }
+
+    fields.addEventListener("invalid", event => {
+        if (!event.target.matches("select[name=target]")) return;
+        event.preventDefault();
+        result.className = "message error";
+        result.textContent = "Выберите категорию для каждого типа.";
+        result.hidden = false;
+        const firstInvalid = fields.querySelector("select:invalid");
+        if (event.target === firstInvalid) firstInvalid.nextElementSibling?.focus();
+    }, true);
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
@@ -195,7 +206,7 @@ document.addEventListener("DOMContentLoaded", function () {
             submit.disabled = input.disabled = cityInput.disabled = false;
         }
         if (data.unmapped_types) {
-            showMapping(data.unmapped_types, previousChoices);
+            showMapping(data.unmapped_types, data.point_types, previousChoices);
             return;
         }
         result.className = data.error ? "message error" : "message ok";

@@ -100,6 +100,9 @@ html.sidebar-collapsed .admin-nav-group { display: none; }
     .client-merge-list { max-height: 38vh; }
 }
 
+.point-type-mapping-sheet { overflow: visible; }
+.point-type-mapping-table th { position: static; }
+
 table.point-type-mapping-table {
     min-width: 0;
 }

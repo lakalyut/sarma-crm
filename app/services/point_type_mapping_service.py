@@ -1,9 +1,33 @@
 from sqlalchemy import case, func, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..models import CityPointTypeMapping, Sale
+from ..models import CityPointTypeMapping, PointType, Sale
 
-POINT_TYPES = ("HoReCa", "Retail", "Другое")
+DEFAULT_POINT_TYPES = ("HoReCa", "Retail", "Другое")
+
+
+def get_point_types(db: Session) -> tuple[str, ...]:
+    custom = (name for (name,) in db.query(PointType.name).order_by(PointType.name_key))
+    return (*DEFAULT_POINT_TYPES, *custom)
+
+
+def create_point_type(db: Session, name: str) -> None:
+    name = " ".join(name.split())
+    key = name.casefold()
+    if not name or len(name) > 100:
+        raise ValueError("Введите название типа длиной от 1 до 100 символов.")
+    if key == "nan" or any(ord(char) < 32 for char in name):
+        raise ValueError("Введите допустимое название типа точки.")
+    if key in {point_type.casefold() for point_type in DEFAULT_POINT_TYPES}:
+        raise ValueError("Тип точки с таким названием уже есть.")
+
+    db.add(PointType(name_key=key, name=name))
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ValueError("Тип точки с таким названием уже есть.") from exc
 
 
 def source_point_type(value) -> str:
@@ -24,7 +48,9 @@ def get_point_type_mappings(db: Session, city: str) -> dict[str, str]:
     )
 
 
-def get_city_point_types(db: Session, city: str) -> list[dict]:
+def get_city_point_types(
+    db: Session, city: str, point_types: tuple[str, ...]
+) -> list[dict]:
     source = _source_column()
     counts = dict(
         db.query(source, func.count(Sale.id))
@@ -38,7 +64,7 @@ def get_city_point_types(db: Session, city: str) -> list[dict]:
             "source": name,
             "label": name or "Без типа",
             "count": counts.get(name, 0),
-            "target": saved.get(name, name if name in POINT_TYPES else ""),
+            "target": saved.get(name, name if name in point_types else ""),
         }
         for name in sorted(counts.keys() | saved.keys(), key=str.casefold)
     ]

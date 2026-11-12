@@ -3,7 +3,7 @@
 <h1>Ревизия типов точек</h1>
 <div class="section-stack">
 <div class="filters-actions">
-    <a class="btn btn-primary" href="/admin/point-types/review/mapping{% if selected_city %}?city={{ selected_city|urlencode }}{% endif %}">Сопоставить типы по городу</a>
+    <a class="btn btn-primary" href="/admin/point-types{% if selected_city %}?city={{ selected_city|urlencode }}{% endif %}">Сопоставить типы по городу</a>
 </div>
 
 <h2>Расхождения по клиентам</h2>

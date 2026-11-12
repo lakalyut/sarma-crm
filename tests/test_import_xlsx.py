@@ -260,3 +260,29 @@ def test_point_type_mapping_updates_history_and_is_reused(admin_client, db_sessi
     assert db_session.query(Sale).filter_by(city=city, type="HoReCa").count() == 3
     assert "Импортировано строк: 1" in upload([row]).json()["message"]
     assert db_session.query(Sale).filter_by(city=city, type="HoReCa").count() == 4
+
+    create = admin_client.post(
+        "/admin/point-types/create",
+        data={"name": "  Дистрибьютор  ", "city": city, "csrf_token": CSRF_TOKEN},
+        follow_redirects=False,
+    )
+    assert create.status_code == 303
+    assert create.headers["location"].startswith("/admin/point-types?")
+    duplicate = admin_client.post(
+        "/admin/point-types/create",
+        data={"name": "дистрибьютор", "csrf_token": CSRF_TOKEN},
+    )
+    assert "Тип точки с таким названием уже есть." in duplicate.text
+
+    unknown = {**row, "Тип": "Опт"}
+    pending = upload([unknown])
+    assert "Дистрибьютор" in pending.json()["point_types"]
+    assert (
+        "Импортировано строк: 1"
+        in upload([unknown], source="Опт", target="Дистрибьютор").json()["message"]
+    )
+    assert (
+        "Импортировано строк: 1"
+        in upload([{**row, "Тип": "Дистрибьютор"}]).json()["message"]
+    )
+    assert db_session.query(Sale).filter_by(city=city, type="Дистрибьютор").count() == 2

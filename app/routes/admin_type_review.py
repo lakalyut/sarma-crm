@@ -13,9 +13,10 @@ from ..database import get_db
 from ..render import render
 from ..services.client_name_review_service import lock_client_names
 from ..services.point_type_mapping_service import (
-    POINT_TYPES,
+    create_point_type,
     get_city_point_types,
     get_point_type_mappings,
+    get_point_types,
     save_point_type_mappings,
 )
 from ..services.sales_options_service import get_cities
@@ -27,7 +28,8 @@ from ..services.type_review_service import (
 
 router = APIRouter(prefix="/admin/point-types", tags=["admin-point-types"])
 
-_REVIEW_URL = "/admin/point-types/review"
+_TYPES_URL = "/admin/point-types"
+_REVIEW_URL = f"{_TYPES_URL}/review"
 
 
 @router.get("/review")
@@ -70,34 +72,63 @@ def type_review_resync(
 
 
 @router.get("/review/mapping")
+def legacy_type_mapping(request: Request, _admin=Depends(require_admin)):
+    query = request.url.query
+    return RedirectResponse(f"{_TYPES_URL}?{query}" if query else _TYPES_URL)
+
+
+@router.get("")
 def type_mapping(
     request: Request,
     city: str = "",
     updated: int = -1,
+    created: bool = False,
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ):
-    return _mapping_form(request, db, city, updated=updated)
+    return _mapping_form(request, db, city, updated=updated, created=created)
 
 
 def _mapping_form(request, db, city, **extra):
     cities = get_cities(db)
+    point_types = get_point_types(db)
     return render(
         request,
         "admin/type_mapping.html",
         {
-            "title": "Типы точек по городу — Пульс",
+            "title": "Типы точек — Пульс",
             "cities": cities,
             "selected_city": city,
-            "rows": get_city_point_types(db, city) if city in cities else [],
-            "point_types": POINT_TYPES,
+            "rows": (
+                get_city_point_types(db, city, point_types) if city in cities else []
+            ),
+            "point_types": point_types,
             "updated": -1,
             **extra,
         },
     )
 
 
-@router.post("/review/mapping")
+@router.post("/create")
+def add_point_type(
+    request: Request,
+    name: str = Form(""),
+    city: str = Form(""),
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    try:
+        create_point_type(db, name)
+    except ValueError as exc:
+        return _mapping_form(request, db, city, error=str(exc), entered_name=name)
+    return RedirectResponse(
+        f"{_TYPES_URL}?{urlencode({'city': city, 'created': 1})}",
+        status_code=HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("")
+@router.post("/review/mapping", include_in_schema=False)
 def save_type_mapping(
     request: Request,
     city: str = Form(...),
@@ -107,14 +138,15 @@ def save_type_mapping(
     _admin=Depends(require_admin),
 ):
     lock_client_names(db, city)
-    rows = get_city_point_types(db, city)
+    point_types = get_point_types(db)
+    rows = get_city_point_types(db, city, point_types)
     available = {row["source"] for row in rows}
     if (
         not available
         or len(source) != len(target)
         or len(set(source)) != len(source)
         or not set(source) <= available
-        or any(value and value not in POINT_TYPES for value in target)
+        or any(value and value not in point_types for value in target)
     ):
         db.rollback()
         return _mapping_form(
@@ -132,6 +164,6 @@ def save_type_mapping(
     updated = save_point_type_mappings(db, city, choices, saved)
     db.commit()
     return RedirectResponse(
-        f"{_REVIEW_URL}/mapping?{urlencode({'city': city, 'updated': updated})}",
+        f"{_TYPES_URL}?{urlencode({'city': city, 'updated': updated})}",
         status_code=HTTP_303_SEE_OTHER,
     )

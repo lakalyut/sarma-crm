@@ -15,6 +15,7 @@ ADMIN_GROUPS = [
             {"url": "/admin/products", "title": "Номенклатура"},
             {"url": "/admin/abc", "title": "ABC-рейтинг"},
             {"url": "/admin/regions", "title": "Регионы"},
+            {"url": "/admin/point-types", "title": "Типы точек"},
             {"url": "/admin/updates", "title": "Обновления"},
         ],
     },

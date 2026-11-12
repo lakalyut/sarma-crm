@@ -12,8 +12,8 @@ from ..product_parser import ProductMatcher, build_canonical_name, extract_weigh
 from .client_name_review_service import get_client_aliases, lock_client_names
 from .event_log_service import log_import
 from .point_type_mapping_service import (
-    POINT_TYPES,
     get_point_type_mappings,
+    get_point_types,
     save_point_type_mappings,
     source_point_type,
 )
@@ -49,16 +49,17 @@ def import_sales(
     try:
         lock_client_names(db, city)
         mappings = get_point_type_mappings(db, city)
+        point_types = get_point_types(db)
         counts = df["Тип"].map(source_point_type).value_counts().to_dict()
         unresolved = {
             source: int(count)
             for source, count in counts.items()
-            if source not in mappings and source not in POINT_TYPES
+            if source not in mappings and source not in point_types
         }
         choices = {
             source: target
             for source, target in (type_choices or {}).items()
-            if source in unresolved and target in POINT_TYPES
+            if source in unresolved and target in point_types
         }
         missing = {
             source: count

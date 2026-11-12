@@ -11,7 +11,7 @@ from ..database import get_db
 from ..observability import import_phase
 from ..render import render
 from ..services.import_service import IMPORT_COLUMNS, UnmappedPointTypes, import_sales
-from ..services.point_type_mapping_service import POINT_TYPES
+from ..services.point_type_mapping_service import get_point_types
 from ..services.sales_options_service import get_cities, get_months, get_types
 from ..templating import format_month
 
@@ -36,13 +36,16 @@ def import_delete_options(
 
 
 def _import_form(request: Request, db: Session, **extra):
+    point_types = extra.pop("point_types", None)
     return render(
         request,
         "imports/import_xlsx.html",
         {
             "title": "Импорт XLSX — Пульс",
             "cities": get_cities(db),
-            "point_types": POINT_TYPES,
+            "point_types": (
+                point_types if point_types is not None else get_point_types(db)
+            ),
             **extra,
         },
     )
@@ -94,10 +97,11 @@ def import_xlsx(
     if missing:
         return reply(error=f'Нет колонок: {", ".join(missing)}')
 
+    point_types = get_point_types(db) if target else ()
     if (
         len(source) != len(target)
         or len(set(source)) != len(source)
-        or any(value not in POINT_TYPES for value in target)
+        or any(value not in point_types for value in target)
     ):
         return reply(400, error="Выберите допустимые категории типов точек.")
     choices = dict(zip(source, target, strict=True))
@@ -117,6 +121,7 @@ def import_xlsx(
             409,
             error="Выберите категории типов точек перед импортом.",
             unmapped_types=types,
+            point_types=get_point_types(db),
         )
 
     return reply(

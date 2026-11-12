@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Типы точек по городу</h1>
+<h1>Типы точек</h1>
 <div class="section-stack">
 <p class="page-subtitle">Выберите категории для исходных типов. Соответствия применятся к продажам города и следующим импортам.</p>
 
 <div class="filters-actions">
     <a class="btn btn-secondary" href="/admin/point-types/review">К ревизии типов точек</a>
+    <a class="btn btn-secondary" href="#add-point-type">Добавить тип точки</a>
 </div>
-<form method="get" class="filters-card admin-history-filter">
+<form method="get" action="/admin/point-types" class="filters-card admin-history-filter">
     <div class="field filter-field">
         <label for="mapping-city">Город</label>
-        <select id="mapping-city" name="city" class="js-custom-select" required>
+        <select id="mapping-city" name="city" class="js-custom-select" data-searchable>
             <option value="">Выберите город</option>
             {% for city in cities %}
                 <option value="{{ city }}"{% if city == selected_city %} selected{% endif %}>{{ city }}</option>
@@ -22,39 +23,38 @@
     </div>
 </form>
 
+{% if created %}<div class="message ok">Тип точки добавлен.</div>{% endif %}
 {% if error %}<div class="message error">{{ error }}</div>{% endif %}
 {% if updated >= 0 %}
     <div class="message ok">Соответствия сохранены. Обновлено строк продаж: {{ updated }}.</div>
 {% endif %}
 {% if rows %}
-    <form method="post" class="section-stack">
+    <form method="post" action="/admin/point-types" class="section-stack">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="city" value="{{ selected_city }}">
-        <div class="sheet-wrapper">
-            <div class="sheet-scroller">
-                <table class="sheet-table point-type-mapping-table">
-                    <thead>
-                        <tr><th>Исходный тип</th><th>Строки продаж</th><th>Категория</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in rows %}
-                            <tr>
-                                <td>{{ row.label }}</td>
-                                <td>{{ row.count }}</td>
-                                <td>
-                                    <input type="hidden" name="source" value="{{ row.source }}">
-                                    <select name="target" aria-label="Категория для {{ row.label }}">
-                                        {% if not row.target %}<option value="">Выберите категорию</option>{% endif %}
-                                        {% for category in point_types %}
-                                            <option value="{{ category }}"{% if category == row.target %} selected{% endif %}>{{ category }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="sheet-wrapper point-type-mapping-sheet">
+            <table class="sheet-table point-type-mapping-table">
+                <thead>
+                    <tr><th>Исходный тип</th><th>Строки продаж</th><th>Категория</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ row.count }}</td>
+                            <td>
+                                <input type="hidden" name="source" value="{{ row.source }}">
+                                <select name="target" class="js-custom-select" aria-label="Категория для {{ row.label }}">
+                                    {% if not row.target %}<option value="">Выберите категорию</option>{% endif %}
+                                    {% for category in point_types %}
+                                        <option value="{{ category }}"{% if category == row.target %} selected{% endif %}>{{ category }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         <div class="filters-actions">
             <button type="submit" class="btn-primary">Сохранить соответствия</button>
@@ -63,6 +63,22 @@
 {% elif selected_city and selected_city in cities %}
     <div class="message">В городе пока нет загруженных типов точек.</div>
 {% endif %}
+
+<section id="add-point-type" class="filters-card section-stack" aria-labelledby="add-point-type-title">
+    <h2 id="add-point-type-title">Новый тип точки</h2>
+    <p class="page-subtitle">Доступные типы для всех городов: {{ point_types|join(", ") }}.</p>
+    <form method="post" action="/admin/point-types/create" class="admin-history-filter">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="city" value="{{ selected_city }}">
+        <div class="field filter-field">
+            <label for="point-type-name">Название типа</label>
+            <input id="point-type-name" name="name" type="text" value="{{ entered_name|default('') }}" maxlength="100" required>
+        </div>
+        <div class="filters-actions">
+            <button type="submit" class="btn-primary">Создать тип</button>
+        </div>
+    </form>
+</section>
 </div>
 
 {% endblock %}
