@@ -460,3 +460,32 @@ def test_home_clients_by_type_deduplicates_clients_and_uses_year_weight(
     assert "Клиенты по типам точек" in response.text
     assert "50,00" in response.text
     assert "50,0 %" in response.text
+
+
+def test_home_statuses_use_latest_report_and_count_client_once_per_city(db_session):
+    from app.services.home_service import get_home_overview
+
+    for month in ("2026-01-01", "2026-02-01", "2026-03-01"):
+        _sale(db_session, "Иркутск", month, 10, client="Кафе")
+        _sale(db_session, "Москва", month, 10, client="Кафе")
+    _sale(db_session, "Иркутск", "Март 2026", 5, client="Кафе", sale_type="Retail")
+    _sale(db_session, "Иркутск", "2026-03-01", 10, client="Новый")
+    _sale(db_session, "Иркутск", "2026-01-01", 10, client="Потерянный")
+    _sale(db_session, "Иркутск", "2026-01-01", 10, client="Нестабильный")
+    _sale(db_session, "Иркутск", "2026-02-01", 10, client="Нестабильный")
+    _sale(db_session, "Казань", "2026-02-01", 10, client="Кафе")
+    _sale(db_session, "Иркутск", "2027-01-01", 10, client="Потерянный")
+
+    statuses = get_home_overview(db_session, year=2026)["client_statuses"]
+    assert statuses["covered"] == 2
+    assert statuses["overall"]["month"] == "Март 2026"
+    assert statuses["overall"]["total"] == 5
+    assert statuses["overall"]["statuses"] == {
+        "existing": {"count": 2, "share": 40},
+        "new": {"count": 1, "share": 20},
+        "unstable": {"count": 1, "share": 20},
+        "lost": {"count": 1, "share": 20},
+    }
+    assert statuses["cities"]["Иркутск"]["total"] == 4
+    assert statuses["cities"]["Казань"]["month"] == "Февраль 2026"
+    assert statuses["cities"]["Казань"]["total"] == 1

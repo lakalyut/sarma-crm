@@ -1,0 +1,76 @@
+{% set overall = client_statuses.overall %}
+<details class="home-card home-disclosure" id="home-client-statuses"
+         data-cities="{{ client_statuses.cities|tojson }}" data-overall="{{ overall|tojson }}">
+    <summary class="home-card-title">Статусы клиентов</summary>
+    <div class="section-stack">
+        <div class="filters-actions" role="group" aria-label="Города в своде">
+            <button type="button" class="chart-tab active" aria-pressed="true" data-scope="all">Все города</button>
+            <button type="button" class="chart-tab" aria-pressed="false" data-scope="city">По городу</button>
+        </div>
+        <div class="field filter-field" id="home-status-city-field" hidden>
+            <label for="home-status-city">Город</label>
+            <select id="home-status-city" class="js-custom-select" data-searchable>
+                {% for city in client_statuses.cities %}<option value="{{ city }}">{{ city }}</option>{% endfor %}
+            </select>
+        </div>
+        <p class="home-point-types-note" aria-live="polite">
+            <span data-status-month>{{ overall.month }}</span>
+            <span data-status-coverage> · Данные по {{ client_statuses.covered }} из {{ client_statuses.cities|length }} городов</span>
+            <span> · Всего клиентов <strong data-status-total>{{ overall.total|format_ru_number }}</strong></span>
+        </p>
+        <table class="sheet-table home-point-types-table home-status-table">
+            <thead>
+                <tr><th scope="col">Статус</th><th scope="col" class="num">Клиенты</th><th scope="col" class="num">Доля</th></tr>
+            </thead>
+            <tbody>
+                {% for status, label in [('existing', 'Активные'), ('new', 'Новые'), ('unstable', 'Нестабильные'), ('lost', 'Потерянные')] %}
+                    {% set row = overall.statuses[status] %}
+                    <tr data-status="{{ status }}">
+                        <th scope="row">
+                            {{ label }}
+                            <progress max="100" value="{{ row.share }}" aria-hidden="true"></progress>
+                        </th>
+                        <td class="num" data-count>{{ row.count|format_ru_number }}</td>
+                        <td class="num" data-share>{{ row.share|format_ru_number(1) }} %</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</details>
+<script>
+(() => {
+    const card = document.getElementById("home-client-statuses");
+    const cityField = document.getElementById("home-status-city-field");
+    const citySelect = document.getElementById("home-status-city");
+    const overall = JSON.parse(card.dataset.overall);
+    const cities = JSON.parse(card.dataset.cities);
+    const wholeNumber = new Intl.NumberFormat("ru-RU");
+    const percent = new Intl.NumberFormat("ru-RU", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+    const buttons = card.querySelectorAll("[data-scope]");
+
+    function renderStatus(byCity) {
+        const summary = byCity ? cities[citySelect.value] : overall;
+        cityField.hidden = !byCity;
+        card.querySelector("[data-status-coverage]").hidden = byCity;
+        card.querySelector("[data-status-month]").textContent = summary.month;
+        card.querySelector("[data-status-total]").textContent = wholeNumber.format(summary.total);
+        card.querySelectorAll("[data-status]").forEach(row => {
+            const {count, share} = summary.statuses[row.dataset.status];
+            row.querySelector("[data-count]").textContent = wholeNumber.format(count);
+            row.querySelector("[data-share]").textContent = percent.format(share) + " %";
+            row.querySelector("progress").value = share;
+        });
+        buttons.forEach(button => {
+            const active = (button.dataset.scope === "city") === byCity;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+    }
+
+    buttons.forEach(button => {
+        button.addEventListener("click", () => renderStatus(button.dataset.scope === "city"));
+    });
+    citySelect.addEventListener("change", () => renderStatus(true));
+})();
+</script>

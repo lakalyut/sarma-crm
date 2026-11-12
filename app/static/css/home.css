@@ -157,7 +157,6 @@
         display: none;
     }
 
-#home-point-types-title { margin: 0; }
 
 table.sheet-table.home-point-types-table {
         min-width: 0;
@@ -187,3 +186,44 @@ table.home-point-types-table .num {
     }
     table.home-point-types-table .num { width: 22%; }
 }
+
+.home-disclosure > summary {
+    cursor: pointer;
+    list-style: none;
+    justify-content: space-between;
+}
+
+.home-disclosure > summary::-webkit-details-marker { display: none; }
+
+.home-disclosure > summary::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    margin-right: 3px;
+}
+
+.home-disclosure[open] > summary { margin-bottom: 16px; }
+.home-disclosure[open] > summary::after { transform: rotate(225deg); }
+#home-status-city-field { max-width: 280px; }
+
+table.home-status-table tbody th {
+    position: static;
+    background: var(--surface);
+    box-shadow: none;
+    color: inherit;
+}
+
+.home-status-table progress {
+    display: block;
+    width: min(100%, 180px);
+    height: 5px;
+    margin-top: 6px;
+    accent-color: var(--status-existing-text);
+}
+
+.home-status-table [data-status="new"] progress { accent-color: var(--status-new-text); }
+.home-status-table [data-status="unstable"] progress { accent-color: var(--status-unstable-text); }
+.home-status-table [data-status="lost"] progress { accent-color: var(--status-lost-text); }

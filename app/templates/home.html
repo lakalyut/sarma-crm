@@ -66,10 +66,8 @@
     </div>
 </div>
 
-<section class="home-card" aria-labelledby="home-point-types-title">
-    <div class="home-card-head">
-        <h2 class="home-card-title" id="home-point-types-title">Клиенты по типам точек</h2>
-    </div>
+<details class="home-card home-disclosure">
+    <summary class="home-card-title">Клиенты по типам точек</summary>
     <table class="sheet-table home-point-types-table">
         <thead>
             <tr>
@@ -91,7 +89,11 @@
         </tbody>
     </table>
     <p class="home-point-types-note">Клиент учитывается один раз в каждом типе, где были его продажи.</p>
-</section>
+</details>
+
+{% if client_statuses %}
+    {% include "includes/home_client_statuses.html" %}
+{% endif %}
 
 <div class="home-card">
     <div class="home-card-head">

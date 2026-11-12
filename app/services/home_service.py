@@ -14,13 +14,15 @@ ABC на этой странице — НОВЫЙ, отдельный от ру�
 ручной `ProductAbcRating`) — параллельная, самостоятельная метрика,
 видна только здесь и на странице разреза по городам."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from ..models import Product, Sale
+from ..templating import format_month
 from ..utils.dates import month_sort_key, parse_month
+from .client_health_service import DEFAULT_STATUS_SETTINGS, detect_client_status
 from .sale_filters import build_sale_filters
 from .sales_options_service import get_cities, get_months
 
@@ -197,6 +199,85 @@ def _new_product_ids(db: Session) -> set[int]:
     return {pid for (pid,) in db.query(Product.id).filter(Product.is_new.is_(True))}
 
 
+def _client_status_summary(month: str, counts: Counter) -> dict:
+    total = sum(counts.values())
+    return {
+        "month": format_month(month),
+        "total": total,
+        "statuses": {
+            status: {
+                "count": counts[status],
+                "share": round(counts[status] * 100 / total, 1) if total else 0,
+            }
+            for status in ("existing", "new", "unstable", "lost")
+        },
+    }
+
+
+def _home_client_statuses(db: Session, all_months: list[str], year: int) -> dict | None:
+    month_keys = {
+        month: key
+        for month in all_months
+        if (key := parse_month(month)) and key[0] <= year
+    }
+    month_labels = {key: month for month, key in month_keys.items()}
+    city_months = defaultdict(set)
+    client_weights = defaultdict(lambda: defaultdict(Counter))
+    rows = (
+        db.query(Sale.city, Sale.client, Sale.month, func.sum(Sale.weight))
+        .filter(Sale.month.in_(month_keys), Sale.city.isnot(None), Sale.city != "")
+        .group_by(Sale.city, Sale.client, Sale.month)
+    )
+    for city, client, month, weight in rows:
+        key = month_keys[month]
+        city_months[city].add(key)
+        if client and client.strip():
+            client_weights[city][client][key] += float(weight or 0)
+
+    cities = {}
+    total_counts = Counter()
+    latest_month = (
+        max(key for keys in city_months.values() for key in keys)
+        if city_months
+        else None
+    )
+    if not latest_month or latest_month[0] != year:
+        return None
+
+    covered = 0
+    for city in sorted(city_months, key=str.casefold):
+        months = sorted(city_months[city])
+        last_month = months[-1]
+        if last_month[0] != year:
+            continue
+        recent = months[-3:]
+        new_months = set(months[-DEFAULT_STATUS_SETTINGS["new_client_months"] :])
+        counts = Counter()
+        for weights in client_weights[city].values():
+            first_month = min(
+                (month for month, weight in weights.items() if weight > 0), default=None
+            )
+            if first_month is None:
+                continue
+            status, _, _ = detect_client_status(
+                [round(weights[month], 2) for month in recent],
+                DEFAULT_STATUS_SETTINGS,
+                is_new=first_month != months[0] and first_month in new_months,
+            )
+            counts["lost" if status == "empty" else status] += 1
+
+        cities[city] = _client_status_summary(month_labels[last_month], counts)
+        if last_month == latest_month:
+            total_counts.update(counts)
+            covered += 1
+
+    return {
+        "overall": _client_status_summary(month_labels[latest_month], total_counts),
+        "cities": cities,
+        "covered": covered,
+    }
+
+
 def get_home_overview(db: Session, year: int | None) -> dict:
     """Собирает всё для главной: KPI-карточки с дельтой год-к-году, график
     веса по месяцам года, топ городов по весу, топ вкусов по весу с
@@ -352,6 +433,7 @@ def get_home_overview(db: Session, year: int | None) -> dict:
         "year": year,
         "has_data": True,
         "metrics": metrics,
+        "client_statuses": _home_client_statuses(db, all_months, year),
         "clients_by_type": _clients_by_type(db, cur_filters, cur_totals["weight"]),
         "chart": chart,
         "year_months": year_months,
