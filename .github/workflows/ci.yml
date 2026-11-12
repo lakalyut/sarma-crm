@@ -70,10 +70,14 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: pytest -q tests/test_miniapp_clients_abc.py tests/test_city_rename.py tests/test_brand_ambassador.py tests/test_empty_city_delete.py tests/test_admin_imports_delete.py tests/test_import_xlsx.py tests/test_import_optimization.py tests/test_observability.py
 
-      - name: Install Chromium for UI regression tests
+      - name: Set up browser for UI regression tests
         run: |
           pip install -r requirements-browser.txt
-          python -m playwright install --with-deps chromium
+          if chrome=$(command -v google-chrome); then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE=$chrome" >> "$GITHUB_ENV"
+          else
+            python -m playwright install --with-deps chromium
+          fi
 
       - name: Browser UI regression tests
         env:
