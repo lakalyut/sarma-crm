@@ -58,6 +58,13 @@ html.sidebar-collapsed .admin-nav-group { display: none; }
 }
 
 .client-merge-city { margin-bottom: 20px; }
+.client-review-actions { margin-bottom: 16px; }
+.client-merge-city .filters-actions .btn-secondary {
+    border-color: var(--border);
+}
+.client-merge-city .filters-actions .btn-secondary:hover {
+    background: var(--surface-alt);
+}
 .client-merge-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.65fr) minmax(16rem, 1fr);

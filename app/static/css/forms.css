@@ -16,6 +16,7 @@ label,
     }
 
 input[type="text"],
+.filter-field input[type="search"],
 input[type="email"],
 input[type="password"],
 input[type="number"],

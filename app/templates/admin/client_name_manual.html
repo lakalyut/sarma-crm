@@ -2,7 +2,9 @@
 {% block content %}
 <div class="admin-page-heading">
     <h1>Ручное объединение клиентов</h1>
-    <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': selected_city}|urlencode }}">К ревизии клиентов</a>
+    <div class="filters-actions">
+        <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': selected_city}|urlencode }}">К ревизии клиентов</a>
+    </div>
 </div>
 <form method="get" class="filters-card admin-history-filter client-merge-city">
     <div class="field filter-field">
@@ -14,7 +16,9 @@
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="btn-secondary">Показать клиентов</button>
+    <div class="filters-actions">
+        <button type="submit" class="btn btn-secondary">Показать клиентов</button>
+    </div>
 </form>
 
 {% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
@@ -52,7 +56,7 @@
             <ul id="manual-client-selected" class="client-merge-selected"></ul>
             <div class="field filter-field">
                 <label for="manual-client-canonical">Итоговое название</label>
-                <input id="manual-client-canonical" name="canonical" value="{{ canonical|default('') }}" maxlength="200" required>
+                <input type="text" id="manual-client-canonical" name="canonical" value="{{ canonical|default('') }}" maxlength="200" required>
             </div>
             <button type="submit" class="btn-primary" name="operation" value="preview">Проверить объединение</button>
         </section>

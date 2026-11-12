@@ -2,10 +2,15 @@
 {% block content %}
 <h1>Ревизия клиентов</h1>
 <p class="page-subtitle">Найдите варианты написания одного клиента в продажах и визитах. Проверьте совпадение и выберите итоговое название.</p>
-<p><a class="btn btn-secondary" href="/admin/clients/review/manual?{{ {'city': selected_city}|urlencode }}">Ручное объединение</a></p>
+<div class="filters-actions client-review-actions">
+    <a class="btn btn-secondary" href="/admin/clients/review/manual?{{ {'city': selected_city}|urlencode }}">Ручное объединение</a>
+    {% if groups %}
+    <a class="btn btn-secondary" href="/admin/clients/review/bulk?{{ {'city': selected_city}|urlencode }}">Массовая сверка</a>
+    {% endif %}
+</div>
 
 {% if cities %}
-<form method="get" class="filters">
+<form method="get" class="admin-history-filter client-merge-city">
     <div class="field filter-field">
         <label for="client-review-city">Город</label>
         <select id="client-review-city" name="city" class="js-custom-select" data-searchable>
@@ -15,7 +20,9 @@
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="btn-secondary">Показать</button>
+    <div class="filters-actions">
+        <button type="submit" class="btn btn-secondary">Показать</button>
+    </div>
 </form>
 {% elif not selected_city %}
 <p class="message">Городов с расхождениями по клиентам не найдено.</p>
@@ -77,7 +84,6 @@
 {% if selected_city and not groups %}
     <p class="message">Похожих названий в городе {{ selected_city }} не найдено.</p>
 {% elif groups %}
-    <a class="btn btn-secondary" href="/admin/clients/review/bulk?{{ {'city': selected_city}|urlencode }}">Массовая сверка</a>
     <p class="page-subtitle">Групп для проверки — {{ group_count }}. Выберите варианты внутри группы.</p>
     {% for group in groups %}
     <form method="post" class="filters-card" style="margin-bottom: 16px;">
@@ -106,7 +112,7 @@
         <div class="filters" style="margin-top: 12px;">
             <div class="field filter-field">
                 <label for="canonical-{{ loop.index }}">Итоговое название</label>
-                <input id="canonical-{{ loop.index }}" name="canonical" value="{{ group.canonical }}" maxlength="200">
+                <input type="text" id="canonical-{{ loop.index }}" name="canonical" value="{{ group.canonical }}" maxlength="200">
             </div>
             <button type="submit" name="operation" value="preview" class="btn-secondary">Проверить объединение</button>
             <button type="submit" name="operation" value="dismiss" class="btn-secondary">Разные клиенты</button>
