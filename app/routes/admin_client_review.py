@@ -168,7 +168,11 @@ def _render_bulk_review(
     if expected_snapshot is not None and expected_snapshot != snapshot:
         selected = set()
     elif selected is None:
-        selected = set(range(len(groups))) - overlapping
+        selected = {
+            index
+            for index, group in enumerate(groups)
+            if index not in overlapping and not group["manual_selection"]
+        }
     response = render(
         request,
         "admin/client_name_bulk_preview.html",

@@ -12,13 +12,19 @@ from sqlalchemy import func, or_, text, update
 
 from ..models import ClientNameAlias, ClientNameDismissal, Sale, Visit
 from ..utils.dates import month_sort_key
+from .client_health_service import STATUS_LABELS, build_client_health
 
 _QUOTES = str.maketrans("", "", "\"«»„“”'’‘`")
 _NAME_LIMIT = 200
 _ADDRESS_SUFFIX = re.compile(r"^(.+?)\s*\(([^()]+)\)$")
 _ADDRESS_MARKER = re.compile(
-    r"(?:^|[\s,(])(?:ул\.|улица\b|пр\.|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b)"
+    r"(?:^|[\s,(])(?:ул(?:\.|\s)|улица\b|пр\.|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b|аллея\b)"
 )
+_RETAIL_SUFFIX = re.compile(r"\s*\(розничный клиент\)$")
+_ADDRESS_VARIANT = "Название с адресом и без адреса"
+_RETAIL_VARIANT = "Различаются пометкой «розничный клиент»"
+_KARAOKE_VARIANT = "Разное написание названия и добавлен адрес"
+_MANUAL_REASONS = {_ADDRESS_VARIANT, _RETAIL_VARIANT, _KARAOKE_VARIANT}
 _PAYMENT_SUFFIX = re.compile(r"\s*[-–—]?\s*\((?:н|нал)\)$")
 _CLIENT_NOTE_SUFFIX = re.compile(r"\s*\(к\*\)$")
 _INLINE_ADDRESS = re.compile(
@@ -48,6 +54,11 @@ def _address_base(key, city):
         ):
             return base
     return None
+
+
+def _karaoke_key(name):
+    name = re.sub(r"['’`]s\b", "", name.casefold())
+    return re.sub(r"\bкараоке\b", "karaoke", comparison_name(name))
 
 
 def _inline_address_key(key):
@@ -127,7 +138,13 @@ def get_review_cities(db):
             if name.strip() and name.strip().casefold() != "nan"
         }
         if city.strip() and next(
-            iter_name_matches(clients, dismissed[city], city), None
+            iter_name_matches(
+                clients,
+                dismissed[city],
+                city,
+                lambda city=city: _review_statuses(db, city),
+            ),
+            None,
         ):
             cities.add(city)
     return sorted(cities)
@@ -272,16 +289,31 @@ def _high_similarity_keys(keys):
         if not 12 <= size <= _NAME_LIMIT:
             continue
         digits = tuple(re.findall(r"\d+", key))
-        fragments = {key[i : i + 5] for i in range(size - 4)}
+        fragments = {key[i : i + 4] for i in range(size - 3)}
         candidates = set()
         for fragment in fragments:
-            for length in range((size * 19 + 20) // 21, size + 1):
+            for length in range((size * 9 + 10) // 11, size + 1):
                 candidates.update(index.get((digits, length, fragment), ()))
             index[digits, size, fragment].append(key)
         for other in sorted(candidates):
             matcher = SequenceMatcher(None, key, other, autojunk=False)
-            if matcher.quick_ratio() >= 0.95 and (score := matcher.ratio()) >= 0.95:
-                yield key, other, f"Сходство названий {score:.1%}".replace(".", ",")
+            if matcher.quick_ratio() >= 0.90 and (score := matcher.ratio()) >= 0.90:
+                yield key, other, score
+
+
+def _review_statuses(db, city):
+    months = [
+        month
+        for (month,) in db.query(Sale.month).filter(Sale.city == city).distinct()
+        if month
+    ]
+    recent = sorted(months, key=month_sort_key)[-3:]
+    if len(recent) < 3:
+        return {}
+    statuses = defaultdict(set)
+    for row in build_client_health(db, city, recent)["rows"]:
+        statuses[row["client"]].add(row["status"])
+    return statuses
 
 
 def _one_edit(first, second):
@@ -305,7 +337,7 @@ def _one_edit(first, second):
     return shorter[i:] == longer[i + 1 :]
 
 
-def iter_name_matches(names, dismissed, city):
+def iter_name_matches(names, dismissed, city, load_statuses):
     by_key = defaultdict(list)
     for name in sorted(names):
         by_key[comparison_name(name)].append(name)
@@ -330,14 +362,34 @@ def iter_name_matches(names, dismissed, city):
                 covered.update(pairs)
     address_pairs = set()
     city_key = comparison_name(city)
+    karaoke_by_base = defaultdict(list)
+    for name in sorted(names):
+        key = _karaoke_key(name)
+        if re.search(r"\bkaraoke\b", key) and not _address_base(key, city_key):
+            karaoke_by_base[key].append(name)
     for key, variants in by_key.items():
         base = _address_base(key, city_key)
         for short_name in by_key.get(base, ()):
             for full_name in variants:
                 pair = _pair(short_name, full_name)
                 if pair not in dismissed:
-                    yield pair, "Название с адресом и без адреса"
+                    yield pair, _ADDRESS_VARIANT
                     address_pairs.add(pair)
+        retail_base = _RETAIL_SUFFIX.sub("", key)
+        for short_name in by_key.get(retail_base, ()) if retail_base != key else ():
+            for full_name in variants:
+                pair = _pair(short_name, full_name)
+                if pair not in dismissed:
+                    yield pair, _RETAIL_VARIANT
+                    address_pairs.add(pair)
+        if base:
+            for full_name in variants:
+                karaoke_base = _address_base(_karaoke_key(full_name), city_key)
+                for short_name in karaoke_by_base.get(karaoke_base, ()):
+                    pair = _pair(short_name, full_name)
+                    if pair not in dismissed and pair not in address_pairs:
+                        yield pair, _KARAOKE_VARIANT
+                        address_pairs.add(pair)
 
     names_by_payment_base = defaultdict(list)
     for key, variants in by_key.items():
@@ -384,15 +436,15 @@ def iter_name_matches(names, dismissed, city):
                         yield pair, "Один адрес записан по-разному"
                         address_pairs.add(pair)
 
-    nearby = (
-        (first, second, "Похожие названия") for first, second in _nearby_keys(by_key)
-    )
+    nearby = ((first, second, None) for first, second in _nearby_keys(by_key))
     compared = set()
-    for first, second, reason in chain(_high_similarity_keys(by_key), nearby):
+    statuses = None
+    for first, second, score in chain(_high_similarity_keys(by_key), nearby):
         key_pair = _pair(first, second)
-        if key_pair in compared:
+        if key_pair in compared and score is None:
             continue
-        compared.add(key_pair)
+        if score is not None and score >= 0.95:
+            compared.add(key_pair)
         first_address = inline_addresses.get(first)
         second_address = inline_addresses.get(second)
         if (
@@ -406,13 +458,44 @@ def iter_name_matches(names, dismissed, city):
             for right in by_key[second]:
                 pair = _pair(left, right)
                 if pair not in dismissed and pair not in address_pairs:
+                    similarity = (
+                        f"{score:.1%}".replace(".", ",") if score is not None else ""
+                    )
+                    if score is not None and score < 0.95:
+                        if statuses is None:
+                            statuses = load_statuses()
+                        left_status = statuses.get(left, ())
+                        right_status = statuses.get(right, ())
+                        previous = next(
+                            (
+                                status
+                                for status in ("lost", "unstable")
+                                if ("new" in left_status and status in right_status)
+                                or ("new" in right_status and status in left_status)
+                            ),
+                            None,
+                        )
+                        if previous is None:
+                            continue
+                        reason = (
+                            f"Сходство {similarity} · Новый и {STATUS_LABELS[previous]}"
+                        )
+                        address_pairs.add(pair)
+                    else:
+                        reason = (
+                            f"Сходство названий {similarity}"
+                            if similarity
+                            else "Похожие названия"
+                        )
                     yield [left, right], reason
 
 
 def get_review_groups(db, city):
     names = _names_in_city(db, city)
     groups = []
-    for variants, reason in iter_name_matches(names, _dismissed_pairs(db, city), city):
+    for variants, reason in iter_name_matches(
+        names, _dismissed_pairs(db, city), city, lambda: _review_statuses(db, city)
+    ):
         rows = sorted(
             (names[name] for name in variants),
             key=lambda row: (-row["sales"], -row["visits"], row["name"]),
@@ -535,6 +618,8 @@ def preview_bulk_merge(db, city):
         groups.append(
             {
                 "reason": group["reason"],
+                "manual_selection": group["reason"] in _MANUAL_REASONS
+                or " · Новый и " in group["reason"],
                 "canonical": canonical,
                 "variants": sorted(row["name"] for row in rows),
                 "sources": [row["name"] for row in sources],

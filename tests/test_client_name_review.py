@@ -401,3 +401,58 @@ def test_bulk_review_leaves_overlapping_groups_unchecked(admin_client, db_sessio
     assert len(checkboxes) == 3
     assert sum(checkbox.endswith(" checked>") for checkbox in checkboxes) == 1
     assert page.text.count("Пересекается с другой группой") == 2
+
+
+def test_review_suggests_retail_and_address_variants_for_manual_selection(
+    admin_client, db_session
+):
+    pairs = [
+        ("Владислав", "Владислав (розничный клиент)"),
+        ("ГБ", "ГБ (Хор, ул Первомайская 2)"),
+        ("Jack's Karaoke", "Jack Караоке (г. Находка, ул. Линейная 12)"),
+        ("Midnight", "Midnight (Комсомольск-на-Амуре, Аллея Труда 62)"),
+    ]
+    db_session.add_all(sale(name) for pair in pairs for name in pair)
+    db_session.add(sale("Midnight (Комсомольск-на-Амуре, Аллея Труда 63)", "Москва"))
+    db_session.commit()
+
+    groups = get_review_groups(db_session, CITY)
+    assert {frozenset(row["name"] for row in group["rows"]) for group in groups} == {
+        frozenset(pair) for pair in pairs
+    }
+    page = admin_client.get(URL + "/bulk", params={"city": CITY})
+    checkboxes = re.findall(r'<input type="checkbox" name="selected"[^>]*>', page.text)
+    assert len(checkboxes) == 4
+    assert all(not checkbox.endswith(" checked>") for checkbox in checkboxes)
+
+
+def test_review_suggests_similar_names_when_new_client_replaces_old(
+    admin_client, db_session
+):
+    city = "Казань"
+    old = "Кальянная Северный Маяк"
+    new = "Кальянная Севирный Маяч"
+    steady = "Кальянная Сиверный Маяч"
+    for name, month in [
+        (old, "2026-05-01"),
+        (new, "2026-08-01"),
+        *[(steady, f"2026-0{month}-01") for month in range(5, 9)],
+    ]:
+        db_session.add(
+            Sale(city=city, client=name, month=month, type="HoReCa", weight=10)
+        )
+    db_session.commit()
+
+    groups = get_review_groups(db_session, city)
+    reason = next(
+        group["reason"]
+        for group in groups
+        if {row["name"] for row in group["rows"]} == {old, new}
+    )
+    assert "Новый и Потерян" in reason
+    assert all(
+        {row["name"] for row in group["rows"]} != {old, steady} for group in groups
+    )
+    page = admin_client.get(URL + "/bulk", params={"city": city})
+    row = next(row for row in page.text.split("</tr>") if reason in row)
+    assert " checked>" not in row
