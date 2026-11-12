@@ -411,6 +411,7 @@ def test_review_suggests_retail_and_address_variants_for_manual_selection(
         ("ГБ", "ГБ (Хор, ул Первомайская 2)"),
         ("Jack's Karaoke", "Jack Караоке (г. Находка, ул. Линейная 12)"),
         ("Midnight", "Midnight (Комсомольск-на-Амуре, Аллея Труда 62)"),
+        ("Ivan’s Chilla", "Ivan’s Chilla (Находка, пр-кт Северный 2)"),
     ]
     db_session.add_all(sale(name) for pair in pairs for name in pair)
     db_session.add(sale("Midnight (Комсомольск-на-Амуре, Аллея Труда 63)", "Москва"))
@@ -422,7 +423,7 @@ def test_review_suggests_retail_and_address_variants_for_manual_selection(
     }
     page = admin_client.get(URL + "/bulk", params={"city": CITY})
     checkboxes = re.findall(r'<input type="checkbox" name="selected"[^>]*>', page.text)
-    assert len(checkboxes) == 4
+    assert len(checkboxes) == len(pairs)
     assert all(not checkbox.endswith(" checked>") for checkbox in checkboxes)
 
 
@@ -456,3 +457,47 @@ def test_review_suggests_similar_names_when_new_client_replaces_old(
     page = admin_client.get(URL + "/bulk", params={"city": city})
     row = next(row for row in page.text.split("</tr>") if reason in row)
     assert " checked>" not in row
+
+
+def test_manual_review_can_merge_arbitrary_clients_in_one_city(
+    admin_client, db_session
+):
+    city = "Казань"
+    manual_url = URL + "/manual"
+    first = "Магазин на Пушкина"
+    second = "ИП Васильев"
+    db_session.add_all(
+        [sale(first, city), sale(second, city), sale("Чужой клиент", "Омск")]
+    )
+    db_session.commit()
+
+    assert "Ручное объединение" in admin_client.get(URL).text
+    page = admin_client.get(manual_url, params={"city": city})
+    assert first in page.text and second in page.text
+    assert "Чужой клиент" not in page.text
+
+    data = {
+        "csrf_token": CSRF_TOKEN,
+        "city": city,
+        "manual": "true",
+        "variants": [quote(first), quote(second)],
+        "canonical": "Магазин Пушкина",
+    }
+    preview = admin_client.post(URL, data={**data, "operation": "preview"})
+    assert preview.status_code == 200
+    assert 'name="expected_sales" value="2"' in preview.text
+    response = admin_client.post(
+        URL,
+        data={**data, "operation": "merge", "expected_sales": 2, "expected_visits": 0},
+    )
+    assert response.status_code == 200
+    assert response.url.path == manual_url
+    assert "Объединение сохранено" in response.text
+    assert (
+        db_session.query(Sale).filter_by(city=city, client=data["canonical"]).count()
+        == 2
+    )
+    assert (
+        db_session.get(ClientNameAlias, (city, second)).canonical_name
+        == data["canonical"]
+    )

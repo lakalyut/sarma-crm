@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ручное объединение клиентов</h1>
+<form method="get" class="filters">
+    <div class="field filter-field">
+        <label for="manual-review-city">Город</label>
+        <select id="manual-review-city" name="city" class="js-custom-select" data-searchable required>
+            <option value="">Выберите город</option>
+            {% for city in cities %}
+                <option value="{{ city }}"{% if city == selected_city %} selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn-secondary">Показать клиентов</button>
+    <a class="btn btn-secondary" href="/admin/clients/review?{{ {'city': selected_city}|urlencode }}">К ревизии клиентов</a>
+</form>
+
+{% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
+{% if sales is defined and sales is not none and visits is not none %}
+<p class="message ok" role="status">Объединение сохранено. Обновлено строк продаж — {{ sales }}, визитов — {{ visits }}.</p>
+{% endif %}
+
+{% if clients %}
+<form method="post" action="/admin/clients/review" id="manual-client-merge">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="city" value="{{ selected_city }}">
+    <input type="hidden" name="manual" value="true">
+    <div class="filters">
+        <div class="field filter-field">
+            <label for="manual-client-search">Поиск клиента</label>
+            <input type="search" id="manual-client-search" autocomplete="off">
+        </div>
+        <p id="manual-client-count" role="status"></p>
+    </div>
+    <div class="sheet-scroller">
+        <table class="sheet-table">
+            <thead><tr><th>Клиент</th><th>Типы точек</th><th>Строки продаж</th><th>Визиты</th></tr></thead>
+            <tbody>
+            {% for row in clients %}
+                <tr data-client-row>
+                    <td><label><input type="checkbox" name="variants" value="{{ row.name|urlencode }}"{% if selected is defined and row.name in selected %} checked{% endif %}> <span style="white-space: pre-wrap;">{{ row.name }}</span></label></td>
+                    <td>{{ row.types|sort|join(', ') or '—' }}</td>
+                    <td>{{ row.sales }}</td>
+                    <td>{{ row.visits }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p id="manual-client-empty" hidden>По этому запросу клиенты не найдены.</p>
+    <div class="filters" style="margin-top: 12px;">
+        <div class="field filter-field">
+            <label for="manual-client-canonical">Итоговое название</label>
+            <input id="manual-client-canonical" name="canonical" value="{{ canonical|default('') }}" maxlength="200" required>
+        </div>
+        <button type="submit" class="btn-primary" name="operation" value="preview">Проверить объединение</button>
+    </div>
+</form>
+<script>
+(() => {
+    const form = document.getElementById("manual-client-merge");
+    const search = document.getElementById("manual-client-search");
+    const status = document.getElementById("manual-client-count");
+    const empty = document.getElementById("manual-client-empty");
+    const button = form.querySelector('button[type="submit"]');
+    const canonical = document.getElementById("manual-client-canonical");
+    const rows = Array.from(form.querySelectorAll("[data-client-row]"), row => ({
+        row,
+        checkbox: row.querySelector("input"),
+        name: row.querySelector("span").textContent
+    }));
+    function update() {
+        const query = search.value.trim().toLocaleLowerCase("ru");
+        const selected = rows.filter(item => item.checkbox.checked);
+        let visible = 0;
+        for (const item of rows) {
+            item.row.hidden = !item.checkbox.checked && !item.name.toLocaleLowerCase("ru").includes(query);
+            if (!item.row.hidden) visible++;
+        }
+        empty.hidden = visible > 0;
+        status.textContent = "Выбрано клиентов — " + selected.length;
+        button.disabled = selected.length < 2;
+    }
+    search.addEventListener("input", update);
+    form.addEventListener("change", event => {
+        if (event.target.matches('input[name="variants"]:checked') && !canonical.value.trim()) {
+            canonical.value = event.target.nextElementSibling.textContent.trim();
+        }
+        update();
+    });
+    update();
+})();
+</script>
+{% elif selected_city %}
+<p class="message">В этом городе нет клиентов для объединения.</p>
+{% endif %}
+{% endblock %}

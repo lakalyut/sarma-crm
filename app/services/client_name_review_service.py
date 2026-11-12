@@ -18,7 +18,7 @@ _QUOTES = str.maketrans("", "", "\"«»„“”'’‘`")
 _NAME_LIMIT = 200
 _ADDRESS_SUFFIX = re.compile(r"^(.+?)\s*\(([^()]+)\)$")
 _ADDRESS_MARKER = re.compile(
-    r"(?:^|[\s,(])(?:ул(?:\.|\s)|улица\b|пр\.|проспект\b|пр-т\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b|аллея\b)"
+    r"(?:^|[\s,(])(?:ул(?:\.|\s)|улица\b|пр\.|проспект\b|пр[-‑–](?:к?т)\b|пер\.|переулок\b|шоссе\b|наб\.|набережная\b|аллея\b)"
 )
 _RETAIL_SUFFIX = re.compile(r"\s*\(розничный клиент\)$")
 _ADDRESS_VARIANT = "Название с адресом и без адреса"
@@ -259,6 +259,12 @@ def _names_in_city(db, city):
                     item["months"].add(month)
                 item["volume"] += volume or 0
     return names
+
+
+def get_manual_review_clients(db, city):
+    return sorted(
+        _names_in_city(db, city).values(), key=lambda row: row["name"].casefold()
+    )
 
 
 def _nearby_keys(keys):

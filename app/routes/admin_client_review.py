@@ -18,6 +18,7 @@ from ..services.client_name_review_service import (
     assign_missing_client_type,
     dismiss_names,
     get_client_type_gaps,
+    get_manual_review_clients,
     get_review_cities,
     get_review_groups,
     get_review_point_types,
@@ -29,6 +30,7 @@ from ..services.client_name_review_service import (
 
 router = APIRouter(prefix="/admin/clients/review", tags=["admin-client-review"])
 _REVIEW_URL = "/admin/clients/review"
+_MANUAL_URL = _REVIEW_URL + "/manual"
 _PAGE_SIZE = 50
 
 
@@ -82,6 +84,34 @@ def client_name_review(
     )
 
 
+def _render_manual_review(request, db, city, **context):
+    cities = get_all_cities(db)
+    city = city if city in cities else ""
+    return render(
+        request,
+        "admin/client_name_manual.html",
+        {
+            "title": "Ручное объединение клиентов — Пульс",
+            "cities": cities,
+            "selected_city": city,
+            "clients": get_manual_review_clients(db, city) if city else [],
+            **context,
+        },
+    )
+
+
+@router.get("/manual")
+def manual_client_review(
+    request: Request,
+    city: str = "",
+    sales: int | None = None,
+    visits: int | None = None,
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    return _render_manual_review(request, db, city, sales=sales, visits=visits)
+
+
 @router.post("")
 def review_client_names(
     request: Request,
@@ -91,6 +121,7 @@ def review_client_names(
     operation: Literal["preview", "merge", "dismiss"] = Form(...),
     expected_sales: int = Form(-1),
     expected_visits: int = Form(-1),
+    manual: bool = Form(False),
     db: Session = Depends(get_db),
     admin=Depends(require_admin),
 ):
@@ -101,7 +132,12 @@ def review_client_names(
             return render(
                 request,
                 "admin/client_name_merge_preview.html",
-                {"title": "Объединение клиентов — Пульс", "city": city, "plan": plan},
+                {
+                    "title": "Объединение клиентов — Пульс",
+                    "city": city,
+                    "plan": plan,
+                    "manual": manual,
+                },
             )
         if operation == "dismiss":
             dismiss_names(db, city, names)
@@ -119,11 +155,21 @@ def review_client_names(
             log_action("client_names_merged", user_id=admin.id, city=city, **result)
     except ValueError as exc:
         db.rollback()
-        response = _render_review(request, db, city, error=str(exc))
+        if manual:
+            response = _render_manual_review(
+                request,
+                db,
+                city,
+                error=str(exc),
+                selected=set(names),
+                canonical=canonical,
+            )
+        else:
+            response = _render_review(request, db, city, error=str(exc))
         response.status_code = 400
         return response
     return RedirectResponse(
-        f"{_REVIEW_URL}?{urlencode({'city': city, **result})}",
+        f"{_MANUAL_URL if manual else _REVIEW_URL}?{urlencode({'city': city, **result})}",
         status_code=HTTP_303_SEE_OTHER,
     )
 

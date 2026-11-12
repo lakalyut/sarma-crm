@@ -2,6 +2,7 @@
 {% block content %}
 <h1>Ревизия клиентов</h1>
 <p class="page-subtitle">Найдите варианты написания одного клиента в продажах и визитах. Проверьте совпадение и выберите итоговое название.</p>
+<p><a class="btn btn-secondary" href="/admin/clients/review/manual?{{ {'city': selected_city}|urlencode }}">Ручное объединение</a></p>
 
 {% if cities %}
 <form method="get" class="filters">
