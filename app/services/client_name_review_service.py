@@ -500,7 +500,7 @@ def preview_bulk_merge(db, city):
     by_key = defaultdict(list)
     for name in sorted(names):
         if key := comparison_name(name):
-            by_key[key].append(name)
+            by_key[_inline_address_key(key) or key].append(name)
     groups = []
     for variants in by_key.values():
         if len(variants) < 2 or dismissed.intersection(combinations(variants, 2)):

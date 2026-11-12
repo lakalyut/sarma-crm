@@ -65,7 +65,7 @@ def test_address_variants_keep_branch_number(db_session):
     ]
 
 
-def test_inline_address_formatting_in_kazan(db_session):
+def test_inline_address_formatting_in_kazan(admin_client, db_session):
     city = "Казань"
     askar = "Аскар Трилион(сервис), Татарстан 43а"
     askar_variant = "Аскар Трилион (сервис); Татарстан, 43А"
@@ -88,6 +88,19 @@ def test_inline_address_formatting_in_kazan(db_session):
         {askar, askar_variant},
         {feel, feel_variant},
     ]
+    bulk_url = URL + "/bulk"
+    preview = admin_client.get(bulk_url, params={"city": city})
+    assert "Групп к объединению — 2" in preview.text
+    assert "43б" not in preview.text
+    assert "к2" not in preview.text
+    snapshot = re.search(r'name="snapshot" value="([a-f0-9]+)"', preview.text)[1]
+    response = admin_client.post(
+        bulk_url,
+        data={"city": city, "snapshot": snapshot, "csrf_token": CSRF_TOKEN},
+    )
+    assert response.status_code == 200
+    assert "Обновлено строк продаж — 2" in response.text
+    assert db_session.query(Sale.client).filter_by(city=city).distinct().count() == 4
 
 
 def test_payment_notes_with_same_address(db_session):
