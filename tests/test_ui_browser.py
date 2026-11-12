@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -1027,7 +1028,9 @@ def test_client_name_review_previews_and_merges_whitespace_variant(page, db_sess
     group.get_by_role("checkbox").last.check()
     group.get_by_role("button", name="Проверить объединение").click()
     page.get_by_role("heading", name="Проверка объединения клиентов").wait_for()
-    assert page.get_by_text("Будет обновлено строк продаж", exact=False).is_visible()
+    assert (
+        page.locator(".client-merge-totals").get_by_text("Строки продаж").is_visible()
+    )
     with page.expect_response(
         lambda response: response.request.method == "POST" and response.status == 303
     ) as redirect:
@@ -1044,3 +1047,23 @@ def test_client_name_review_previews_and_merges_whitespace_variant(page, db_sess
         assert result.get_by_text("Похожих названий", exact=False).is_visible()
     finally:
         result.close()
+
+
+def test_manual_client_merge_keeps_selection_when_editing_preview(page):
+    page.goto(
+        "https://pulse-ui.test/admin/clients/review/manual?city=Иркутск",
+        wait_until="networkidle",
+    )
+    search = page.get_by_label("Поиск по названию")
+    search.fill("Маяк")
+    page.get_by_role("checkbox", name=re.compile("Магазин Маяк")).check()
+    search.fill("Северный")
+    page.get_by_role("checkbox", name=re.compile("Северный берег")).check()
+    assert page.locator("#manual-client-selected li").count() == 2
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    page.get_by_role("button", name="Проверить объединение").click()
+    page.get_by_role("heading", name="Проверка объединения клиентов").wait_for()
+    page.get_by_role("button", name="Изменить выбор").click()
+    page.get_by_role("heading", name="Ручное объединение клиентов").wait_for()
+    assert page.locator("#manual-client-selected li").count() == 2
+    assert page.get_by_label("Итоговое название").input_value() == "Магазин Маяк"

@@ -56,3 +56,47 @@ html.sidebar-collapsed .admin-nav-group { display: none; }
     .admin-history table.sheet-table td:first-child::before { display: block; margin-bottom: 6px; }
     .admin-history table.sheet-table td:first-child .muted { margin-top: 4px; }
 }
+
+.client-merge-city { margin-bottom: 20px; }
+.client-merge-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(16rem, 1fr);
+    align-items: start;
+    gap: 16px;
+}
+.client-merge-panel { min-width: 0; padding: clamp(16px, 2vw, 24px); }
+.client-merge-panel h2 { margin: 0 0 8px; font-size: 18px; }
+.client-merge-list {
+    max-height: min(53vh, 32rem);
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.client-merge-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+}
+.client-merge-row[hidden] { display: none; }
+.client-merge-row:last-child { border-bottom: 0; }
+.client-merge-row:hover { background: var(--surface-alt); }
+.client-merge-row:has(input:checked) { background: var(--primary-tint); }
+.client-merge-row input { flex: none; margin-top: 3px; }
+.client-merge-row strong, .client-merge-selected span { white-space: pre-wrap; overflow-wrap: anywhere; }
+.client-merge-row small { display: block; margin-top: 4px; color: var(--text-muted); }
+.client-merge-selected { list-style: none; padding: 0; margin: 0 0 16px; max-height: 14rem; overflow: auto; }
+.client-merge-selected:empty { display: none; }
+.client-merge-selected li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.client-merge-selected button { flex: none; }
+.client-merge-selection > button { width: 100%; }
+.client-merge-preview { max-width: 760px; }
+.client-merge-preview .client-merge-selected { max-height: none; }
+.client-merge-totals { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 16px 0; }
+.client-merge-totals strong { display: block; font-size: 20px; }
+@media (max-width: 800px) {
+    .client-merge-layout { grid-template-columns: minmax(0, 1fr); }
+    .client-merge-list { max-height: 38vh; }
+}

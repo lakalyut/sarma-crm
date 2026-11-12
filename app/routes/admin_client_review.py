@@ -118,7 +118,7 @@ def review_client_names(
     city: str = Form(...),
     variants: list[str] = Form(default=[]),
     canonical: str = Form(""),
-    operation: Literal["preview", "merge", "dismiss"] = Form(...),
+    operation: Literal["preview", "merge", "dismiss", "edit_manual"] = Form(...),
     expected_sales: int = Form(-1),
     expected_visits: int = Form(-1),
     manual: bool = Form(False),
@@ -126,6 +126,10 @@ def review_client_names(
     admin=Depends(require_admin),
 ):
     names = [unquote(name) for name in variants]
+    if operation == "edit_manual":
+        return _render_manual_review(
+            request, db, city, selected=set(names), canonical=canonical
+        )
     try:
         if operation == "preview":
             plan = preview_merge(db, city, names, canonical)

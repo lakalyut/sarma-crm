@@ -2,14 +2,19 @@
 {% block content %}
 <h1>Проверка объединения клиентов</h1>
 <p class="page-subtitle">{{ city }}</p>
-<p>Итоговое название — <strong>{{ plan.canonical }}</strong></p>
-<ul>
-    {% for name in plan.sources %}
-    <li><code style="white-space: pre-wrap;">«{{ name }}»</code></li>
-    {% endfor %}
-</ul>
-<p>Будет обновлено строк продаж — <strong>{{ plan.sales }}</strong>, визитов — <strong>{{ plan.visits }}</strong>.</p>
-<p>При следующих загрузках эти варианты будут приводиться к итоговому названию.</p>
+<section class="card client-merge-panel client-merge-preview">
+    <p class="page-subtitle">Итоговое название</p>
+    <h2>{{ plan.canonical }}</h2>
+    <ul class="client-merge-selected" aria-label="Названия, которые будут заменены">
+        {% for name in plan.sources %}
+        <li><span>{{ name }}</span></li>
+        {% endfor %}
+    </ul>
+    <div class="client-merge-totals">
+        <div><strong>{{ plan.sales }}</strong><span class="muted">Строки продаж</span></div>
+        <div><strong>{{ plan.visits }}</strong><span class="muted">Визиты</span></div>
+    </div>
+    <p class="page-subtitle">При следующих загрузках эти варианты будут приводиться к итоговому названию.</p>
 <form method="post" action="/admin/clients/review" class="filters">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="city" value="{{ city }}">
@@ -21,6 +26,11 @@
     <input type="hidden" name="variants" value="{{ name|urlencode }}">
     {% endfor %}
     <button type="submit" name="operation" value="merge" class="btn-primary">Подтвердить объединение</button>
-    <a href="/admin/clients/review{% if manual %}/manual{% endif %}?{{ {'city': city}|urlencode }}" class="btn-secondary">Вернуться к выбору клиентов</a>
+    {% if manual %}
+    <button type="submit" name="operation" value="edit_manual" class="btn-secondary">Изменить выбор</button>
+    {% else %}
+    <a href="/admin/clients/review?{{ {'city': city}|urlencode }}" class="btn btn-secondary">Вернуться к ревизии</a>
+    {% endif %}
 </form>
+</section>
 {% endblock %}
