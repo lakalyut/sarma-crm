@@ -177,6 +177,12 @@ function initCheckboxMultiselect(config) {
             const atNewest = currentIndex === 0;
             const atOldest = currentIndex === yearGrids.length - 1;
 
+            // Move focus before hiding the arrow that just changed the year.
+            // Otherwise a browser may move focus outside and close the menu.
+            if ((atOldest && document.activeElement === prevBtn) ||
+                (atNewest && document.activeElement === nextBtn)) {
+                selectAll.focus({ preventScroll: true });
+            }
             prevBtn.style.visibility = atOldest ? "hidden" : "visible";
             nextBtn.style.visibility = atNewest ? "hidden" : "visible";
 

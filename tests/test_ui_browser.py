@@ -338,6 +338,7 @@ def test_month_picker_displays_a_full_year_without_scrolling(page, db_session):
     initial_size = dropdown.bounding_box()
     picker.get_by_role("button", name="Предыдущий год").click()
     grid = dropdown.locator('[data-year="2025"]')
+    grid.wait_for(state="visible")
     assert grid.get_by_role("checkbox").count() == 12
     assert grid.evaluate(
         """grid => grid.getBoundingClientRect().bottom
