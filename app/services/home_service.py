@@ -278,6 +278,62 @@ def _home_client_statuses(db: Session, all_months: list[str], year: int) -> dict
     }
 
 
+def get_city_flavor_ranking(db: Session, city: str, year: int) -> list[dict]:
+    months = _months_for_year(get_months(db, city=city), year)
+    if not months:
+        return []
+    return _rank_flavors(db, build_sale_filters(city=city, months=months))
+
+
+def _rank_flavors(db: Session, filters: list) -> list[dict]:
+    # топ вкусов по весу + расчётный ABC (сопоставленные продажи, product_id
+    # не NULL — сырые несопоставленные строки без canonical-названия сюда
+    # не попадают, решение пользователя, тот же принцип, что в "Ревизии
+    # номенклатуры": не смешивать сырое с каноническим)
+    product_weight_rows = (
+        db.query(Sale.product_id, func.sum(Sale.weight))
+        .filter(*filters, Sale.product_id.isnot(None))
+        .group_by(Sale.product_id)
+        .all()
+    )
+    weight_by_product = {pid: float(w or 0) for pid, w in product_weight_rows if pid}
+    new_ids = _new_product_ids(db)
+    ranking = compute_abc_ranking(weight_by_product, new_ids)
+
+    products = (
+        db.query(Product).filter(Product.id.in_(weight_by_product.keys())).all()
+        if weight_by_product
+        else []
+    )
+
+    weight_by_line: dict[str, dict[int, float]] = defaultdict(dict)
+    for p in products:
+        weight_by_line[_line_key(p)][p.id] = weight_by_product[p.id]
+    ranking_by_line = {
+        key: compute_abc_ranking(weights, new_ids)
+        for key, weights in weight_by_line.items()
+    }
+
+    return sorted(
+        (
+            {
+                "product_id": p.id,
+                "flavor": p.flavor,
+                "brand": p.brand,
+                "weight": weight_by_product[p.id],
+                "is_new": bool(p.is_new),
+                "category": ranking.get(p.id),
+                "line_key": _line_key(p),
+                "line_label": _line_label(_line_key(p)),
+                "line_short": _line_short(_line_key(p)),
+                "line_category": ranking_by_line.get(_line_key(p), {}).get(p.id),
+            }
+            for p in products
+        ),
+        key=lambda r: -r["weight"],
+    )
+
+
 def get_home_overview(db: Session, year: int | None) -> dict:
     """Собирает всё для главной: KPI-карточки с дельтой год-к-году, график
     веса по месяцам года, топ городов по весу, топ вкусов по весу с
@@ -373,61 +429,6 @@ def get_home_overview(db: Session, year: int | None) -> dict:
     for row in top_cities:
         row["category"] = city_ranking.get(row["city"])
 
-    # топ вкусов по весу + расчётный ABC (сопоставленные продажи, product_id
-    # не NULL — сырые несопоставленные строки без canonical-названия сюда
-    # не попадают, решение пользователя, тот же принцип, что в "Ревизии
-    # номенклатуры": не смешивать сырое с каноническим)
-    product_weight_rows = (
-        db.query(Sale.product_id, func.sum(Sale.weight))
-        .filter(Sale.month.in_(year_months), Sale.product_id.isnot(None))
-        .group_by(Sale.product_id)
-        .all()
-        if year_months
-        else []
-    )
-    weight_by_product = {pid: float(w or 0) for pid, w in product_weight_rows if pid}
-    new_ids = _new_product_ids(db)
-    ranking = compute_abc_ranking(weight_by_product, new_ids)
-
-    products = (
-        db.query(Product).filter(Product.id.in_(weight_by_product.keys())).all()
-        if weight_by_product
-        else []
-    )
-
-    # ABC по линейке (Классическая/Легкая/Крепкая — запрос пользователя
-    # 2026-09-13, "плашки где видно общее ABC и ABC по линейкам"): тот же
-    # compute_abc_ranking(), но на подмножестве весов внутри одной линейки —
-    # products и weight_by_product уже в памяти, доп. запросов в БД не
-    # нужно, сортировка/кумулятив по паре десятков товаров — не тот масштаб,
-    # что вообще стоит считать издержкой.
-    weight_by_line: dict[str, dict[int, float]] = defaultdict(dict)
-    for p in products:
-        weight_by_line[_line_key(p)][p.id] = weight_by_product[p.id]
-    ranking_by_line = {
-        key: compute_abc_ranking(weights, new_ids)
-        for key, weights in weight_by_line.items()
-    }
-
-    top_flavors = sorted(
-        (
-            {
-                "product_id": p.id,
-                "flavor": p.flavor,
-                "brand": p.brand,
-                "weight": weight_by_product[p.id],
-                "is_new": bool(p.is_new),
-                "category": ranking.get(p.id),
-                "line_key": _line_key(p),
-                "line_label": _line_label(_line_key(p)),
-                "line_short": _line_short(_line_key(p)),
-                "line_category": ranking_by_line.get(_line_key(p), {}).get(p.id),
-            }
-            for p in products
-        ),
-        key=lambda r: -r["weight"],
-    )
-
     return {
         "available_years": available_years,
         "year": year,
@@ -438,7 +439,8 @@ def get_home_overview(db: Session, year: int | None) -> dict:
         "chart": chart,
         "year_months": year_months,
         "top_cities": top_cities,
-        "top_flavors": top_flavors,
+        "top_flavors": _rank_flavors(db, cur_filters),
+        "flavor_cities": sorted((row["city"] for row in top_cities), key=str.casefold),
     }
 
 

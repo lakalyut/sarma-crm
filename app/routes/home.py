@@ -7,7 +7,12 @@ from ..auth_deps import get_current_user, require_analyst
 from ..auth_models import User
 from ..database import get_db
 from ..render import render
-from ..services.home_service import get_home_overview, get_product_abc_by_city
+from ..services.home_service import (
+    get_city_flavor_ranking,
+    get_home_overview,
+    get_product_abc_by_city,
+)
+from ..templating import templates
 
 router = APIRouter()
 
@@ -49,6 +54,25 @@ def home_page(
                 ),
             },
             **overview,
+        },
+    )
+
+
+@router.get("/analytics/city-flavor-abc")
+def city_flavor_abc(
+    request: Request,
+    city: str,
+    year: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_analyst),
+):
+    return templates.TemplateResponse(
+        "includes/home_flavor_rows.html",
+        {
+            "request": request,
+            "top_flavors": get_city_flavor_ranking(db, city, year),
+            "year": year,
+            "flavor_city": city,
         },
     )
 

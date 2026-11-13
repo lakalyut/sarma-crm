@@ -143,41 +143,33 @@
     <div class="home-card-head">
         <div class="home-card-title">
             Топ вкусов по весу за {{ year }} год
-            <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (правило 80/15/5 по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». Переключатель ниже — тот же расчёт, но внутри одной линейки. Клик по вкусу — разрез по городам.">?</span>
+            <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (правило 80/15/5 по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». В режиме «По городу» показаны оценки среди всех вкусов города и внутри каждой линейки. Клик по вкусу — разрез по городам.">?</span>
         </div>
     </div>
+    {% if flavor_cities %}
+    <div class="home-flavor-controls">
+        <div class="filters-actions" role="group" aria-label="Города в топе вкусов">
+            <button type="button" class="chart-tab active" aria-pressed="true" id="home-flavors-all">Все города</button>
+            <button type="button" class="chart-tab" aria-pressed="false" id="home-flavors-city">По городу</button>
+        </div>
+        <div class="field filter-field" id="home-flavor-city-field" hidden>
+            <label for="home-flavor-city">Город для ABC вкусов</label>
+            <select id="home-flavor-city" class="js-custom-select" data-searchable>
+                <option value="">Выберите город</option>
+                {% for city in flavor_cities %}<option value="{{ city }}">{{ city }}</option>{% endfor %}
+            </select>
+        </div>
+    </div>
+    {% endif %}
     <div class="amb-status-filter" id="home-flavors-line-filter">
         <button type="button" class="amb-status-filter-btn active" data-line="__all__">Все</button>
         <button type="button" class="amb-status-filter-btn" data-line="">Классическая</button>
         <button type="button" class="amb-status-filter-btn" data-line="Легкая">Лёгкая</button>
         <button type="button" class="amb-status-filter-btn" data-line="Крепкая">Крепкая</button>
     </div>
-    <div class="home-list" id="home-flavors-list">
-        {% for row in top_flavors %}
-            <a
-                class="home-row"
-                data-line="{{ row.line_key }}"
-                href="/analytics/product-abc?product_id={{ row.product_id }}&year={{ year }}"
-            >
-                <span class="home-row-name">
-                    {{ row.flavor }}
-                    {% if row.is_new %}
-                        <span class="abc-badge abc-badge-new">NEW</span>
-                    {% else %}
-                        {% if row.category %}
-                            <span class="abc-badge abc-badge-{{ row.category|lower }} js-abc-overall" title="Общий ABC — по всему бизнесу сразу">{{ row.category }}</span>
-                        {% endif %}
-                        {% if row.line_category %}
-                            <span class="abc-badge abc-badge-{{ row.line_category|lower }} js-abc-line" hidden title="ABC внутри линейки «{{ row.line_label }}» (без остальных линеек)">{{ row.line_category }}</span>
-                        {% endif %}
-                    {% endif %}
-                </span>
-                <span class="home-row-right">
-                    <span class="home-row-value">{{ "%.0f"|format(row.weight)|replace(",", " ") }} кг</span>
-                    <svg class="home-row-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </span>
-            </a>
-        {% endfor %}
+    <p id="home-flavors-message" class="muted" role="status" hidden></p>
+    <div class="home-list" id="home-flavors-list" data-year="{{ year }}">
+        {% include "includes/home_flavor_rows.html" %}
     </div>
     <button type="button" class="home-show-more" id="home-flavors-more" hidden>
         Показать ещё
@@ -186,6 +178,7 @@
 </div>
 
 {% include "includes/chart_scripts.html" %}
+<script src="{{ asset('js/home_flavor_ranking.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     initExpandableList(
@@ -201,24 +194,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const lineFilter = document.getElementById("home-flavors-line-filter");
     const flavorsList = document.getElementById("home-flavors-list");
-    if (lineFilter && flavorsList) {
-        const buttons = Array.from(lineFilter.querySelectorAll(".amb-status-filter-btn"));
-        buttons.forEach(function (btn) {
-            btn.addEventListener("click", function () {
-                buttons.forEach(function (b) { b.classList.toggle("active", b === btn); });
-                const line = btn.dataset.line;
-                const showAll = line === "__all__";
-                Array.from(flavorsList.children).forEach(function (row) {
-                    row.classList.toggle("is-filtered-out", !showAll && row.dataset.line !== line);
-                    const overall = row.querySelector(".js-abc-overall");
-                    const lineBadge = row.querySelector(".js-abc-line");
-                    if (overall) overall.hidden = !showAll;
-                    if (lineBadge) lineBadge.hidden = showAll;
-                });
-                flavorsExpandable.refresh();
-            });
-        });
-    }
+    if (lineFilter && flavorsList) initHomeFlavorRanking(lineFilter, flavorsList, flavorsExpandable);
 
     const el = document.getElementById("home-chart-data");
     const canvas = document.getElementById("homeWeightChart");

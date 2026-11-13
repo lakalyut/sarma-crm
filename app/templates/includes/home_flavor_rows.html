@@ -1,0 +1,36 @@
+{% for row in top_flavors %}
+    <a
+        class="home-row{% if flavor_city %} home-city-flavor-row{% endif %}"
+        data-line="{{ row.line_key }}"
+        href="/analytics/product-abc?product_id={{ row.product_id }}&year={{ year }}"
+    >
+        <span class="home-row-name">
+            {{ row.flavor }}
+            {% if flavor_city %}<small class="muted">{{ row.line_label }}</small>{% endif %}
+            {% if not flavor_city and row.is_new %}
+                <span class="abc-badge abc-badge-new">NEW</span>
+            {% elif not flavor_city %}
+                {% if row.category %}
+                    <span class="abc-badge abc-badge-{{ row.category|lower }} js-abc-overall" title="Общий ABC — по всему бизнесу сразу">{{ row.category }}</span>
+                {% endif %}
+                {% if row.line_category %}
+                    <span class="abc-badge abc-badge-{{ row.line_category|lower }} js-abc-line" hidden title="ABC внутри линейки «{{ row.line_label }}» (без остальных линеек)">{{ row.line_category }}</span>
+                {% endif %}
+            {% endif %}
+        </span>
+        <span class="home-row-right">
+            <span class="home-row-value">{{ row.weight|format_ru_number(2 if flavor_city else 0) }} кг</span>
+            {% if flavor_city %}
+                <span class="home-flavor-abc">
+                    {% for label, category in [('ABC по городу', row.category), ('ABC по линейке', row.line_category)] %}
+                        {% set badge = 'NEW' if row.is_new else category %}
+                        <span class="home-flavor-rating">{{ label }}
+                            {% if badge %}<span class="abc-badge abc-badge-{{ badge|lower }}">{{ badge }}</span>{% else %}<span>—</span>{% endif %}
+                        </span>
+                    {% endfor %}
+                </span>
+            {% endif %}
+            <svg class="home-row-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </span>
+    </a>
+{% endfor %}

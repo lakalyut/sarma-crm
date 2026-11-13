@@ -227,3 +227,35 @@ table.home-status-table tbody th {
 .home-status-table [data-status="new"] progress { accent-color: var(--status-new-text); }
 .home-status-table [data-status="unstable"] progress { accent-color: var(--status-unstable-text); }
 .home-status-table [data-status="lost"] progress { accent-color: var(--status-lost-text); }
+
+.home-flavor-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 8px 16px;
+    margin-bottom: 16px;
+}
+
+#home-flavor-city-field { width: min(100%, 280px); }
+
+.home-city-flavor-row,
+.home-city-flavor-row .home-row-name,
+.home-city-flavor-row .home-row-right,
+.home-flavor-abc {
+    flex-wrap: wrap;
+}
+
+.home-city-flavor-row { gap: 8px 16px; }
+.home-city-flavor-row .home-row-name { overflow-wrap: anywhere; }
+
+.home-flavor-abc,
+.home-flavor-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.home-flavor-rating {
+    color: var(--text-muted);
+    font-size: 12px;
+}

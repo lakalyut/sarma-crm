@@ -489,3 +489,28 @@ def test_home_statuses_use_latest_report_and_count_client_once_per_city(db_sessi
     assert statuses["cities"]["Иркутск"]["total"] == 4
     assert statuses["cities"]["Казань"]["month"] == "Февраль 2026"
     assert statuses["cities"]["Казань"]["total"] == 1
+
+
+def test_city_flavor_abc_ranks_selected_city_and_line(admin_client, db_session):
+    from app.services.home_service import get_city_flavor_ranking
+
+    mint = _product(db_session, "Мята", "MINT")
+    mango = _product(db_session, "Манго", "MANGO", line="Легкая")
+    peach = _product(db_session, "Персик", "PEACH", line="Легкая")
+    new = _product(db_session, "Новинка", "NEW", is_new=True)
+    for product, weight in [(mint, 70), (mango, 20), (peach, 10), (new, 150)]:
+        _sale(db_session, "Иркутск", "Март 2026", weight, product=product)
+    _sale(db_session, "Москва", "2026-03-01", 500, product=mango)
+    _sale(db_session, "Иркутск", "2025-03-01", 500, product=mango)
+
+    ranking = get_city_flavor_ranking(db_session, "Иркутск", 2026)
+    assert [row["weight"] for row in ranking] == [150, 70, 20, 10]
+    assert ranking[0]["is_new"] and ranking[0]["category"] is None
+    assert ranking[2]["category"] == "B"
+    assert ranking[2]["line_category"] == "A"
+
+    response = admin_client.get(
+        "/analytics/city-flavor-abc", params={"city": "Иркутск", "year": 2026}
+    )
+    assert response.status_code == 200
+    assert "ABC по городу" in response.text and "ABC по линейке" in response.text
