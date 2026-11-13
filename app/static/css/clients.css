@@ -54,7 +54,7 @@
 #clients-table th:nth-child(6), #clients-table td:nth-child(6) { width: 88px; min-width: 88px; max-width: 88px; }
 #clients-table th:nth-child(7), #clients-table td:nth-child(7) { width: 72px; min-width: 72px; max-width: 72px; }
 #clients-table th:nth-child(8), #clients-table td:nth-child(8) { width: 116px; min-width: 116px; max-width: 116px; }
-#clients-table th:nth-child(9), #clients-table td:nth-child(9) { width: 112px; min-width: 112px; max-width: 112px; }
+#clients-table th:nth-child(9), #clients-table td:nth-child(9) { width: 144px; min-width: 144px; max-width: 144px; }
 #clients-table th:nth-child(10), #clients-table td:nth-child(10) { width: 56px; min-width: 56px; max-width: 56px; text-align: center; }
 #clients-table th:nth-child(10) { font-size: 0; }
 #clients-table .spark-svg { width: 96px; height: 32px; margin: 0 0 0 auto; }
@@ -64,6 +64,12 @@
 #clients-table .actions-cell .icon-btn:hover { background: var(--primary-tint); color: var(--primary-text); }
 #clients-table .actions-cell svg { width: 16px; height: 16px; }
 #clients-table .metric-label { display: block; color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+#clients-table .delta-heading {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
 #ca-selection-bar { background: var(--primary-tint); border-color: var(--primary-tint-border); padding: 12px 16px; }
 #ca-selection-bar .flex-row, #ca-selection-bar .filters-actions { flex-wrap: wrap; }
 @media (max-width: 768px) {
@@ -107,6 +113,7 @@
         text-align: left; letter-spacing: 0; background: var(--surface);
     }
     #clients-table thead th.sort-active { background: var(--primary-tint); }
+    #clients-table thead th[data-sort="delta"] { display: inline-grid; justify-items: start; }
     #clients-table tbody { display: grid; gap: 12px; }
     #clients-table .client-row {
         display: grid; grid-template-columns: 28px repeat(3, minmax(0, 1fr));

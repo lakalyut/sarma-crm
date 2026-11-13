@@ -133,3 +133,7 @@ table.point-type-mapping-table td {
 }
 
 .settings-fields .field input { margin-top: auto; }
+.import-layout { max-inline-size: 720px; }
+.import-layout #import-city { margin-bottom: 0; }
+.import-layout .file-upload-name { min-inline-size: 0; overflow-wrap: anywhere; }
+.import-layout .file-upload-btn.btn-secondary { color: var(--text-main); }

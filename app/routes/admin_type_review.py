@@ -19,7 +19,7 @@ from ..services.point_type_mapping_service import (
     get_point_types,
     save_point_type_mappings,
 )
-from ..services.sales_options_service import get_cities
+from ..services.sales_options_service import get_cities, get_clients
 from ..services.type_review_service import (
     get_review_cities,
     get_type_drift_groups,
@@ -30,6 +30,75 @@ router = APIRouter(prefix="/admin/point-types", tags=["admin-point-types"])
 
 _TYPES_URL = "/admin/point-types"
 _REVIEW_URL = f"{_TYPES_URL}/review"
+_CLIENT_TYPE_URL = f"{_TYPES_URL}/client"
+
+
+def _client_type_form(request, db, city, **extra):
+    cities = get_cities(db)
+    return render(
+        request,
+        "admin/client_point_type.html",
+        {
+            "title": "Изменить тип точки клиента — Пульс",
+            "cities": cities,
+            "selected_city": city,
+            "clients": (
+                [
+                    name
+                    for name in get_clients(db, city)
+                    if name.strip().casefold() not in ("", "nan")
+                ]
+                if city and city in cities
+                else []
+            ),
+            "point_types": get_point_types(db),
+            **extra,
+        },
+    )
+
+
+@router.get("/client")
+def client_type_form(
+    request: Request,
+    city: str = "",
+    client: str = "",
+    updated: int = -1,
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    return _client_type_form(request, db, city, selected_client=client, updated=updated)
+
+
+@router.post("/client")
+def save_client_type(
+    request: Request,
+    city: str = Form(...),
+    client: str = Form(...),
+    point_type: str = Form(...),
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    if city:
+        lock_client_names(db, city)
+    if (
+        not city
+        or client.strip().casefold() in ("", "nan")
+        or client not in get_clients(db, city)
+        or point_type not in get_point_types(db)
+    ):
+        db.rollback()
+        return _client_type_form(
+            request,
+            db,
+            city,
+            selected_client=client,
+            error="Выберите клиента из этого города и тип точки из справочника.",
+        )
+    updated = resync_client_type(db, city, client, point_type)
+    return RedirectResponse(
+        f"{_CLIENT_TYPE_URL}?{urlencode({'city': city, 'client': client, 'updated': updated})}",
+        status_code=HTTP_303_SEE_OTHER,
+    )
 
 
 @router.get("/review")

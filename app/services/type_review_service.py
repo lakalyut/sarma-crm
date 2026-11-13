@@ -142,7 +142,10 @@ def resync_client_type(db: Session, city: str, client: str, correct_type: str) -
             Sale.client == client,
             Sale.type.is_(None) | (Sale.type != correct_type),
         )
-        .values(type=correct_type)
+        .values(
+            type=correct_type,
+            raw_point_type=func.coalesce(Sale.raw_point_type, Sale.type, ""),
+        )
         .execution_options(synchronize_session=False)
     )
     db.commit()

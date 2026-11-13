@@ -164,3 +164,32 @@ def test_type_review_page_and_resync_route(admin_client, db_session):
         s.type for s in db_session.query(Sale).filter(Sale.client == "Кафе Г").all()
     }
     assert types == {"HoReCa"}
+
+
+def test_manual_type_assignment_applies_to_selected_city_and_client(admin_client, db_session):
+    from app.models import Sale
+
+    _sale(db_session, "Иркутск", "Кафе А", "Кальянная", "2026-07-01")
+    _sale(db_session, "Иркутск", "Кафе А", "Кальянная", "2026-08-01")
+    _sale(db_session, "Ангарск", "Кафе А", "Кальянная", "2026-07-01")
+    _sale(db_session, "Ангарск", "Кафе Б", "Кальянная", "2026-07-01")
+    url = "/admin/point-types/client"
+
+    page = admin_client.get(url, params={"city": "Иркутск"})
+    assert "Кафе А" in page.text
+    assert "Кафе Б" not in page.text
+
+    data = {"csrf_token": CSRF_TOKEN, "city": "Иркутск", "point_type": "Retail"}
+    invalid = admin_client.post(url, data=data | {"client": "Кафе Б"})
+    assert "Выберите клиента из этого города" in invalid.text
+
+    saved = admin_client.post(url, data=data | {"client": "Кафе А"}, follow_redirects=False)
+    assert saved.status_code == 303
+    assert "updated=2" in saved.headers["location"]
+    db_session.expire_all()
+    sales = db_session.query(Sale).filter(Sale.client == "Кафе А").all()
+    assert {(sale.city, sale.type) for sale in sales} == {
+        ("Иркутск", "Retail"),
+        ("Ангарск", "Кальянная"),
+    }
+    assert {sale.raw_point_type for sale in sales if sale.city == "Иркутск"} == {"Кальянная"}

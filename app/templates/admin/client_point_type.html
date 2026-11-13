@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-page-heading">
+    <h1>Изменить тип точки клиента</h1>
+    <div class="filters-actions">
+        <a class="btn btn-secondary" href="/admin/point-types/review?{{ {'city': selected_city}|urlencode }}">К ревизии типов точек</a>
+    </div>
+</div>
+<div class="section-stack">
+    <form method="get" class="filters-card admin-history-filter">
+        <div class="field filter-field">
+            <label for="client-type-city">Город</label>
+            <select id="client-type-city" name="city" class="js-custom-select" data-searchable required>
+                <option value="">Выберите город</option>
+                {% for city in cities %}
+                    <option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filters-actions">
+            <button type="submit" class="btn-secondary">Показать клиентов</button>
+        </div>
+    </form>
+    {% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
+    {% if updated is defined and updated >= 0 %}
+        <p class="message ok" role="status">
+            {% if updated %}Тип точки сохранён. Обновлено строк продаж: {{ updated }}.
+            {% else %}Во всех продажах клиента уже указан этот тип точки.{% endif %}
+        </p>
+    {% endif %}
+    {% if clients %}
+        <form method="post" class="filters-card section-stack">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="city" value="{{ selected_city }}">
+            <p class="page-subtitle">Новый тип применяется ко всем загруженным продажам клиента в выбранном городе.</p>
+            <div class="field filter-field">
+                <label for="client-type-client">Клиент</label>
+                <select id="client-type-client" name="client" class="js-custom-select" data-searchable required>
+                    <option value="">Выберите клиента</option>
+                    {% for client in clients %}
+                        <option value="{{ client }}" {% if client == selected_client %}selected{% endif %}>{{ client }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field filter-field">
+                <label for="client-type-target">Новый тип точки</label>
+                <select id="client-type-target" name="point_type" class="js-custom-select" required>
+                    <option value="">Выберите тип точки</option>
+                    {% for point_type in point_types %}
+                        <option>{{ point_type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filters-actions">
+                <button type="submit" class="btn-primary">Сохранить тип точки</button>
+            </div>
+        </form>
+    {% elif selected_city %}
+        <p class="page-subtitle">В выбранном городе нет клиентов с загруженными продажами.</p>
+    {% endif %}
+</div>
+{% endblock %}

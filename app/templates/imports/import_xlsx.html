@@ -1,27 +1,30 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Импорт XLSX → Нормализация → БД</h1>
-<div class="filters-actions"><a class="btn btn-secondary" href="/admin/matching-settings">Настройки импорта и ревизии</a></div>
-
-<div class="section-stack">
-<div class="filters-card">
-<form id="xlsx-import" class="section-stack" method="post" enctype="multipart/form-data">
+<div class="section-stack import-layout">
+<h1>Загрузка продаж</h1>
+<div class="filters-actions">
+    <a class="btn btn-secondary" href="/admin/matching-settings">Настройки импорта и ревизии</a>
+</div>
+<form id="xlsx-import" class="filters-card section-stack" method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <div class="field filter-field filter-field-region-search">
+    <div class="field filter-field">
         <label for="import-city">Город</label>
-        <input
-            type="text"
-            name="city"
-            id="import-city"
-            required
-            value="{{ selected_city|default('') }}"
-            autocomplete="off"
-            placeholder="Выберите из списка или введите новый"
-        >
-        <div class="search-dropdown" id="import-city-dropdown" style="display:none;">
-            {% for c in cities %}
-                <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
-            {% endfor %}
+        <div class="filter-field-region-search">
+            <input
+                type="text"
+                name="city"
+                id="import-city"
+                aria-describedby="import-city-hint"
+                required
+                value="{{ selected_city|default('') }}"
+                autocomplete="off"
+                placeholder="Выберите из списка или введите новый"
+            >
+            <div class="search-dropdown" id="import-city-dropdown" style="display:none;">
+                {% for c in cities %}
+                    <div class="search-dropdown-item" data-value="{{ c }}">{{ c }}</div>
+                {% endfor %}
+            </div>
         </div>
         <div class="field-hint" id="import-city-hint">Продажи привяжутся к этому городу.</div>
     </div>
@@ -30,7 +33,7 @@
         <label>Файл XLSX</label>
 
         <div class="file-upload-row">
-            <label class="btn file-upload-btn">
+            <label class="btn btn-secondary file-upload-btn">
                 Выбрать файл
                 <input type="file" name="file" accept=".xlsx" required hidden>
             </label>
@@ -59,7 +62,6 @@
         <button type="submit" id="import-submit" class="btn-primary">Импортировать</button>
     </div>
 </form>
-</div>
 <div id="import-result" role="status" hidden></div>
 
 {% if error %}
