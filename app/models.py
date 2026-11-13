@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     Column,
@@ -248,3 +249,10 @@ class UpdateDelivery(Base):
         UniqueConstraint("update_id", "telegram_id", name="uq_update_recipient"),
         Index("ix_update_deliveries_status", "status"),
     )
+
+
+class AnalyticsSettings(Base):
+    __tablename__ = "analytics_settings"
+
+    id = Column(Integer, primary_key=True)
+    values = Column(JSON, nullable=False)

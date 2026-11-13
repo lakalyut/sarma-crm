@@ -81,7 +81,7 @@
     <div class="home-card-head">
         <h2 class="home-card-title" id="home-cities-title">
             Топ городов за {{ year }} год
-            <span class="hint-icon" title="ABC — расчётная категория города по общей доле веса среди всех городов (правило 80/15/5).">?</span>
+            <span class="hint-icon" title="ABC — расчётная категория города по общей доле веса среди всех городов (границы {{ analytics_settings.weight_abc_a }}% и {{ analytics_settings.weight_abc_b }}%).">?</span>
         </h2>
     </div>
     <div class="home-list" id="home-cities-list">
@@ -114,7 +114,7 @@
     <div class="home-card-head">
         <h2 class="home-card-title" id="home-flavors-title">
             Топ вкусов по весу за {{ year }} год
-            <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (правило 80/15/5 по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». В режиме «По городу» показаны оценки среди всех вкусов города и внутри каждой линейки. Клик по вкусу — разрез по городам.">?</span>
+            <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (границы {{ analytics_settings.weight_abc_a }}% и {{ analytics_settings.weight_abc_b }}% по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». В режиме «По городу» показаны оценки среди всех вкусов города и внутри каждой линейки. Клик по вкусу — разрез по городам.">?</span>
         </h2>
     </div>
     {% if flavor_cities %}

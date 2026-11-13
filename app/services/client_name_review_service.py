@@ -12,6 +12,11 @@ from sqlalchemy import case, func, or_, text, update
 
 from ..models import ClientNameAlias, ClientNameDismissal, Sale, Visit
 from ..utils.dates import month_sort_key, parse_month
+from .analytics_settings_service import (
+    get_analytics_settings,
+    get_matching_settings,
+    status_history_length,
+)
 from .client_health_service import STATUS_LABELS, build_client_health
 
 _QUOTES = str.maketrans("", "", "\"«»„“”'’‘`")
@@ -131,6 +136,7 @@ def get_review_cities(db):
         .order_by(Sale.city)
         .yield_per(1000)
     )
+    settings = get_matching_settings(db)
     for city, rows in groupby(names, key=lambda row: row[0]):
         clients = {
             name
@@ -143,6 +149,7 @@ def get_review_cities(db):
                 dismissed[city],
                 city,
                 lambda city=city: _review_statuses(db, city),
+                settings,
             ),
             None,
         ):
@@ -319,7 +326,7 @@ def _nearby_keys(keys):
                 yield key, other
 
 
-def _high_similarity_keys(keys):
+def _high_similarity_keys(keys, minimum):
     """Index shared fragments before comparing the full normalized names."""
     index = defaultdict(list)
     for key in sorted(keys, key=lambda value: (len(value), value)):
@@ -328,14 +335,20 @@ def _high_similarity_keys(keys):
             continue
         digits = tuple(re.findall(r"\d+", key))
         fragments = {key[i : i + 4] for i in range(size - 3)}
+        # Even a perfect prefix cannot reach the threshold below this length.
+        denominator = 200 - minimum
+        min_length = (size * minimum + denominator - 1) // denominator
         candidates = set()
         for fragment in fragments:
-            for length in range((size * 9 + 10) // 11, size + 1):
+            for length in range(min_length, size + 1):
                 candidates.update(index.get((digits, length, fragment), ()))
             index[digits, size, fragment].append(key)
         for other in sorted(candidates):
             matcher = SequenceMatcher(None, key, other, autojunk=False)
-            if matcher.quick_ratio() >= 0.90 and (score := matcher.ratio()) >= 0.90:
+            if (
+                matcher.quick_ratio() >= minimum / 100
+                and (score := matcher.ratio()) >= minimum / 100
+            ):
                 yield key, other, score
 
 
@@ -345,11 +358,12 @@ def _review_statuses(db, city):
         for (month,) in db.query(Sale.month).filter(Sale.city == city).distinct()
         if month
     ]
-    recent = sorted(months, key=month_sort_key)[-3:]
+    settings = get_analytics_settings(db)
+    recent = sorted(months, key=month_sort_key)[-status_history_length(settings) :]
     if len(recent) < 3:
         return {}
     statuses = defaultdict(set)
-    for row in build_client_health(db, city, recent)["rows"]:
+    for row in build_client_health(db, city, recent, status_settings=settings)["rows"]:
         statuses[row["client"]].add(row["status"])
     return statuses
 
@@ -375,7 +389,7 @@ def _one_edit(first, second):
     return shorter[i:] == longer[i + 1 :]
 
 
-def iter_name_matches(names, dismissed, city, load_statuses):
+def iter_name_matches(names, dismissed, city, load_statuses, settings):
     by_key = defaultdict(list)
     for name in sorted(names):
         by_key[comparison_name(name)].append(name)
@@ -477,11 +491,13 @@ def iter_name_matches(names, dismissed, city, load_statuses):
     nearby = ((first, second, None) for first, second in _nearby_keys(by_key))
     compared = set()
     statuses = None
-    for first, second, score in chain(_high_similarity_keys(by_key), nearby):
+    for first, second, score in chain(
+        _high_similarity_keys(by_key, settings["client_similarity_with_status"]), nearby
+    ):
         key_pair = _pair(first, second)
         if key_pair in compared and score is None:
             continue
-        if score is not None and score >= 0.95:
+        if score is not None and score >= settings["client_similarity"] / 100:
             compared.add(key_pair)
         first_address = inline_addresses.get(first)
         second_address = inline_addresses.get(second)
@@ -499,7 +515,10 @@ def iter_name_matches(names, dismissed, city, load_statuses):
                     similarity = (
                         f"{score:.1%}".replace(".", ",") if score is not None else ""
                     )
-                    if score is not None and score < 0.95:
+                    if (
+                        score is not None
+                        and score < settings["client_similarity"] / 100
+                    ):
                         if statuses is None:
                             statuses = load_statuses()
                         left_status = statuses.get(left, ())
@@ -532,7 +551,11 @@ def get_review_groups(db, city):
     names = _names_in_city(db, city)
     groups = []
     for variants, reason in iter_name_matches(
-        names, _dismissed_pairs(db, city), city, lambda: _review_statuses(db, city)
+        names,
+        _dismissed_pairs(db, city),
+        city,
+        lambda: _review_statuses(db, city),
+        get_matching_settings(db),
     ):
         rows = sorted(
             (names[name] for name in variants),

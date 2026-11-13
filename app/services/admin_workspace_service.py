@@ -16,6 +16,8 @@ ADMIN_GROUPS = [
             {"url": "/admin/abc", "title": "ABC-рейтинг"},
             {"url": "/admin/regions", "title": "Регионы"},
             {"url": "/admin/point-types", "title": "Типы точек"},
+            {"url": "/admin/analytics-settings", "title": "Параметры аналитики"},
+            {"url": "/admin/matching-settings", "title": "Импорт и ревизия"},
             {"url": "/admin/updates", "title": "Обновления"},
         ],
     },

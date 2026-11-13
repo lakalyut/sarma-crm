@@ -22,6 +22,7 @@ from ..services.ambassadors_service import (
     get_distinct_skus,
     normalize_selected_months,
 )
+from ..services.analytics_settings_service import get_analytics_settings
 from ..services.client_analysis_service import (
     get_clients_rollup,
     get_nomenclature_rollup,
@@ -149,11 +150,7 @@ def client_analysis_page(
                 "raw_selected_months": [],
                 "selected_clients": clients or [],
                 "selected_new_skus": new_skus or [],
-                "status_settings": {
-                    "new_client_months": 2,
-                    "lost_months": 2,
-                    "unstable_gap_months": 1,
-                },
+                "status_settings": get_analytics_settings(db),
                 "report": {"months": [], "clients": []},
                 "segments_json": segments_json,
                 "rating_by_client": {},
@@ -207,10 +204,17 @@ def client_analysis_page(
     selected_clients = [c for c in (clients or []) if c in all_clients]
 
     if active_tab == "ambassadors":
+        defaults = get_analytics_settings(db)
         status_settings = {
-            "new_client_months": get_int_param(request, "new_client_months", 2),
-            "lost_months": get_int_param(request, "lost_months", 2),
-            "unstable_gap_months": get_int_param(request, "unstable_gap_months", 1),
+            "new_client_months": get_int_param(
+                request, "new_client_months", defaults["new_client_months"]
+            ),
+            "lost_months": get_int_param(
+                request, "lost_months", defaults["lost_months"]
+            ),
+            "unstable_gap_months": get_int_param(
+                request, "unstable_gap_months", defaults["unstable_gap_months"]
+            ),
         }
         selected_new_skus = new_skus or []
 

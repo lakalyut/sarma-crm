@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title|replace(" — Пульс", "") }}</h1>
+<form method="post" class="section-stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+    <p class="page-subtitle">{{ description|default("Параметры применяются ко всем городам. Отчёты с собственными полями статусов позволяют задать значения для текущего расчёта.") }}</p>
+    {% for title, fields in groups.items() %}
+        <fieldset class="filters-card admin-history-filter">
+            <legend>{{ title }}</legend>
+            {% for key, label in fields.items() %}
+                <div class="field filter-field">
+                    <label for="{{ key }}">{{ label }}</label>
+                    <input type="number" id="{{ key }}" name="{{ key }}" value="{{ values[key] }}" step="1" required>
+                </div>
+            {% endfor %}
+        </fieldset>
+    {% endfor %}
+    <div class="filters-actions">
+        <button type="submit" class="btn-primary">Сохранить параметры</button>
+        <button type="submit" class="btn-secondary" name="action" value="reset" formnovalidate>Вернуть стандартные значения</button>
+    </div>
+</form>
+{% endblock %}

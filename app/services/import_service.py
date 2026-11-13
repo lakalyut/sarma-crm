@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..models import Product, Sale
 from ..observability import import_phase, log_action
 from ..product_parser import ProductMatcher, build_canonical_name, extract_weight
+from .analytics_settings_service import get_matching_settings
 from .client_name_review_service import get_client_aliases, lock_client_names
 from .event_log_service import log_import
 from .point_type_mapping_service import (
@@ -40,7 +41,8 @@ def import_sales(
         df["Вес"] = pd.to_numeric(df["Вес"], errors="coerce").fillna(0)
     with import_phase("prepare_catalog"):
         matcher = ProductMatcher(
-            db.query(Product).filter(Product.is_active.is_(True)).all()
+            db.query(Product).filter(Product.is_active.is_(True)).all(),
+            min_score=get_matching_settings(db)["product_similarity"],
         )
 
     imported = unmatched = 0

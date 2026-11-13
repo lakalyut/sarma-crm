@@ -4,6 +4,7 @@
 <div class="section-stack">
 <p class="page-subtitle">Найдите варианты написания одного клиента в продажах и визитах. Проверьте совпадение и выберите итоговое название.</p>
 <div class="filters-actions">
+    <a class="btn btn-secondary" href="/admin/matching-settings">Настройки импорта и ревизии</a>
     <a class="btn btn-secondary" href="/admin/clients/review/manual?{{ {'city': selected_city}|urlencode }}">Ручное объединение</a>
     {% if groups %}
     <a class="btn btn-secondary" href="/admin/clients/review/bulk?{{ {'city': selected_city}|urlencode }}">Массовая сверка</a>

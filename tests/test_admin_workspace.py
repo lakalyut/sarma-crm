@@ -133,3 +133,38 @@ def test_create_region_confirms_result_without_false_empty_success(
     )
     assert "Запись создана." not in response.text
     assert db_session.query(Region).count() == 1
+
+
+def test_matching_settings_are_saved_and_reset(admin_client, db_session):
+    from app.services.analytics_settings_service import get_matching_settings
+
+    url = "/admin/matching-settings"
+    values = {
+        "product_similarity": 85,
+        "client_similarity_with_status": 92,
+        "client_similarity": 97,
+        "csrf_token": CSRF_TOKEN,
+    }
+    assert (
+        admin_client.post(url, data=values, follow_redirects=False).status_code == 303
+    )
+    db_session.expire_all()
+    assert get_matching_settings(db_session)["product_similarity"] == 85
+
+    invalid = admin_client.post(
+        url, data=values | {"client_similarity": 91}, follow_redirects=False
+    )
+    assert "Проверьте диапазоны" in invalid.text
+    db_session.expire_all()
+    assert get_matching_settings(db_session)["client_similarity"] == 97
+
+    assert (
+        admin_client.post(
+            url,
+            data={"action": "reset", "csrf_token": CSRF_TOKEN},
+            follow_redirects=False,
+        ).status_code
+        == 303
+    )
+    db_session.expire_all()
+    assert get_matching_settings(db_session)["product_similarity"] == 70

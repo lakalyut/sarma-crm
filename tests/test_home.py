@@ -572,3 +572,65 @@ def test_point_type_drilldown_matches_home_and_filters_by_city(
     assert "Сибирь" in response.text
     assert "30,00 кг" in response.text
     assert "70,00 кг" not in response.text
+
+
+def test_analytics_settings_save_changes_rankings_and_can_reset(
+    admin_client, db_session
+):
+    from app.services.analytics_settings_service import DEFAULTS
+    from app.services.client_segments_service import build_client_segments
+    from app.services.home_service import get_home_overview
+    from tests.conftest import CSRF_TOKEN
+
+    for city, name, weight in [("Иркутск", "Кафе А", 70), ("Москва", "Кафе Б", 30)]:
+        for month in ("2026-01-01", "2026-02-01"):
+            _sale(db_session, city, month, weight, client=name)
+
+    endpoint = "/admin/analytics-settings"
+    values = DEFAULTS | {
+        "weight_abc_a": 60,
+        "xyz_presence_y": 40,
+        "xyz_presence_x": 60,
+    }
+    assert admin_client.get(endpoint).status_code == 200
+    invalid = admin_client.post(
+        endpoint,
+        data=values | {"weight_abc_b": 50, "csrf_token": CSRF_TOKEN},
+        follow_redirects=False,
+    )
+    assert "Проверьте диапазоны" in invalid.text
+    assert get_home_overview(db_session, 2026)["top_cities"][0]["category"] == "A"
+    saved = admin_client.post(
+        endpoint, data=values | {"csrf_token": CSRF_TOKEN}, follow_redirects=False
+    )
+    assert saved.status_code == 303
+    assert get_home_overview(db_session, 2026)["top_cities"][0]["category"] == "B"
+    report = build_client_segments(
+        db_session, "Иркутск", months=[(2026, 1), (2026, 2), (2026, 3)], mode="presence"
+    )
+    assert report["rows"][0]["xyz"] == "X"
+    assert report["settings"]["xyz_presence_y"] == 40
+    reset = admin_client.post(
+        endpoint,
+        data={"action": "reset", "csrf_token": CSRF_TOKEN},
+        follow_redirects=False,
+    )
+    assert reset.status_code == 303
+    assert get_home_overview(db_session, 2026)["top_cities"][0]["category"] == "A"
+
+
+def test_abc_xyz_default_window_respects_saved_setting_and_explicit_months(
+    admin_client, db_session
+):
+    from app.models import AnalyticsSettings
+
+    db_session.add(AnalyticsSettings(id=1, values={"client_segments_months": 2}))
+    for month in range(1, 5):
+        _sale(db_session, "Иркутск", f"2025-{month:02}-01", 10)
+    url = "/analytics/clients/abc-xyz"
+    response = admin_client.get(url, params={"city": "Иркутск"})
+    assert "Март 2025, Апрель 2025" in response.text
+    explicit = admin_client.get(
+        url, params={"city": "Иркутск", "months": ["2025-01-01", "2025-04-01"]}
+    )
+    assert "Январь 2025, Апрель 2025" in explicit.text

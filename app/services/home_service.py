@@ -22,8 +22,13 @@ from sqlalchemy.orm import Session
 from ..models import Product, Sale
 from ..templating import format_month
 from ..utils.dates import month_sort_key, parse_month
+from .analytics_settings_service import (
+    DEFAULTS,
+    get_analytics_settings,
+    status_history_length,
+)
 from .city_regions_service import get_city_region_map
-from .client_health_service import DEFAULT_STATUS_SETTINGS, detect_client_status
+from .client_health_service import detect_client_status
 from .sale_filters import build_sale_filters
 from .sales_options_service import get_cities, get_months
 
@@ -224,7 +229,7 @@ def _delta(current: float, previous: float | None) -> dict:
     return {"pct": round(pct), "direction": direction}
 
 
-def compute_abc_ranking(weight_by_key: dict, exclude_keys: set) -> dict:
+def compute_abc_ranking(weight_by_key: dict, exclude_keys: set, settings=None) -> dict:
     """Правило 80/15/5 по кумулятивной доле веса — ключ может быть
     `product_id` (вкусы) ИЛИ `city` (города, запрос 2026-09-13, ABC по
     городам «пока только вес» — там `exclude_keys` всегда пустой, у
@@ -235,6 +240,7 @@ def compute_abc_ranking(weight_by_key: dict, exclude_keys: set) -> dict:
     решение пользователя 2026-09-12 — у новинки в UI бейдж NEW вместо
     буквы, тот же принцип, что уже был у aromas_new в лидерборде
     амбассадоров)."""
+    settings = settings or DEFAULTS
     established = sorted(
         (
             (key, w)
@@ -253,9 +259,9 @@ def compute_abc_ranking(weight_by_key: dict, exclude_keys: set) -> dict:
     for key, w in established:
         cumulative += w
         share = cumulative / total
-        if share <= 0.80:
+        if share <= settings["weight_abc_a"] / 100:
             ranking[key] = "A"
-        elif share <= 0.95:
+        elif share <= settings["weight_abc_b"] / 100:
             ranking[key] = "B"
         else:
             ranking[key] = "C"
@@ -281,7 +287,9 @@ def _client_status_summary(month: str, counts: Counter) -> dict:
     }
 
 
-def _home_client_statuses(db: Session, all_months: list[str], year: int) -> dict | None:
+def _home_client_statuses(
+    db: Session, all_months: list[str], year: int, settings: dict
+) -> dict | None:
     month_keys = {
         month: key
         for month in all_months
@@ -317,8 +325,8 @@ def _home_client_statuses(db: Session, all_months: list[str], year: int) -> dict
         last_month = months[-1]
         if last_month[0] != year:
             continue
-        recent = months[-3:]
-        new_months = set(months[-DEFAULT_STATUS_SETTINGS["new_client_months"] :])
+        recent = months[-status_history_length(settings) :]
+        new_months = set(months[-settings["new_client_months"] :])
         counts = Counter()
         for weights in client_weights[city].values():
             first_month = min(
@@ -328,7 +336,7 @@ def _home_client_statuses(db: Session, all_months: list[str], year: int) -> dict
                 continue
             status, _, _ = detect_client_status(
                 [round(weights[month], 2) for month in recent],
-                DEFAULT_STATUS_SETTINGS,
+                settings,
                 is_new=first_month != months[0] and first_month in new_months,
             )
             counts["lost" if status == "empty" else status] += 1
@@ -349,10 +357,12 @@ def get_city_flavor_ranking(db: Session, city: str, year: int) -> list[dict]:
     months = _months_for_year(get_months(db, city=city), year)
     if not months:
         return []
-    return _rank_flavors(db, build_sale_filters(city=city, months=months))
+    return _rank_flavors(
+        db, build_sale_filters(city=city, months=months), get_analytics_settings(db)
+    )
 
 
-def _rank_flavors(db: Session, filters: list) -> list[dict]:
+def _rank_flavors(db: Session, filters: list, settings: dict) -> list[dict]:
     # топ вкусов по весу + расчётный ABC (сопоставленные продажи, product_id
     # не NULL — сырые несопоставленные строки без canonical-названия сюда
     # не попадают, решение пользователя, тот же принцип, что в "Ревизии
@@ -365,7 +375,7 @@ def _rank_flavors(db: Session, filters: list) -> list[dict]:
     )
     weight_by_product = {pid: float(w or 0) for pid, w in product_weight_rows if pid}
     new_ids = _new_product_ids(db)
-    ranking = compute_abc_ranking(weight_by_product, new_ids)
+    ranking = compute_abc_ranking(weight_by_product, new_ids, settings)
 
     products = (
         db.query(Product).filter(Product.id.in_(weight_by_product.keys())).all()
@@ -377,7 +387,7 @@ def _rank_flavors(db: Session, filters: list) -> list[dict]:
     for p in products:
         weight_by_line[_line_key(p)][p.id] = weight_by_product[p.id]
     ranking_by_line = {
-        key: compute_abc_ranking(weights, new_ids)
+        key: compute_abc_ranking(weights, new_ids, settings)
         for key, weights in weight_by_line.items()
     }
 
@@ -490,23 +500,27 @@ def get_home_overview(db: Session, year: int | None) -> dict:
     # (у города нет понятия "новинка"); веса — те же top_cities.weight, что
     # уже показаны на странице (несопоставленные продажи туда попадают,
     # ключевое отличие от ABC вкусов ниже, где product_id обязателен).
+    settings = get_analytics_settings(db)
     city_ranking = compute_abc_ranking(
-        {row["city"]: row["weight"] for row in top_cities}, set()
+        {row["city"]: row["weight"] for row in top_cities},
+        set(),
+        settings,
     )
     for row in top_cities:
         row["category"] = city_ranking.get(row["city"])
 
     return {
+        "analytics_settings": settings,
         "available_years": available_years,
         "year": year,
         "has_data": True,
         "metrics": metrics,
-        "client_statuses": _home_client_statuses(db, all_months, year),
+        "client_statuses": _home_client_statuses(db, all_months, year, settings),
         "clients_by_type": _clients_by_type(db, cur_filters, cur_totals["weight"]),
         "chart": chart,
         "year_months": year_months,
         "top_cities": top_cities,
-        "top_flavors": _rank_flavors(db, cur_filters),
+        "top_flavors": _rank_flavors(db, cur_filters, settings),
         "flavor_cities": sorted((row["city"] for row in top_cities), key=str.casefold),
     }
 
@@ -585,13 +599,14 @@ def get_product_abc_by_city(
     # выше в этой же функции) — числа поэтому могут чуть разойтись, это
     # ожидаемо, не баг рассинхрона с главной.
     city_totals = {city: sum(weights.values()) for city, weights in by_city.items()}
-    city_ranking = compute_abc_ranking(city_totals, set())
+    settings = get_analytics_settings(db)
+    city_ranking = compute_abc_ranking(city_totals, set(), settings)
 
     all_cities = get_cities(db)
     result_rows = []
     for city in all_cities:
         weights = by_city.get(city, {})
-        ranking = compute_abc_ranking(weights, new_ids)
+        ranking = compute_abc_ranking(weights, new_ids, settings)
         weight = weights.get(product_id, 0.0)
         total = sum(weights.values()) or 1.0
         result_rows.append(
@@ -613,6 +628,7 @@ def get_product_abc_by_city(
     return {
         "product": product,
         "year": year,
+        "analytics_settings": settings,
         "available_years": available_years,
         "rows": result_rows,
     }

@@ -129,7 +129,8 @@ def match_product_by_flavor(raw_name: str, products: list[Product]):
 class ProductMatcher:
     """Prepare a catalog once; preserve the existing matching/tie rules."""
 
-    def __init__(self, products: list[Product]):
+    def __init__(self, products: list[Product], min_score: int = 70):
+        self.min_score = min_score
         self.products = products
         self.brands = sorted(
             {p.brand.lower() for p in products if p.brand}, key=len, reverse=True
@@ -160,4 +161,4 @@ class ProductMatcher:
         if match is None:
             return None, 0
         best, score = match[0], match[1]
-        return (self.flavors[best] if score >= 70 else None), int(score)
+        return (self.flavors[best] if score >= self.min_score else None), int(score)

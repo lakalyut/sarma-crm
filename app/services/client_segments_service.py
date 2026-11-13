@@ -8,6 +8,7 @@ from sqlalchemy import case, func, or_
 
 from ..models import Sale
 from ..utils.dates import parse_month
+from .analytics_settings_service import get_analytics_settings
 
 
 def shift_month(month, offset):
@@ -29,6 +30,7 @@ def build_client_segments(
 ):
     if mode not in ("volume", "presence"):
         raise ValueError("Unknown XYZ mode")
+    settings = get_analytics_settings(db)
     window = sorted(set(months))
     length = len(window)
     end = window[-1]
@@ -98,9 +100,17 @@ def build_client_segments(
         xyz = None
         if not reason:
             if mode == "presence":
-                xyz = "X" if regularity >= 80 else "Y" if regularity >= 50 else "Z"
+                xyz = (
+                    "X"
+                    if regularity >= settings["xyz_presence_x"]
+                    else "Y" if regularity >= settings["xyz_presence_y"] else "Z"
+                )
             else:
-                xyz = "X" if cv <= 25 else "Y" if cv <= 50 else "Z"
+                xyz = (
+                    "X"
+                    if cv <= settings["xyz_cv_x"]
+                    else "Y" if cv <= settings["xyz_cv_y"] else "Z"
+                )
         rows.append(
             {
                 "client": client,
@@ -124,7 +134,11 @@ def build_client_segments(
         row["share"] = row["volume"] / total * 100 if total else 0
         if row["volume"] > 0:
             boundary = round(cumulative, 10)
-            row["abc"] = "A" if boundary < 80 else "B" if boundary < 95 else "C"
+            row["abc"] = (
+                "A"
+                if boundary < settings["client_abc_a"]
+                else "B" if boundary < settings["client_abc_b"] else "C"
+            )
             cumulative += row["share"]
         row["segment"] = row["abc"] + row["xyz"] if row["xyz"] else row["reason"]
         if row["xyz"]:
@@ -134,6 +148,7 @@ def build_client_segments(
             reasons[row["reason"]] += 1
     return {
         "rows": rows,
+        "settings": settings,
         "matrix": matrix,
         "reasons": dict(reasons),
         "total_volume": total,

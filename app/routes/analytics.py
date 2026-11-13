@@ -21,6 +21,10 @@ from ..services.ambassadors_service import (
     build_client_sku_status,
     normalize_selected_months,
 )
+from ..services.analytics_settings_service import (
+    get_analytics_settings,
+    status_history_length,
+)
 from ..services.charts_service import get_charts_metrics_data
 from ..services.client_health_service import STATUS_ORDER, build_client_health
 from ..services.client_segments_service import (
@@ -101,12 +105,11 @@ def client_segments(
     if sale_type and sale_type not in sale_types:
         raise HTTPException(400, "Выберите тип точки из списка выбранного города")
     available = _segment_months(db, city, today)
-    period_requested = bool(months or end or length is not None)
-    selected = available
+    selected = []
     if months:
         requested = {parse_month(month) for month in months}
         selected = [month for month in available if month in requested]
-    elif end or length is not None:
+    elif available or end or length is not None:
         # Старые ссылки задают календарное окно, из которого берём загруженные месяцы.
         if length not in (None, 6, 12):
             raise HTTPException(400, "Выберите период 6 или 12 месяцев")
@@ -123,7 +126,10 @@ def client_segments(
             end_month = next(
                 (month for month in available if month <= last_closed), last_closed
             )
-        start_month = shift_month(end_month, 1 - (length or 6))
+        start_month = shift_month(
+            end_month,
+            1 - (length or get_analytics_settings(db)["client_segments_months"]),
+        )
         selected = [month for month in available if start_month <= month <= end_month]
     report = (
         build_client_segments(
@@ -146,9 +152,7 @@ def client_segments(
             "sale_types": sale_types,
             "selected_type": sale_type,
             "all_months": [month_value(month) + "-01" for month in available],
-            "selected_months": [
-                month_value(month) + "-01" for month in selected if period_requested
-            ],
+            "selected_months": [month_value(month) + "-01" for month in selected],
             "period_months": [month_value(month) + "-01" for month in selected],
             "mode": mode,
             "report": report,
@@ -253,21 +257,16 @@ def analytics_clients(
     type_cards = clients_data["type_cards"]
     monthly_by_client = clients_data["monthly_by_client"]
 
-    # Статус клиента («Активен»/«Нестабильный»/«Потерян»/...) подчиняется
-    # тому же фильтру «Месяцы», что и остальная таблица (запрос пользователя,
-    # 2026-09-11 — обычно смотрят поквартально, статус «за всю историю» не
-    # отвечал на этот вопрос). Если период явно не выбран — по умолчанию
-    # последний квартал (последние 3 доступных месяца), не вся история:
-    # статус — это «как дела сейчас», а не накопленный с начала времён итог.
-    # `all_months` уже отсортирован по убыванию (reverse=True выше), поэтому
-    # `all_months[:3]` — это и есть последние три месяца.
+    # Явный выбор месяцев имеет приоритет над общим окном статусов.
     client_health_by_key = {}
     if all_months:
-        health_months = selected_months or all_months[:3]
+        settings = get_analytics_settings(db)
+        health_months = selected_months or all_months[: status_history_length(settings)]
         health = build_client_health(
             db=db,
             city=city,
             selected_months=sorted(health_months, key=month_sort_key),
+            status_settings=settings,
         )
         client_health_by_key = {
             (r["client"], r["sale_type"]): {
@@ -470,10 +469,15 @@ def analytics_client_detail(
         )
         rating_by_product = abc_overview["rating_by_product"]
 
+    defaults = get_analytics_settings(db)
     status_settings = {
-        "new_client_months": get_int_param(request, "new_client_months", 2),
-        "lost_months": get_int_param(request, "lost_months", 2),
-        "unstable_gap_months": get_int_param(request, "unstable_gap_months", 1),
+        "new_client_months": get_int_param(
+            request, "new_client_months", defaults["new_client_months"]
+        ),
+        "lost_months": get_int_param(request, "lost_months", defaults["lost_months"]),
+        "unstable_gap_months": get_int_param(
+            request, "unstable_gap_months", defaults["unstable_gap_months"]
+        ),
     }
 
     all_months = get_months(db, city=city, reverse=True)

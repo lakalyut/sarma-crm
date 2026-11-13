@@ -28,12 +28,7 @@ from sqlalchemy.orm import Session
 from ..models import Sale
 from ..templating import format_month
 from ..utils.dates import month_sort_key
-
-DEFAULT_STATUS_SETTINGS = {
-    "new_client_months": 2,
-    "lost_months": 2,
-    "unstable_gap_months": 1,
-}
+from .analytics_settings_service import get_analytics_settings
 
 STATUS_LABELS = {
     "lost": "Потерян",
@@ -228,7 +223,7 @@ def build_client_health(
     нет данных»), и по каждой паре — её настоящую первую продажу когда-либо
     (для честного «Новый»), и список всех месяцев города вообще (чтобы мерить
     «давность» первой продажи в реальных, не window-относительных, шагах)."""
-    status_settings = status_settings or DEFAULT_STATUS_SETTINGS
+    status_settings = status_settings or get_analytics_settings(db)
 
     empty_result: dict = {
         "months": selected_months,
