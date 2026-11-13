@@ -10,6 +10,14 @@ function initCheckboxMultiselect(config) {
 
     if (!display || !dropdown || !textSpan || !list || !selectAll) return;
 
+    const pager = list.querySelector(".mp-pager");
+    function positionCalendar() {
+        const left = ms.getBoundingClientRect().left;
+        const rightEdge = document.documentElement.clientWidth - 12;
+        const panelLeft = Math.max(12, Math.min(left, rightEdge - dropdown.offsetWidth));
+        dropdown.style.setProperty("--month-picker-offset", (panelLeft - left) + "px");
+    }
+
     display.tabIndex = 0;
     display.setAttribute("role", "button");
     display.setAttribute("aria-expanded", "false");
@@ -22,7 +30,11 @@ function initCheckboxMultiselect(config) {
     function setOpen(open) {
         ms.classList.toggle("open", open);
         display.setAttribute("aria-expanded", String(open));
+        if (pager && open) positionCalendar();
     }
+    if (pager) window.addEventListener("resize", function () {
+        if (ms.classList.contains("open")) positionCalendar();
+    }, { signal: config.signal });
     display.addEventListener("keydown", function(e) {
         if (["Enter", " ", "ArrowDown"].includes(e.key)) {
             e.preventDefault();
@@ -142,7 +154,6 @@ function initCheckboxMultiselect(config) {
         setOpen(false);
     }, { signal: config.signal });
 
-    const pager = list.querySelector(".mp-pager");
     if (pager) {
         const yearGrids = Array.from(pager.querySelectorAll(".mp-year-grid"));
         const yearLabel = pager.querySelector(".mp-year-label");

@@ -320,6 +320,46 @@ def test_multiselect_keyboard_and_native_form_value(page):
     assert display.evaluate("e=>e===document.activeElement")
 
 
+def test_month_picker_displays_a_full_year_without_scrolling(page, db_session):
+    from app.models import Sale
+
+    db_session.add_all(
+        Sale(city="Иркутск", client="Магазин Маяк", month=f"2025-{month:02d}-01")
+        for month in range(1, 13)
+    )
+    db_session.commit()
+    page.reload(wait_until="networkidle")
+    filters = page.locator(".clients-filter-panel")
+    if filters.get_attribute("open") is None:
+        filters.locator("summary").click()
+    picker = page.locator("#months-multiselect")
+    picker.get_by_role("button", name="Месяцы", exact=True).click()
+    dropdown = picker.locator(".multiselect-dropdown")
+    initial_size = dropdown.bounding_box()
+    picker.get_by_role("button", name="Предыдущий год").click()
+    grid = dropdown.locator('[data-year="2025"]')
+    assert grid.get_by_role("checkbox").count() == 12
+    assert grid.evaluate(
+        """grid => grid.getBoundingClientRect().bottom
+            <= grid.closest('.multiselect-dropdown').getBoundingClientRect().bottom"""
+    )
+    assert dropdown.evaluate("menu => menu.scrollHeight <= menu.clientHeight")
+    assert dropdown.bounding_box()["height"] == initial_size["height"]
+
+    page.goto(
+        "https://pulse-ui.test/analytics/client-analysis?tab=ambassadors&city=Иркутск",
+        wait_until="networkidle",
+    )
+    picker = page.locator("#amb-months-multiselect")
+    picker.locator(".multiselect-display").click()
+    dropdown = picker.locator(".multiselect-dropdown")
+    report_size = dropdown.bounding_box()
+    assert report_size["width"] == initial_size["width"] == 280
+    assert report_size["height"] == initial_size["height"]
+    assert report_size["x"] >= 12
+    assert report_size["x"] + report_size["width"] <= 390 - 12
+
+
 @pytest.mark.parametrize("width", [320, 390, 768, 1440])
 def test_clients_layout_search_sort_and_report_selection(page, width):
     page.set_viewport_size({"width": width, "height": 844})

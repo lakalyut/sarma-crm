@@ -1,20 +1,3 @@
-#amb-months-multiselect {
-    position: relative;
-}
-
-#amb-months-multiselect .multiselect-dropdown {
-    right: 0;
-    left: auto;
-    min-width: 280px;
-    max-height: 260px;
-    overflow-y: auto;
-    z-index: 50;
-}
-
-#amb-months-multiselect .month-checkbox span {
-    white-space: nowrap;
-}
-
 /* =========================
    Ambassadors: status settings
 ========================= */
