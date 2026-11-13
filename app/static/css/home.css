@@ -294,9 +294,6 @@ table.home-status-table tbody th {
 .home-kpi-unit { font-size: .54em; }
 
 .home-bento .home-card-head > h2 { margin: 0; }
-.home-bento-trend,
-.home-bento-cities { align-self: stretch; }
-
 .home-bento-trend .home-chart-wrap { height: clamp(220px, 25vw, 340px); }
 
 .home-bento-clients {
@@ -308,6 +305,26 @@ table.home-status-table tbody th {
 .home-bento .home-row { gap: 8px; }
 .home-bento .home-row-name { min-width: 0; overflow-wrap: anywhere; }
 .home-bento .home-row-right { flex: 0 0 auto; max-width: 100%; }
+
+@media (min-width: 1051px) {
+    .home-bento-cities {
+        /* The chart sets the row height. Expanding the list only adds scrollable rows. */
+        contain: size;
+        align-self: stretch;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .home-bento-cities > .home-card-head,
+    .home-bento-cities > .home-show-more { flex-shrink: 0; }
+
+    .home-bento-cities > .home-list {
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .home-bento-cities .home-row { flex-shrink: 0; }
+}
 
 @media (max-width: 1050px) {
     .home-bento { grid-template-columns: minmax(0, 1fr); }
