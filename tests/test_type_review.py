@@ -166,7 +166,9 @@ def test_type_review_page_and_resync_route(admin_client, db_session):
     assert types == {"HoReCa"}
 
 
-def test_manual_type_assignment_applies_to_selected_city_and_client(admin_client, db_session):
+def test_manual_type_assignment_applies_to_selected_city_and_client(
+    admin_client, db_session
+):
     from app.models import Sale
 
     _sale(db_session, "Иркутск", "Кафе А", "Кальянная", "2026-07-01")
@@ -183,7 +185,9 @@ def test_manual_type_assignment_applies_to_selected_city_and_client(admin_client
     invalid = admin_client.post(url, data=data | {"client": "Кафе Б"})
     assert "Выберите клиента из этого города" in invalid.text
 
-    saved = admin_client.post(url, data=data | {"client": "Кафе А"}, follow_redirects=False)
+    saved = admin_client.post(
+        url, data=data | {"client": "Кафе А"}, follow_redirects=False
+    )
     assert saved.status_code == 303
     assert "updated=2" in saved.headers["location"]
     db_session.expire_all()
@@ -192,4 +196,6 @@ def test_manual_type_assignment_applies_to_selected_city_and_client(admin_client
         ("Иркутск", "Retail"),
         ("Ангарск", "Кальянная"),
     }
-    assert {sale.raw_point_type for sale in sales if sale.city == "Иркутск"} == {"Кальянная"}
+    assert {sale.raw_point_type for sale in sales if sale.city == "Иркутск"} == {
+        "Кальянная"
+    }

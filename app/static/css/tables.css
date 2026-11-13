@@ -313,12 +313,12 @@ table.sheet-table tbody tr:hover td {
         width: 24px;
         height: 24px;
         border-radius: var(--radius-xs);
-        background: #ece9fe;
+        background: var(--icon-bg);
         color: var(--primary-text);
     }
 
 .icon-btn:hover {
-        background: #ddd6fe;
+        background: var(--icon-hover-bg);
     }
 
 .icon-btn svg {

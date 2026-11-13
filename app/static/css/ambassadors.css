@@ -151,7 +151,7 @@
 
 .amb-badge-blue {
     background: var(--badge-blue-bg);
-    color: #2563eb;
+    color: var(--badge-blue-text);
 }
 
 .amb-badge-green {

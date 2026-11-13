@@ -66,6 +66,7 @@
         {% if current_user %}
             <div class="sidebar-user-email" title="{{ current_user.email }}">{{ current_user.email }}</div>
         {% endif %}
+        {% include "includes/theme_toggle.html" %}
         <form method="post" action="/auth/logout" class="sidebar-logout-form">
             <button type="submit" class="sidebar-logout" title="Выйти">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>

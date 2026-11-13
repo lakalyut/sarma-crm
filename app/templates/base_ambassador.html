@@ -7,7 +7,8 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  {% include "_styles.html" %}
+  <script src="{{ asset('js/theme.js') }}"></script>
+{% include "_styles.html" %}
   <style>
     .amb-web-header {
       display: flex;
@@ -88,6 +89,7 @@
       <a href="/ambassador/visit" class="{% if request.url.path == '/ambassador/visit' %}active{% endif %}">Визит</a>
       <a href="/analytics/clients" class="{% if request.url.path.startswith('/analytics/client') %}active{% endif %}">Клиенты</a>
       <a href="/ambassador/leaderboard" class="{% if request.url.path == '/ambassador/leaderboard' %}active{% endif %}">Лидерборд</a>
+      {% include "includes/theme_toggle.html" %}
       <form method="post" action="/auth/logout" style="display:inline;">
         <button type="submit" class="amb-web-logout">Выйти</button>
       </form>

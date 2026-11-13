@@ -25,6 +25,10 @@
         --chart-extra: #836180;
         --chart-neutral: #667085;
 
+        --badge-blue-text: #2563eb;
+        --icon-bg: #ece9fe;
+        --icon-hover-bg: #ddd6fe;
+        --chart-tooltip-bg: var(--text-strong);
         --badge-blue-bg: #e8f3ff;
         --badge-green-bg: #e8ffe8;
 
@@ -66,3 +70,57 @@
         --shadow-soft: 0 0 0 1px rgba(23, 23, 23, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
     }
 
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg-page: #141518;
+    --surface: #1c1d21;
+    --surface-alt: #25262b;
+    --border: #35363d;
+    --text-main: #f4f4f5;
+    --text-strong: #fafafa;
+    --text-muted: #a1a1aa;
+    --primary-text: #b4aaff;
+    --focus-ring: var(--primary-text);
+    --input-border: #6d6e7b;
+    --primary-tint: #30294d;
+    --primary-tint-border: #504677;
+    --chart-qty: #7dd3fc;
+    --chart-sku: #fdba74;
+    --chart-clients: #86efac;
+    --chart-extra: #f0abfc;
+    --chart-neutral: #cbd5e1;
+    --abc-a-bg: #203c2d;
+    --abc-a-text: #86efac;
+    --abc-b-bg: #413419;
+    --abc-b-text: #fcd34d;
+    --abc-c-bg: #303641;
+    --abc-c-text: #cbd5e1;
+    --badge-blue-bg: #21364e;
+    --badge-blue-text: #93c5fd;
+    --badge-green-bg: var(--abc-a-bg);
+    --success: var(--abc-a-text);
+    --success-bg: var(--abc-a-bg);
+    --success-border: #527e62;
+    --danger: #fda4af;
+    --danger-bg: #462832;
+    --danger-border: #a45c6c;
+    --status-new-row-bg: #202e27;
+    --status-new-row-bg-hover: #243b2d;
+    --status-new-badge-bg: var(--abc-a-bg);
+    --status-new-text: var(--abc-a-text);
+    --status-lost-row-bg: #332329;
+    --status-lost-badge-bg: var(--danger-bg);
+    --status-lost-text: var(--danger);
+    --status-unstable-row-bg: #30291c;
+    --status-unstable-badge-bg: var(--abc-b-bg);
+    --status-unstable-text: var(--abc-b-text);
+    --status-existing-badge-bg: var(--abc-c-bg);
+    --status-existing-text: var(--abc-c-text);
+    --status-assortment-new-badge-bg: var(--primary-tint);
+    --status-assortment-new-text: var(--primary-text);
+    --icon-bg: var(--primary-tint);
+    --icon-hover-bg: var(--primary-tint-border);
+    --chart-tooltip-bg: #101115;
+    --shadow-soft: 0 0 0 1px #35363d, 0 3px 10px #0005;
+}

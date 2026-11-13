@@ -168,7 +168,7 @@
 
 .sidebar-nav-link.active .sidebar-nav-badge {
         background: #ffffff;
-        color: var(--primary-text);
+        color: #5141c5;
     }
 
 html.sidebar-collapsed .sidebar-nav-badge {
@@ -250,3 +250,23 @@ html.sidebar-collapsed .sidebar-nav-link,
 html.sidebar-collapsed .sidebar-logout {
         justify-content: center;
     }
+
+button.theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.sidebar .theme-toggle { width: 100%; }
+.sidebar-collapsed .sidebar .theme-toggle { justify-content: center; }
+.theme-toggle-icon { width: 18px; font-size: 18px; line-height: 1; }
+button.theme-toggle:hover,
+button.theme-toggle[aria-pressed="true"] {
+    background: var(--primary-tint);
+    color: var(--primary-text);
+}

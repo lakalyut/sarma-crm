@@ -222,8 +222,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const chart = JSON.parse(el.dataset.chart);
     const styles = getComputedStyle(document.documentElement);
     const primary = styles.getPropertyValue("--chart-weight").trim();
-    const muted = styles.getPropertyValue("--text-muted").trim();
-    const border = styles.getPropertyValue("--border").trim();
 
     new Chart(canvas, {
         type: "line",
@@ -256,8 +254,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             },
             scales: {
-                y: { grid: { color: border }, ticks: { color: muted, font: { size: 10.5 } } },
-                x: { grid: { display: false }, ticks: { color: muted, font: { size: 10.5 } } }
+                y: { ticks: { font: { size: 10.5 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 10.5 } } }
             }
         }
     });

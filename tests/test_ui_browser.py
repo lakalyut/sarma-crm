@@ -103,6 +103,32 @@ def page(browser, admin_client, db_session):
     assert not errors, errors
 
 
+def test_dark_theme_persists_between_reports(page):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    toggle = page.get_by_role("button", name="Тёмная тема")
+    toggle.click()
+    assert toggle.get_attribute("aria-pressed") == "true"
+    assert (
+        page.locator("#clients-table tbody td").first.evaluate(
+            "cell => getComputedStyle(cell).backgroundColor"
+        )
+        == "rgb(28, 29, 33)"
+    )
+
+    page.goto("https://pulse-ui.test/?year=2026", wait_until="networkidle")
+    assert toggle.get_attribute("aria-pressed") == "true"
+    assert (
+        page.locator(".home-bento-trend").evaluate(
+            "card => getComputedStyle(card).backgroundColor"
+        )
+        == "rgb(28, 29, 33)"
+    )
+
+    toggle.click()
+    page.reload(wait_until="networkidle")
+    assert toggle.get_attribute("aria-pressed") == "false"
+
+
 def test_report_help_opens_without_sorting_and_dismisses(page):
     delta = page.locator('th[data-sort="delta"]')
     trigger = delta.get_by_role("button", name="Как считается Δ периода")
