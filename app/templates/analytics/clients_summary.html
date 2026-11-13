@@ -303,16 +303,23 @@
                             <th data-sort="sku" class="sortable">
                                 SKU <span class="sort-icon">↕</span>
                             </th>
-                            <th>Динамика <span class="metric-label" id="dynamics-metric-label">(Кол-во)</span></th>
+                            <th>
+                                <div class="metric-heading">
+                                    <span>Динамика</span>
+                                    <span class="metric-label" id="dynamics-metric-label">(Кол-во)</span>
+                                </div>
+                            </th>
                             <th data-sort="delta" class="sortable">
                                 <div class="delta-heading">
-                                    <span>Δ период <span class="sort-icon">↕</span></span>
+                                    <div class="metric-heading">
+                                        <span>Δ период <span class="sort-icon">↕</span></span>
+                                        <span class="metric-label" id="delta-metric-label">(Кол-во)</span>
+                                    </div>
                                     {% call help('clients-delta-help', 'Как считается Δ периода') %}
-                                    <p>Сравниваем последний месяц с данными со средним за предыдущие месяцы выбранного периода. Например, 120 кг при среднем 100 кг дают +20%.</p>
-                                    <p>«Новое» означает рост с нуля. «—» означает, что данных для сравнения недостаточно. Месяцы без данных пропускаются.</p>
+                                        <p>Сравниваем последний месяц с данными со средним за предыдущие месяцы выбранного периода. Например, 120 кг при среднем 100 кг дают +20%.</p>
+                                        <p>«Новое» означает рост с нуля. «—» означает, что данных для сравнения недостаточно. Месяцы без данных пропускаются.</p>
                                     {% endcall %}
                                 </div>
-                                <span class="metric-label" id="delta-metric-label">(Кол-во)</span>
                             </th>
                             <th>Подробности</th>
                         </tr>

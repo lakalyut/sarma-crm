@@ -103,7 +103,7 @@
     html.sidebar-collapsed .sidebar-brand-title,
     html.sidebar-collapsed .sidebar-nav-label,
     html.sidebar-collapsed .sidebar-nav-text,
-    html.sidebar-collapsed .sidebar-user-email {
+    html.sidebar-collapsed .sidebar-user-name {
         display: revert;
     }
 

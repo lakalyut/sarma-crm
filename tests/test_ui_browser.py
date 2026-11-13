@@ -103,11 +103,19 @@ def page(browser, admin_client, db_session):
     assert not errors, errors
 
 
-def test_dark_theme_persists_between_reports(page):
+def test_dark_theme_persists_between_reports(page, admin_user, db_session):
+    from playwright.sync_api import expect
+
+    expect(page.locator(".sidebar-user-name")).to_have_text("Профиль")
+    admin_user.first_name = "Анна"
+    admin_user.last_name = "Смирнова"
+    db_session.commit()
+    page.reload(wait_until="networkidle")
     page.set_viewport_size({"width": 1440, "height": 900})
+    expect(page.locator(".sidebar-user-name")).to_have_text("Анна Смирнова")
     toggle = page.get_by_role("button", name="Тёмная тема")
     toggle.click()
-    assert toggle.get_attribute("aria-pressed") == "true"
+    expect(toggle).to_have_attribute("aria-pressed", "true")
     assert (
         page.locator("#clients-table tbody td").first.evaluate(
             "cell => getComputedStyle(cell).backgroundColor"
@@ -125,11 +133,17 @@ def test_dark_theme_persists_between_reports(page):
     )
 
     toggle.click()
+    expect(toggle).to_have_attribute("aria-pressed", "false")
     page.reload(wait_until="networkidle")
     assert toggle.get_attribute("aria-pressed") == "false"
 
 
 def test_report_help_opens_without_sorting_and_dismisses(page):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    dynamics = page.locator("#dynamics-metric-label").bounding_box()
+    delta_label = page.locator("#delta-metric-label").bounding_box()
+    assert delta_label["y"] == pytest.approx(dynamics["y"], abs=1)
+    page.set_viewport_size({"width": 390, "height": 844})
     delta = page.locator('th[data-sort="delta"]')
     trigger = delta.get_by_role("button", name="Как считается Δ периода")
     panel = page.locator("#clients-delta-help")
