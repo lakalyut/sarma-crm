@@ -337,3 +337,18 @@ table.home-status-table tbody th {
     .home-bento .home-card { padding: 14px; }
     .home-bento .home-kpi .metric-delta { overflow-wrap: anywhere; }
 }
+
+.home-point-type-row { position: relative; }
+.home-point-type-row a::after { content: ""; position: absolute; inset: 0; }
+.home-point-type-row:focus-within td { background: var(--primary-tint); }
+
+table.sheet-table.point-type-clients-table { min-width: 0; }
+.point-type-clients-table td { overflow-wrap: anywhere; }
+.point-type-clients-table .num { width: 25%; text-align: right; }
+.point-client-mobile-location { display: none; }
+
+@media (max-width: 600px) {
+    .point-type-clients-table .point-client-location { display: none; }
+    .point-client-mobile-location { display: block; }
+    .point-type-clients-table .num { width: 34%; }
+}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Клиенты · {{ point_type_label }}</h1>
+<div class="section-stack">
+    <div class="filters-actions">
+        <a class="btn btn-secondary" href="/?year={{ filters.year }}#home-point-types">На главную</a>
+    </div>
+    <form method="get" class="filters-card admin-history-filter">
+        <input type="hidden" name="year" value="{{ filters.year }}">
+        <input type="hidden" name="point_type" value="{{ filters.point_type }}">
+        <div class="field filter-field">
+            <label for="point-clients-city">Город</label>
+            <select id="point-clients-city" name="city" class="js-custom-select" data-searchable>
+                <option value="">Все города</option>
+                {% for city in cities %}
+                    <option value="{{ city }}"{% if city == filters.city %} selected{% endif %}>{{ city }}</option>
+                {% endfor %}
+                {% if filters.city and filters.city not in cities %}
+                    <option value="{{ filters.city }}" selected>{{ filters.city }}</option>
+                {% endif %}
+            </select>
+        </div>
+        <div class="field filter-field">
+            <label for="point-clients-search">Поиск клиента</label>
+            <input type="search" id="point-clients-search" name="search" value="{{ filters.search }}">
+        </div>
+        <div class="filters-actions">
+            <button type="submit" class="btn-primary">Показать</button>
+        </div>
+    </form>
+
+    <p class="page-subtitle">{{ filters.year }} год · Клиентов <strong>{{ client_count|format_ru_number }}</strong> · Вес <strong>{{ total_weight|format_ru_number(2) }} кг</strong></p>
+    {% if rows %}
+        <div class="sheet-wrapper">
+            <div class="sheet-scroller">
+                <table class="sheet-table point-type-clients-table">
+                    <thead>
+                        <tr><th scope="col">Клиент</th><th scope="col" class="point-client-location">Город</th><th scope="col" class="point-client-location">Регион</th><th scope="col" class="num">Вес, кг</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <td>
+                                    {{ row.client }}
+                                    <small class="muted point-client-mobile-location">{{ row.city or 'Без города' }}{% if row.region %} · {{ row.region }}{% endif %}</small>
+                                </td>
+                                <td class="point-client-location">{{ row.city or '—' }}</td>
+                                <td class="point-client-location">{{ row.region or '—' }}</td>
+                                <td class="num">{{ row.weight|format_ru_number(2) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pages > 1 %}
+            <nav class="filters-actions" aria-label="Страницы клиентов">
+                {% if page > 1 %}<a class="btn btn-secondary" href="?{{ filters|urlencode }}&amp;page={{ page - 1 }}">Назад</a>{% endif %}
+                <span>{{ page }} из {{ pages }}</span>
+                {% if page < pages %}<a class="btn btn-secondary" href="?{{ filters|urlencode }}&amp;page={{ page + 1 }}">Далее</a>{% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="message">По выбранным фильтрам клиентов не найдено.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_302_FOUND, HTTP_404_NOT_FOUND
@@ -10,6 +10,7 @@ from ..render import render
 from ..services.home_service import (
     get_city_flavor_ranking,
     get_home_overview,
+    get_point_type_clients,
     get_product_abc_by_city,
 )
 from ..templating import templates
@@ -54,6 +55,36 @@ def home_page(
                 ),
             },
             **overview,
+        },
+    )
+
+
+@router.get("/analytics/point-type-clients")
+def point_type_clients(
+    request: Request,
+    year: int,
+    point_type: str = "",
+    city: str = "",
+    search: str = "",
+    page: int = Query(1, ge=1),
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_analyst),
+):
+    search = search.strip()
+    data = get_point_type_clients(db, year, point_type, city, search, page)
+    return render(
+        request,
+        "analytics/point_type_clients.html",
+        {
+            "title": "Клиенты по типу точки — Пульс",
+            "filters": {
+                "year": year,
+                "point_type": point_type,
+                "city": city,
+                "search": search,
+            },
+            "point_type_label": point_type or "Без типа",
+            **data,
         },
     )
 

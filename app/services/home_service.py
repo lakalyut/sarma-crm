@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from ..models import Product, Sale
 from ..templating import format_month
 from ..utils.dates import month_sort_key, parse_month
+from .city_regions_service import get_city_region_map
 from .client_health_service import DEFAULT_STATUS_SETTINGS, detect_client_status
 from .sale_filters import build_sale_filters
 from .sales_options_service import get_cities, get_months
@@ -92,13 +93,31 @@ def _totals(db: Session, filters: list) -> dict:
     }
 
 
-def _clients_by_type(db: Session, filters: list, total_weight: float) -> list[dict]:
+def _point_type():
     sale_type = func.trim(Sale.type)
-    point_type = case((func.lower(sale_type).in_(("", "nan")), None), else_=sale_type)
-    weight = func.coalesce(func.sum(Sale.weight), 0.0)
-    rows = (
-        db.query(point_type, func.count(func.distinct(Sale.client)), weight)
+    return case((func.lower(sale_type).in_(("", "nan")), None), else_=sale_type)
+
+
+def _client_weights_by_type(db: Session, filters: list):
+    point_type = _point_type()
+    return (
+        db.query(
+            point_type.label("point_type"),
+            Sale.city,
+            Sale.client,
+            func.coalesce(func.sum(Sale.weight), 0.0).label("weight"),
+        )
         .filter(*filters)
+        .group_by(point_type, Sale.city, Sale.client)
+    )
+
+
+def _clients_by_type(db: Session, filters: list, total_weight: float) -> list[dict]:
+    clients = _client_weights_by_type(db, filters).subquery()
+    point_type = clients.c.point_type
+    weight = func.sum(clients.c.weight)
+    rows = (
+        db.query(point_type, func.count(clients.c.client), weight)
         .group_by(point_type)
         .order_by(weight.desc(), point_type.asc())
         .all()
@@ -106,12 +125,60 @@ def _clients_by_type(db: Session, filters: list, total_weight: float) -> list[di
     return [
         {
             "point_type": name or "Без типа",
+            "type_key": name or "",
             "clients": count,
             "weight": float(group_weight),
             "share": float(group_weight) / total_weight * 100 if total_weight else None,
         }
         for name, count, group_weight in rows
     ]
+
+
+def get_point_type_clients(
+    db: Session, year: int, type_key: str, city: str, search: str, page: int
+) -> dict:
+    months = _months_for_year(get_months(db), year)
+    point_type = _point_type()
+    filters = [
+        Sale.month.in_(months),
+        point_type == type_key if type_key else point_type.is_(None),
+    ]
+    cities = sorted(
+        (name for (name,) in db.query(Sale.city).filter(*filters).distinct() if name),
+        key=str.casefold,
+    )
+    if city:
+        filters.append(Sale.city == city)
+    clients = _client_weights_by_type(db, filters).subquery()
+    results = db.query(clients).order_by(
+        clients.c.weight.desc(), clients.c.city, clients.c.client
+    )
+    query = search.casefold()
+    rows = [
+        row for row in results if not query or query in (row.client or "").casefold()
+    ]
+    page_size = 50
+    pages = max(1, (len(rows) + page_size - 1) // page_size)
+    page = min(page, pages)
+    regions = get_city_region_map(db)
+    return {
+        "cities": cities,
+        "client_count": sum(row.client is not None for row in rows),
+        "total_weight": sum(row.weight for row in rows),
+        "page": page,
+        "pages": pages,
+        "rows": [
+            {
+                "client": row.client or "Без клиента",
+                "city": row.city,
+                "region": (
+                    regions[row.city].region.name if row.city in regions else None
+                ),
+                "weight": row.weight,
+            }
+            for row in rows[(page - 1) * page_size : page * page_size]
+        ],
+    }
 
 
 def _avg_flavors_per_client(db: Session, filters: list, clients_count: int) -> float:

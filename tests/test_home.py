@@ -450,9 +450,27 @@ def test_home_clients_by_type_deduplicates_clients_and_uses_year_weight(
     overview = get_home_overview(db_session, year=2026)
     assert overview["metrics"]["clients"] == 3
     assert overview["clients_by_type"] == [
-        {"point_type": "HoReCa", "clients": 1, "weight": 50, "share": 50},
-        {"point_type": "Retail", "clients": 2, "weight": 40, "share": 40},
-        {"point_type": "Без типа", "clients": 1, "weight": 10, "share": 10},
+        {
+            "point_type": "HoReCa",
+            "type_key": "HoReCa",
+            "clients": 1,
+            "weight": 50,
+            "share": 50,
+        },
+        {
+            "point_type": "Retail",
+            "type_key": "Retail",
+            "clients": 2,
+            "weight": 40,
+            "share": 40,
+        },
+        {
+            "point_type": "Без типа",
+            "type_key": "",
+            "clients": 1,
+            "weight": 10,
+            "share": 10,
+        },
     ]
 
     response = admin_client.get("/?year=2026")
@@ -514,3 +532,43 @@ def test_city_flavor_abc_ranks_selected_city_and_line(admin_client, db_session):
     )
     assert response.status_code == 200
     assert "ABC по городу" in response.text and "ABC по линейке" in response.text
+
+
+def test_point_type_drilldown_matches_home_and_filters_by_city(
+    admin_client, db_session
+):
+    from app.models import CityRegion, Region
+    from app.services.home_service import get_home_overview, get_point_type_clients
+
+    region = Region(name="Сибирь")
+    db_session.add(region)
+    db_session.flush()
+    db_session.add(CityRegion(city="Иркутск", region_id=region.id))
+    _sale(db_session, "Иркутск", "2026-01-01", 20, client="Маяк")
+    _sale(db_session, "Иркутск", "Февраль 2026", 10, client="Маяк")
+    _sale(db_session, "Москва", "2026-02-01", 40, client="Маяк")
+    _sale(db_session, "Москва", "2026-02-01", 100, sale_type="Retail")
+    _sale(db_session, "Иркутск", "2025-02-01", 100)
+    card = next(
+        row
+        for row in get_home_overview(db_session, 2026)["clients_by_type"]
+        if row["type_key"] == "HoReCa"
+    )
+    detail = get_point_type_clients(db_session, 2026, "HoReCa", "", "", 1)
+    assert card["clients"] == detail["client_count"] == 2
+    assert card["weight"] == detail["total_weight"] == 70
+    assert [row["city"] for row in detail["rows"]] == ["Москва", "Иркутск"]
+
+    response = admin_client.get(
+        "/analytics/point-type-clients",
+        params={
+            "year": 2026,
+            "point_type": "HoReCa",
+            "city": "Иркутск",
+            "search": "маяк",
+        },
+    )
+    assert response.status_code == 200
+    assert "Сибирь" in response.text
+    assert "30,00 кг" in response.text
+    assert "70,00 кг" not in response.text

@@ -149,7 +149,7 @@
 </section>
 
 <div class="home-bento-clients">
-<details class="home-card home-disclosure">
+<details class="home-card home-disclosure" id="home-point-types">
     <summary class="home-card-title">Клиенты по типам точек</summary>
     <table class="sheet-table home-point-types-table">
         <thead>
@@ -162,8 +162,12 @@
         </thead>
         <tbody>
             {% for row in clients_by_type %}
-                <tr>
-                    <td>{{ row.point_type }}</td>
+                <tr class="home-point-type-row">
+                    <td>
+                        <a href="/analytics/point-type-clients?{{ {'year': year, 'point_type': row.type_key}|urlencode }}">
+                            {{ row.point_type }} <span aria-hidden="true">↗</span>
+                        </a>
+                    </td>
                     <td class="num">{{ row.clients|format_ru_number }}</td>
                     <td class="num">{{ row.weight|format_ru_number(2) }}</td>
                     <td class="num">{{ (row.share|format_ru_number(1) ~ ' %') if row.share is not none else '—' }}</td>
@@ -171,7 +175,7 @@
             {% endfor %}
         </tbody>
     </table>
-    <p class="home-point-types-note">Клиент учитывается один раз в каждом типе, где были его продажи.</p>
+    <p class="home-point-types-note">Клиент учитывается один раз на город внутри каждого типа точки.</p>
 </details>
 
 {% if client_statuses %}
@@ -184,6 +188,9 @@
 <script src="{{ asset('js/home_flavor_ranking.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    if (location.hash === "#home-point-types") {
+        document.getElementById("home-point-types").open = true;
+    }
     initExpandableList(
         document.getElementById("home-cities-list"),
         document.getElementById("home-cities-more"),
