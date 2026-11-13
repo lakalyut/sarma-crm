@@ -1176,3 +1176,31 @@ def test_custom_select_opens_above_near_viewport_edge(page):
     control.press("End")
     page.get_by_role("option", name="Город 30", exact=True).click()
     assert control.inner_text() == "Город 30"
+
+
+def test_region_select_all_submits_only_admin_regions(page, db_session):
+    from app.models import CityRegion, Region
+
+    ural = Region(name="Урал")
+    moscow = Region(name="Москва")
+    db_session.add_all([ural, moscow])
+    db_session.flush()
+    db_session.add_all(
+        [
+            CityRegion(city="Иркутск", region_id=ural.id),
+            CityRegion(city="Москва", region_id=moscow.id),
+        ]
+    )
+    db_session.commit()
+
+    page.goto("https://pulse-ui.test/analytics/regions?cities=Москва")
+    page.locator("#regions-city-search").click()
+    select_all = page.get_by_role("checkbox", name="Выбрать все регионы")
+    select_all.check()
+    assert not select_all.is_visible()
+    assert not page.locator('#regions-cities-tags input[name="cities"]').count()
+    assert page.locator('#regions-cities-tags input[name="regions"]').count() == 2
+    page.get_by_role("button", name="Показать", exact=True).click()
+    params = parse_qs(urlsplit(page.url).query)
+    assert "cities" not in params
+    assert set(params["regions"]) == {"Урал", "Москва"}
