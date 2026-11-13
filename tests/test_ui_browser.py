@@ -232,10 +232,17 @@ def test_client_segments_switches_xyz_mode_with_filters(page, db_session):
     volume_class = row.locator("td").nth(1).inner_text()
     assert volume_class.endswith("Z")
     page.get_by_role("button", name="Месяцы", exact=True).click()
-    for month in ("04", "07", "09"):
-        page.locator(
-            f'#segments-months label:has(input[value="2026-{month}-01"])'
-        ).click()
+    selected_months = {"2026-04-01", "2026-07-01", "2026-09-01"}
+    month_inputs = page.locator('#segments-months input[name="months"]')
+    assert set(
+        month_inputs.evaluate_all(
+            "(inputs) => inputs.filter(input => input.checked).map(input => input.value)"
+        )
+    ) == {f"2026-{month:02}-01" for month in range(4, 10)}
+    for month_input in month_inputs.all():
+        value = month_input.get_attribute("value")
+        if month_input.is_checked() != (value in selected_months):
+            page.locator(f'#segments-months label:has(input[value="{value}"])').click()
     page.keyboard.press("Escape")
     page.get_by_role("button", name="Наличие закупок", exact=True).click()
     page.wait_for_url(
@@ -244,7 +251,7 @@ def test_client_segments_switches_xyz_mode_with_filters(page, db_session):
     )
     query = parse_qs(urlsplit(page.url).query)
     assert query["sale_type"] == ["Кальянная"]
-    assert set(query["months"]) == {"2026-04-01", "2026-07-01", "2026-09-01"}
+    assert set(query["months"]) == selected_months
     assert "complete" not in query
     row = page.locator("tr[data-client]").filter(has_text=name)
     assert row.locator("td").nth(1).inner_text() == volume_class[0] + "X"
