@@ -1,4 +1,4 @@
-<nav class="segment-tabs" aria-label="Анализ клиентов">
-    <a class="btn btn-secondary" href="/analytics/clients?{{ {'city': selected_city or ''}|urlencode }}" {% if request.url.path == '/analytics/clients' %}aria-current="page"{% endif %}>Обзор клиентов</a>
-    <a class="btn btn-secondary" href="/analytics/clients/abc-xyz?{{ {'city': selected_city or ''}|urlencode }}" {% if request.url.path == '/analytics/clients/abc-xyz' %}aria-current="page"{% endif %}>ABC / XYZ</a>
+<nav class="chart-tabs page-tabs" aria-label="Анализ клиентов">
+    <a class="chart-tab" href="/analytics/clients?{{ {'city': selected_city or ''}|urlencode }}" {% if request.url.path == '/analytics/clients' %}aria-current="page"{% endif %}>Обзор клиентов</a>
+    <a class="chart-tab" href="/analytics/clients/abc-xyz?{{ {'city': selected_city or ''}|urlencode }}" {% if request.url.path == '/analytics/clients/abc-xyz' %}aria-current="page"{% endif %}>ABC / XYZ</a>
 </nav>

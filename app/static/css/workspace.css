@@ -80,9 +80,9 @@ table.sheet-table td.table-number, table.sheet-table .ca-cell-total { text-align
 #regions-table th:nth-child(n+2), #regions-table td:nth-child(n+2),
 table.sheet-table .ca-cell { text-align: right; font-variant-numeric: tabular-nums; }
 .chart-tab, .table-view-tab { border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
-.chart-tab.active, .table-view-tab.active { background: var(--primary-tint); color: var(--primary-text); border-color: var(--primary-tint-border); }
+.chart-tab:is(.active, [aria-current="page"]), .table-view-tab.active { background: var(--primary-tint); color: var(--primary-text); border-color: var(--primary-tint-border); }
 .chart-tab:hover, .table-view-tab:hover { background: var(--surface-alt); }
-.chart-tab.active:hover, .table-view-tab.active:hover { background: var(--primary-tint); }
+.chart-tab:is(.active, [aria-current="page"]):hover, .table-view-tab.active:hover { background: var(--primary-tint); }
 .amb-status-filter-btn.active { background: var(--primary-tint); color: var(--primary-text); border-color: var(--primary-tint-border); }
 .sidebar-nav-link.active { background: var(--primary-tint); color: var(--primary-text); }
 .sidebar-nav-link.active .sidebar-nav-badge { background: var(--surface); color: var(--primary-text); }
@@ -119,4 +119,14 @@ table.sheet-table .ca-cell { text-align: right; font-variant-numeric: tabular-nu
     .metric-delta-row { display: block; margin-top: 4px; }
     .metric-delta, .metric-delta-label { white-space: normal; overflow-wrap: anywhere; }
     .metrics-cards .metric-card { padding: 0 12px; }
+}
+
+.page-tabs {
+    margin-block: 16px 20px;
+}
+
+.page-tabs .chart-tab {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
 }
