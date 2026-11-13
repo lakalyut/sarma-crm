@@ -1,0 +1,56 @@
+button.help-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--primary-text);
+    font-size: 13px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+button.help-icon {
+    width: 28px;
+    flex: 0 0 28px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+button.help-trigger:hover,
+button.help-trigger:focus-visible {
+    background: var(--primary-tint);
+    color: var(--primary-text);
+}
+
+.help-popover {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    box-sizing: border-box;
+    width: min(340px, calc(100vw - 24px));
+    padding: 14px 16px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text-main);
+    box-shadow: var(--shadow-soft);
+    font: 400 13px/1.5 Inter, sans-serif;
+    text-align: start;
+    white-space: normal;
+}
+
+.help-popover p { margin: 0; }
+.help-popover p + p { margin-top: 10px; }
+
+.help-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.help-heading > h2 { margin: 0; }

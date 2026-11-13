@@ -6,15 +6,20 @@
     {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
     <p class="page-subtitle">{{ description|default("Параметры применяются ко всем городам. Отчёты с собственными полями статусов позволяют задать значения для текущего расчёта.") }}</p>
     {% for title, fields in groups.items() %}
-        <fieldset class="filters-card admin-history-filter">
-            <legend>{{ title }}</legend>
-            {% for key, label in fields.items() %}
-                <div class="field filter-field">
-                    <label for="{{ key }}">{{ label }}</label>
-                    <input type="number" id="{{ key }}" name="{{ key }}" value="{{ values[key] }}" step="1" required>
-                </div>
-            {% endfor %}
-        </fieldset>
+        <section class="filters-card section-stack settings-group" aria-labelledby="settings-group-{{ loop.index }}">
+            <h2 id="settings-group-{{ loop.index }}">{{ title }}</h2>
+            {% if group_notes is defined and title in group_notes %}
+                <p class="page-subtitle">{{ group_notes[title] }}</p>
+            {% endif %}
+            <div class="settings-fields">
+                {% for key, label in fields.items() %}
+                    <div class="field filter-field">
+                        <label for="{{ key }}">{{ label }}</label>
+                        <input type="number" id="{{ key }}" name="{{ key }}" value="{{ values[key] }}" step="1" required>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
     {% endfor %}
     <div class="filters-actions">
         <button type="submit" class="btn-primary">Сохранить параметры</button>

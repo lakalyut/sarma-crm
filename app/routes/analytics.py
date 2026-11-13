@@ -23,6 +23,7 @@ from ..services.ambassadors_service import (
 )
 from ..services.analytics_settings_service import (
     get_analytics_settings,
+    get_sku_status_settings,
     status_history_length,
 )
 from ..services.charts_service import get_charts_metrics_data
@@ -469,7 +470,7 @@ def analytics_client_detail(
         )
         rating_by_product = abc_overview["rating_by_product"]
 
-    defaults = get_analytics_settings(db)
+    defaults = get_sku_status_settings(db)
     status_settings = {
         "new_client_months": get_int_param(
             request, "new_client_months", defaults["new_client_months"]

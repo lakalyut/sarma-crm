@@ -183,5 +183,12 @@
         {% endfor %}
     </div>
 {% else %}
-    <div class="message">Выбери регион, клиентов и месяцы для формирования отчета.</div>
+    {% if not selected_city %}
+        {% set empty_state = {"title": "Выберите регион", "hint": "Затем выберите клиентов для отчёта."} %}
+    {% elif not selected_clients %}
+        {% set empty_state = {"title": "Выберите клиентов", "hint": "Нажмите «Показать», чтобы сформировать отчёт."} %}
+    {% else %}
+        {% set empty_state = {"title": "Нет данных для отчёта", "hint": "Попробуйте выбрать другие месяцы или клиентов."} %}
+    {% endif %}
+    {% include "includes/empty_state.html" %}
 {% endif %}

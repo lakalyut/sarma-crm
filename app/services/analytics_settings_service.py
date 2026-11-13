@@ -6,8 +6,11 @@ STATUS_DEFAULTS = {
     "unstable_gap_months": 1,
 }
 
+SKU_STATUS_DEFAULTS = {f"sku_{key}": value for key, value in STATUS_DEFAULTS.items()}
+
 DEFAULTS = {
     **STATUS_DEFAULTS,
+    **SKU_STATUS_DEFAULTS,
     "status_window_months": 3,
     "client_segments_months": 6,
     "client_abc_a": 80,
@@ -23,7 +26,14 @@ DEFAULTS = {
 
 def get_analytics_settings(db):
     row = db.get(AnalyticsSettings, 1)
-    return DEFAULTS | (row.values if row else {})
+    saved = row.values if row else {}
+    inherited = {f"sku_{key}": saved[key] for key in STATUS_DEFAULTS if key in saved}
+    return DEFAULTS | inherited | saved
+
+
+def get_sku_status_settings(db):
+    settings = get_analytics_settings(db)
+    return {key: settings[f"sku_{key}"] for key in STATUS_DEFAULTS}
 
 
 def status_history_length(settings):

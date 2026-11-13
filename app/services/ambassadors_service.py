@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Sale
 from ..utils.dates import month_sort_key
-from .analytics_settings_service import get_analytics_settings
+from .analytics_settings_service import get_sku_status_settings
 from .charts_service import sku_expr
 
 
@@ -127,7 +127,7 @@ def build_client_sku_status(
     selected_months: list[str],
     status_settings: dict | None = None,
 ) -> dict:
-    status_settings = status_settings or get_analytics_settings(db)
+    status_settings = status_settings or get_sku_status_settings(db)
 
     empty: dict = {
         "months": selected_months,
@@ -216,7 +216,7 @@ def build_ambassadors_report(
     selected_new_skus = selected_new_skus or []
     selected_new_skus_set = set(selected_new_skus)
 
-    status_settings = status_settings or get_analytics_settings(db)
+    status_settings = status_settings or get_sku_status_settings(db)
 
     if not selected_city or not selected_months or not selected_clients:
         return report

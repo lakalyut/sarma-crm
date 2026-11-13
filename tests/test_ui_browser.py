@@ -103,6 +103,34 @@ def page(browser, admin_client, db_session):
     assert not errors, errors
 
 
+def test_report_help_opens_without_sorting_and_dismisses(page):
+    delta = page.locator('th[data-sort="delta"]')
+    trigger = delta.get_by_role("button", name="Как считается Δ периода")
+    panel = page.locator("#clients-delta-help")
+    sort_before = delta.get_attribute("aria-sort")
+    trigger.press("Enter")
+    panel.wait_for(state="visible")
+    assert "+20%" in panel.inner_text()
+    assert delta.get_attribute("aria-sort") == sort_before
+    page.keyboard.press("Escape")
+    panel.wait_for(state="hidden")
+    assert trigger.evaluate("element => element === document.activeElement")
+
+    page.goto("https://pulse-ui.test/?year=2026", wait_until="networkidle")
+    for label, panel_id in [
+        ("Как считается ABC городов", "home-city-help"),
+        ("Как считается ABC вкусов", "home-flavor-help"),
+    ]:
+        page.get_by_role("button", name=label).tap()
+        panel = page.locator(f"#{panel_id}")
+        panel.wait_for(state="visible")
+        assert panel.evaluate(
+            "element => element.getBoundingClientRect().right <= innerWidth"
+        )
+        page.keyboard.press("Escape")
+        panel.wait_for(state="hidden")
+
+
 def test_custom_select_keyboard_sync_and_dynamic_options(page):
     page.locator(".clients-filter-panel > summary").click()
     display = page.locator("#field-matched + .custom-select-display")

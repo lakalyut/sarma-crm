@@ -1,0 +1,7 @@
+{% macro help(id, label, trigger='?') %}
+    <button type="button" class="help-trigger{% if trigger == '?' %} help-icon{% endif %}"
+            popovertarget="{{ id }}" aria-label="{{ label }}">{{ trigger }}</button>
+    <div id="{{ id }}" class="help-popover" popover tabindex="0" role="region" aria-label="{{ label }}">
+        {{ caller() }}
+    </div>
+{% endmacro %}

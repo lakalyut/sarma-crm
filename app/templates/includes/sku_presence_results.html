@@ -1,8 +1,10 @@
 {% set sp_months_qs %}{% for m in selected_months %}&months={{ m }}{% endfor %}{% endset %}
 {% if not selected_city %}
-    <div class="message">Выбери регион, период и SKU — здесь появится список клиентов с продажами за период.</div>
+    {% set empty_state = {"title": "Выберите регион", "hint": "Затем укажите SKU и нажмите «Показать»."} %}
+    {% include "includes/empty_state.html" %}
 {% elif not selected_skus %}
-    <div class="message">Выбери один или несколько SKU и нажми «Показать».</div>
+    {% set empty_state = {"title": "Выберите SKU", "hint": "Нажмите «Показать», чтобы увидеть закупки по выбранным позициям."} %}
+    {% include "includes/empty_state.html" %}
 {% elif not sku_presence.rows %}
     {% if selected_count_from is not none or selected_count_to is not none %}
         <div class="message">Нет клиентов, у которых число заказанных SKU из выбранных попадает в указанный диапазон.</div>

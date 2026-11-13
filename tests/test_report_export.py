@@ -93,7 +93,7 @@ def test_ambassadors_download_without_results_falls_back_to_page(
     )
     assert resp.status_code == 200
     assert "content-disposition" not in resp.headers
-    assert "Выбери регион, клиентов и месяцы" in resp.text
+    assert "Выберите клиентов" in resp.text
 
 
 def test_sku_presence_page_has_download_link(admin_client, db_session):

@@ -1,6 +1,7 @@
 {% extends base_template|default('base.html') %}
 {% from "includes/month_year_picker.html" import month_year_grid %}
 {% block body_class %}clients-page{% endblock %}
+{% from "includes/help.html" import help %}
 {% block content %}
 <div class="clients-page-heading">
     <h1>Клиенты</h1>
@@ -225,13 +226,11 @@
             {% for t in all_types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
         </select>
     </div>
-    <details class="clients-help">
-        <summary>Как читать динамику и Δ период</summary>
-        <p>Нажмите заголовок «Количество», «Вес» или «SKU», чтобы выбрать показатель динамики и отсортировать список. Повторный клик меняет направление сортировки, третий — сбрасывает её.
-        Динамика показывает выбранный показатель по месяцам с данными.
-        Δ период сравнивает последний месяц с данными со средним за предыдущие месяцы в выбранном периоде.
-        «Новое» означает рост с нуля; «—» — данных для сравнения недостаточно. Месяцы без данных не считаются нулевыми.</p>
-    </details>
+    <div class="clients-help">
+        {% call help('clients-dynamics-help', 'Как читать динамику', 'О динамике') %}
+            <p>График показывает показатель по месяцам с данными. Нажмите «Количество», «Вес» или «SKU» в таблице, чтобы переключить показатель. Повторное нажатие меняет направление сортировки, третье сбрасывает её.</p>
+        {% endcall %}
+    </div>
     <p class="context-note" id="clients-search-empty" hidden role="status">Нет клиентов, соответствующих поиску и типу точки.</p>
 
     {% if not ambassador_mode %}
@@ -307,6 +306,10 @@
                             <th>Динамика <span class="metric-label" id="dynamics-metric-label">(Кол-во)</span></th>
                             <th data-sort="delta" class="sortable">
                                 Δ период <span class="sort-icon">↕</span> <span class="metric-label" id="delta-metric-label">(Кол-во)</span>
+                                {% call help('clients-delta-help', 'Как считается Δ периода') %}
+                                    <p>Сравниваем последний месяц с данными со средним за предыдущие месяцы выбранного периода. Например, 120 кг при среднем 100 кг дают +20%.</p>
+                                    <p>«Новое» означает рост с нуля. «—» означает, что данных для сравнения недостаточно. Месяцы без данных пропускаются.</p>
+                                {% endcall %}
                             </th>
                             <th>Подробности</th>
                         </tr>
@@ -632,7 +635,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     headers.forEach(th => {
         if (th.dataset.sort) {
-            th.addEventListener("click", function () {
+            th.addEventListener("click", function (event) {
+                if (event.target.closest(".help-trigger, .help-popover")) return;
                 const field = th.dataset.sort;
                 if (field in METRIC_FIELD && activeMetric !== field) {
                     activeMetric = field;

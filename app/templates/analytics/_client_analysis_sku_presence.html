@@ -75,7 +75,8 @@
                 <button type="button" class="amb-status-filter-btn" data-status="C">C</button>
                 <button type="button" class="amb-status-filter-btn" data-status="new">NEW</button>
             </div>
-            <input id="sp-sku-search" type="text" value="" placeholder="Начни вводить SKU или выбери статус выше..." autocomplete="off">
+            <input id="sp-sku-search" aria-describedby="sp-sku-hint" type="text" value="" placeholder="Начни вводить SKU или выбери статус выше..." autocomplete="off">
+            <p class="field-hint" id="sp-sku-hint">Можно выбрать несколько SKU.</p>
             <div id="sp-sku-dropdown" class="search-dropdown" style="display:none;">
                 {% for opt in sku_options %}
                     <div class="search-dropdown-item" data-value="{{ opt.sku }}" data-abc="{{ opt.abc or '' }}" data-new="{{ '1' if opt.is_new else '' }}">
@@ -98,17 +99,16 @@
         </div>
 
         <div class="field filter-field sp-qty-range">
-            <label>Заказано SKU из выбранных
-                <span class="hint-icon" title="Диапазон по числу РАЗНЫХ SKU из выбранных, которые заказал клиент (то самое число в «N из M» на карточке) — не по количеству штук">?</span>
-            </label>
+            <label>Заказано SKU из выбранных</label>
             <div class="sp-qty-range-inputs">
-                <input type="number" name="count_from" min="0" step="1" placeholder="От"
+                <input type="number" name="count_from" aria-label="Минимум разных SKU" aria-describedby="sp-count-hint" min="0" step="1" placeholder="От"
                        value="{{ selected_count_from if selected_count_from is not none else '' }}">
                 <span>—</span>
-                <input type="number" name="count_to" min="0" step="1" placeholder="До"
+                <input type="number" name="count_to" aria-label="Максимум разных SKU" aria-describedby="sp-count-hint" min="0" step="1" placeholder="До"
                        value="{{ selected_count_to if selected_count_to is not none else '' }}">
                 <button type="submit" class="btn btn-secondary">Применить</button>
             </div>
+            <p class="field-hint" id="sp-count-hint">Считаем разные позиции из выбранного списка.</p>
         </div>
 
         <div class="selected-city-text">
