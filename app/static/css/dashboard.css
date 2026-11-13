@@ -9,7 +9,7 @@
 
 @media print {
     .sidebar,
-    .mobile-topbar,
+    .app-topbar,
     .sidebar-overlay,
     .filters-card {
         display: none !important;

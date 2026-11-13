@@ -23,8 +23,22 @@
             return;
         }
 
+        const bounds = button.getBoundingClientRect();
+        const x = bounds.left + bounds.width / 2;
+        const y = bounds.top + bounds.height / 2;
+        const radius = Math.hypot(
+            Math.max(x, innerWidth - x),
+            Math.max(y, innerHeight - y)
+        );
+
         root.classList.add("theme-changing");
         const transition = document.startViewTransition(applyTheme);
+        transition.ready.then(() => {
+            root.animate(
+                { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+                { duration: 380, easing: "ease-out", pseudoElement: "::view-transition-new(root)" }
+            );
+        }, () => {});
         transition.finished.then(
             () => root.classList.remove("theme-changing"),
             () => root.classList.remove("theme-changing")

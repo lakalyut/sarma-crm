@@ -114,6 +114,9 @@ def test_dark_theme_persists_between_reports(page, admin_user, db_session):
     page.set_viewport_size({"width": 1440, "height": 900})
     expect(page.locator(".sidebar-user-name")).to_have_text("Анна Смирнова")
     toggle = page.get_by_role("button", name="Тёмная тема")
+    expect(
+        page.locator(".app-topbar").get_by_role("button", name="Тёмная тема")
+    ).to_be_visible()
     toggle.click()
     expect(toggle).to_have_attribute("aria-pressed", "true")
     assert (
@@ -132,6 +135,9 @@ def test_dark_theme_persists_between_reports(page, admin_user, db_session):
         == "rgb(28, 29, 33)"
     )
 
+    page.set_viewport_size({"width": 390, "height": 844})
+    expect(toggle).to_be_in_viewport()
+    page.emulate_media(reduced_motion="reduce")
     toggle.click()
     expect(toggle).to_have_attribute("aria-pressed", "false")
     page.reload(wait_until="networkidle")

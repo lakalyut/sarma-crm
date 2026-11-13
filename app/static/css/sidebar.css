@@ -182,13 +182,6 @@ html.sidebar-collapsed .sidebar-nav-badge {
         border-top: 1px solid var(--border);
     }
 
-.sidebar-profile {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding-inline: 4px;
-    }
-
 .sidebar-user-name {
         font-size: 12px;
         color: var(--text-muted);
@@ -226,7 +219,17 @@ html.sidebar-collapsed .sidebar-nav-badge {
         display: none;
     }
 
-.mobile-topbar {
+.app-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 8px 28px;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+}
+
+.app-topbar .sidebar-burger,
+.app-topbar .mobile-topbar-title {
         display: none;
     }
 
@@ -272,8 +275,6 @@ button.theme-toggle {
     background: transparent;
     color: var(--text-muted);
 }
-
-html.sidebar-collapsed .sidebar-profile { justify-content: center; }
 
 button.theme-toggle:hover,
 button.theme-toggle:focus-visible {
@@ -323,10 +324,14 @@ button.theme-toggle[aria-pressed="true"] { color: var(--primary-text); }
 }
 :root[data-theme="dark"] .theme-toggle-rays { opacity: 1; transform: scale(1); }
 
+:root.theme-changing::view-transition {
+    pointer-events: none;
+}
+
 :root.theme-changing::view-transition-old(root),
 :root.theme-changing::view-transition-new(root) {
-    animation-duration: 250ms;
-    pointer-events: none;
+    animation: none;
+    mix-blend-mode: normal;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -27,7 +27,7 @@
     {% include "includes/sidebar.html" %}
 
     <div class="app-main">
-        <div class="mobile-topbar">
+        <header class="app-topbar">
             <button
                 type="button"
                 class="sidebar-burger"
@@ -38,7 +38,8 @@
                 ☰
             </button>
             <span class="mobile-topbar-title">Пульс</span>
-        </div>
+            {% include "includes/theme_toggle.html" %}
+        </header>
 
         <div class="app-shell">
             <div class="card">
