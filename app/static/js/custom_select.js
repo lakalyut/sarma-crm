@@ -48,6 +48,36 @@ function initCustomSelect(select) {
     let query = "", queryTime = 0;
     const enabled = opt => !opt.disabled && !(opt.parentElement.tagName === "OPTGROUP" && opt.parentElement.disabled);
 
+    const viewport = window.visualViewport;
+    const usesPopover = typeof dropdown.showPopover === "function";
+    if (usesPopover) dropdown.popover = "manual";
+
+    function positionDropdown() {
+        if (!wrapper.classList.contains("open") || !display.getClientRects().length) return;
+        const rect = display.getBoundingClientRect();
+        const gap = 6;
+        const edge = 8;
+        const top = viewport?.offsetTop ?? 0;
+        const left = viewport?.offsetLeft ?? 0;
+        const bottom = top + (viewport?.height ?? window.innerHeight);
+        const right = left + (viewport?.width ?? window.innerWidth);
+        const below = Math.max(0, bottom - rect.bottom - gap - edge);
+        const above = Math.max(0, rect.top - top - gap - edge);
+        const desiredHeight = Math.min(260, dropdown.scrollHeight + 2);
+        const opensUp = below < desiredHeight && above > below;
+
+        dropdown.style.maxHeight = Math.min(260, opensUp ? above : below) + "px";
+        wrapper.classList.toggle("opens-up", opensUp);
+        if (usesPopover) {
+            const cssMinWidth = getComputedStyle(dropdown).minWidth;
+            const minWidth = cssMinWidth.endsWith("px") ? parseFloat(cssMinWidth) : 0;
+            const width = Math.min(Math.max(rect.width, minWidth), right - left - edge * 2);
+            dropdown.style.width = width + "px";
+            dropdown.style.left = Math.max(left + edge, Math.min(rect.left, right - edge - width)) + "px";
+            dropdown.style.top = (opensUp ? rect.top - gap - dropdown.offsetHeight : rect.bottom + gap) + "px";
+        }
+    }
+
     function filterOptions() {
         let count = 0;
         Array.from(select.options).forEach((opt, i) => {
@@ -57,6 +87,7 @@ function initCustomSelect(select) {
         });
         const empty = dropdown.querySelector(".custom-select-empty");
         if (empty) empty.hidden = count > 0;
+        positionDropdown();
     }
 
     function highlight(index) {
@@ -65,12 +96,20 @@ function initCustomSelect(select) {
         const item = dropdown.children[index];
         if (index >= 0 && item && wrapper.classList.contains("open")) {
             display.setAttribute("aria-activedescendant", item.id);
-            item.scrollIntoView({ block: "nearest" });
+            const optionRect = item.getBoundingClientRect();
+            const menuRect = dropdown.getBoundingClientRect();
+            if (optionRect.top < menuRect.top) dropdown.scrollTop -= menuRect.top - optionRect.top;
+            else if (optionRect.bottom > menuRect.bottom) dropdown.scrollTop += optionRect.bottom - menuRect.bottom;
         } else display.removeAttribute("aria-activedescendant");
     }
     function close() {
         query = "";
-        wrapper.classList.remove("open");
+        wrapper.classList.remove("open", "opens-up");
+        if (usesPopover) dropdown.hidePopover();
+        window.removeEventListener("scroll", positionDropdown, true);
+        window.removeEventListener("resize", positionDropdown);
+        viewport?.removeEventListener("resize", positionDropdown);
+        viewport?.removeEventListener("scroll", positionDropdown);
         display.setAttribute("aria-expanded", "false");
         display.removeAttribute("aria-activedescendant");
         if (searchable) {
@@ -85,6 +124,12 @@ function initCustomSelect(select) {
             if (el !== wrapper && el.closeCustomSelect) el.closeCustomSelect();
         });
         wrapper.classList.add("open");
+        if (usesPopover) dropdown.showPopover();
+        positionDropdown();
+        window.addEventListener("scroll", positionDropdown, true);
+        window.addEventListener("resize", positionDropdown);
+        viewport?.addEventListener("resize", positionDropdown);
+        viewport?.addEventListener("scroll", positionDropdown);
         display.setAttribute("aria-expanded", "true");
         highlight(select.selectedIndex);
     }

@@ -1152,3 +1152,27 @@ def test_point_type_mapping_keeps_actions_clear_of_panels(page, width):
     ).bounding_box()
     assert category["x"] + category["width"] <= table["x"] + table["width"]
     assert page.evaluate("document.documentElement.scrollWidth") <= width
+
+
+def test_custom_select_opens_above_near_viewport_edge(page):
+    page.evaluate(
+        """() => {
+        const container = document.createElement('div');
+        container.style = 'position:fixed;bottom:16px;left:20px;width:220px;height:48px;overflow:hidden';
+        const select = document.createElement('select');
+        select.setAttribute('aria-label', 'Проверка списка');
+        for (let i = 1; i <= 30; i++) select.add(new Option('Город ' + i, i));
+        container.append(select);
+        document.body.append(container);
+        initCustomSelect(select);
+    }"""
+    )
+    control = page.get_by_role("combobox", name="Проверка списка")
+    control.click()
+    menu = page.get_by_role("listbox", name="Проверка списка")
+    box = menu.bounding_box()
+    assert box["y"] >= 0
+    assert box["y"] + box["height"] < control.bounding_box()["y"]
+    control.press("End")
+    page.get_by_role("option", name="Город 30", exact=True).click()
+    assert control.inner_text() == "Город 30"
