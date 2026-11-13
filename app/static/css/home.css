@@ -1,9 +1,3 @@
-/* 3 карточки, не 4 (глобальный .metrics-cards в charts.css — под 4) —
-   тот же приём, что #ca-metric-cards.metrics-cards в client_analysis.css */
-#home-metrics-cards.metrics-cards {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
 .home-header {
         display: flex;
         align-items: center;
@@ -258,4 +252,71 @@ table.home-status-table tbody th {
 .home-flavor-rating {
     color: var(--text-muted);
     font-size: 12px;
+}
+
+.home-bento {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.home-kpis {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.home-bento .home-card {
+    min-width: 0;
+    margin: 0;
+}
+
+.home-kpi {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+}
+
+.home-kpi.home-kpi-weight {
+    background: var(--primary-tint);
+    border-color: var(--primary-tint-border);
+}
+
+.home-kpi .metric-value {
+    margin: 0;
+    font-size: clamp(24px, 3vw, 38px);
+    line-height: 1.15;
+}
+
+.home-kpi-weight .metric-value { color: var(--primary-text); }
+.home-kpi-unit { font-size: .54em; }
+
+.home-bento .home-card-head > h2 { margin: 0; }
+.home-bento-trend,
+.home-bento-cities { align-self: stretch; }
+
+.home-bento-trend .home-chart-wrap { height: clamp(220px, 25vw, 340px); }
+
+.home-bento-clients {
+    min-width: 0;
+    display: grid;
+    gap: 16px;
+}
+
+.home-bento .home-row { gap: 8px; }
+.home-bento .home-row-name { min-width: 0; overflow-wrap: anywhere; }
+.home-bento .home-row-right { flex: 0 0 auto; max-width: 100%; }
+
+@media (max-width: 1050px) {
+    .home-bento { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+    .home-bento, .home-kpis, .home-bento-clients { gap: 12px; }
+    .home-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .home-kpi-weight { grid-column: 1 / -1; }
+    .home-bento .home-card { padding: 14px; }
+    .home-bento .home-kpi .metric-delta { overflow-wrap: anywhere; }
 }

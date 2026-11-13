@@ -217,9 +217,6 @@
 }
 
 @media (max-width: 520px) {
-    #home-metrics-cards.metrics-cards { grid-template-columns: 1fr; }
-    #home-metrics-cards .metric-card { min-height: 80px; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-    #home-metrics-cards .metric-delta-wrap { grid-column: 1 / -1; margin-top: 0; }
     .metric-card { min-width: 0; }
     .metric-delta { white-space: normal; overflow-wrap: anywhere; }
 }

@@ -113,8 +113,7 @@ table.sheet-table .ca-cell { text-align: right; font-variant-numeric: tabular-nu
     .event-time { margin-left: auto; }
 }
 @media (max-width: 520px) {
-    .metrics-cards, #home-metrics-cards.metrics-cards, #ca-metric-cards.metrics-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    #home-metrics-cards .metric-card { display: block; }
+    .metrics-cards, #ca-metric-cards.metrics-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .metric-delta-wrap { display: block; }
     .metric-delta-row { display: block; margin-top: 4px; }

@@ -49,69 +49,40 @@
     {% if year == available_years[0] %}(год ещё не завершён, дельты — год к году за те же месяцы){% endif %}
 </div>
 
-<div class="metrics-cards" id="home-metrics-cards">
-    <div class="metric-card">
+<div class="home-bento">
+<div class="home-kpis" aria-label="Показатели за {{ year }} год">
+    <div class="home-card home-kpi home-kpi-weight">
         <div class="metric-label">Вес</div>
-        <div class="metric-value">{{ "%.0f"|format(metrics.weight)|replace(",", " ") }} кг</div>
+        <div class="metric-value">{{ metrics.weight|format_ru_number }} <span class="home-kpi-unit">кг</span></div>
         {{ metric_delta(metrics.weight_delta) }}
     </div>
-    <div class="metric-card">
+    <div class="home-card home-kpi">
         <div class="metric-label">Уникальных клиентов</div>
-        <div class="metric-value">{{ metrics.clients }}</div>
+        <div class="metric-value">{{ metrics.clients|format_ru_number }}</div>
         {{ metric_delta(metrics.clients_delta) }}
     </div>
-    <div class="metric-card">
+    <div class="home-card home-kpi">
         <div class="metric-label">Вкусов на клиента</div>
-        <div class="metric-value">{{ metrics.avg_flavors_per_client }}</div>
+        <div class="metric-value">{{ metrics.avg_flavors_per_client|format_ru_number(1) }}</div>
     </div>
 </div>
 
-<details class="home-card home-disclosure">
-    <summary class="home-card-title">Клиенты по типам точек</summary>
-    <table class="sheet-table home-point-types-table">
-        <thead>
-            <tr>
-                <th scope="col">Тип точки</th>
-                <th scope="col" class="num">Клиенты</th>
-                <th scope="col" class="num">Вес, кг</th>
-                <th scope="col" class="num">Доля веса</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in clients_by_type %}
-                <tr>
-                    <td>{{ row.point_type }}</td>
-                    <td class="num">{{ row.clients|format_ru_number }}</td>
-                    <td class="num">{{ row.weight|format_ru_number(2) }}</td>
-                    <td class="num">{{ (row.share|format_ru_number(1) ~ ' %') if row.share is not none else '—' }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <p class="home-point-types-note">Клиент учитывается один раз в каждом типе, где были его продажи.</p>
-</details>
-
-{% if client_statuses %}
-    {% include "includes/home_client_statuses.html" %}
-{% endif %}
-
-<div class="home-card">
+<section class="home-card home-bento-trend" aria-labelledby="home-trend-title">
     <div class="home-card-head">
-        <div class="home-card-title">Динамика веса по месяцам {{ year }}</div>
+        <h2 class="home-card-title" id="home-trend-title">Динамика веса по месяцам {{ year }}</h2>
     </div>
     <div class="home-chart-wrap">
         <canvas id="homeWeightChart"></canvas>
     </div>
-</div>
+</section>
 <div id="home-chart-data" style="display:none;" data-chart="{{ chart|tojson }}"></div>
 
-<div class="home-card">
+<section class="home-card home-bento-cities" aria-labelledby="home-cities-title">
     <div class="home-card-head">
-        <div class="home-card-title">
+        <h2 class="home-card-title" id="home-cities-title">
             Топ городов за {{ year }} год
             <span class="hint-icon" title="ABC — расчётная категория города по общей доле веса среди всех городов (правило 80/15/5).">?</span>
-        </div>
-        <div class="home-period" style="margin-bottom:0;">клик — детализация в «Графики»</div>
+        </h2>
     </div>
     <div class="home-list" id="home-cities-list">
         {% for row in top_cities %}
@@ -137,14 +108,14 @@
         Показать ещё
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
-</div>
+</section>
 
-<div class="home-card">
+<section class="home-card home-bento-flavors" aria-labelledby="home-flavors-title">
     <div class="home-card-head">
-        <div class="home-card-title">
+        <h2 class="home-card-title" id="home-flavors-title">
             Топ вкусов по весу за {{ year }} год
             <span class="hint-icon" title="ABC здесь — расчётная категория по факту продаж (правило 80/15/5 по весу, без учёта новинок), а не ручная из настроек «ABC-рейтинг». В режиме «По городу» показаны оценки среди всех вкусов города и внутри каждой линейки. Клик по вкусу — разрез по городам.">?</span>
-        </div>
+        </h2>
     </div>
     {% if flavor_cities %}
     <div class="home-flavor-controls">
@@ -175,6 +146,38 @@
         Показать ещё
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
+</section>
+
+<div class="home-bento-clients">
+<details class="home-card home-disclosure">
+    <summary class="home-card-title">Клиенты по типам точек</summary>
+    <table class="sheet-table home-point-types-table">
+        <thead>
+            <tr>
+                <th scope="col">Тип точки</th>
+                <th scope="col" class="num">Клиенты</th>
+                <th scope="col" class="num">Вес, кг</th>
+                <th scope="col" class="num">Доля веса</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in clients_by_type %}
+                <tr>
+                    <td>{{ row.point_type }}</td>
+                    <td class="num">{{ row.clients|format_ru_number }}</td>
+                    <td class="num">{{ row.weight|format_ru_number(2) }}</td>
+                    <td class="num">{{ (row.share|format_ru_number(1) ~ ' %') if row.share is not none else '—' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="home-point-types-note">Клиент учитывается один раз в каждом типе, где были его продажи.</p>
+</details>
+
+{% if client_statuses %}
+    {% include "includes/home_client_statuses.html" %}
+{% endif %}
+</div>
 </div>
 
 {% include "includes/chart_scripts.html" %}
